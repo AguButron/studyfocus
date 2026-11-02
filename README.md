@@ -21,7 +21,7 @@ Creo una sala, le paso un link a un amigo, ambos caminamos con nuestro personaje
 - **Cliente:** TypeScript, Three.js y Vite
 - **Servidor:** TypeScript, Node.js y Socket.IO
 
-Las decisiones importantes y sus motivos están en [docs/decisiones](docs/decisiones). Mientras se completa la migración, el código del cliente todavía usa Phaser.
+Las decisiones importantes y sus motivos están en [docs/decisiones](docs/decisiones).
 
 ## Requisitos para desarrollar
 
