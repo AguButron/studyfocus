@@ -16,7 +16,7 @@ Marca cada tarea con `[x]` al terminarla. Las fases 2 a 6 se dividirán en tarea
 El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecánicas de juego.
 
 - [x] Crear el proyecto con Vite y TypeScript
-- [ ] Mostrar Phaser con una escena vacía en el navegador
+- [x] Mostrar Phaser con una escena vacía en el navegador
 - [ ] Dibujar el personaje y moverlo con el teclado
 - [ ] Dibujar la sala con paredes y mesas
 - [ ] Hacer que las paredes y mesas bloqueen el paso
