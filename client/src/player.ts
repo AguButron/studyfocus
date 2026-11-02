@@ -6,7 +6,7 @@ import { scene } from './scene'
 const PLAYER_SPEED = 3 // metros por segundo
 const PLAYER_HALF_SIZE = 0.5
 
-const player = new THREE.Mesh(
+export const player = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
   new THREE.MeshStandardMaterial({ color: 0x89b4fa }),
 )

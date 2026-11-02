@@ -1,6 +1,7 @@
 import './style.css'
-import './network'
-import { updatePlayer } from './player'
+import { sendPosition } from './network'
+import './remotePlayers'
+import { player, updatePlayer } from './player'
 import { camera, renderer, scene } from './scene'
 
 const MAX_DELTA = 100 // milisegundos
@@ -12,6 +13,7 @@ function loop(now: number) {
   lastTime = now
 
   updatePlayer(delta)
+  sendPosition(player.position.x, player.position.z)
 
   renderer.render(scene, camera)
   requestAnimationFrame(loop)
