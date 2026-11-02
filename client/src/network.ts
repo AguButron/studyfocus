@@ -9,29 +9,32 @@ let lastSentAt = 0
 let lastX = NaN
 let lastZ = NaN
 
-function enterRoom() {
-  const url = new URL(window.location.href)
-  const code = url.searchParams.get('sala')
+let session: { code: string; nickname: string } | null = null
 
-  if (code) {
-    socket.emit('room:join', code, (joined: boolean) => {
-      console.log(joined ? `Dentro de la sala ${code}` : `La sala ${code} no existe`)
-    })
-    return
-  }
-
-  socket.emit('room:create', (newCode: string) => {
-    console.log(`Sala creada: ${newCode}`)
-    url.searchParams.set('sala', newCode)
-    window.history.replaceState(null, '', url)
-  })
+export async function createRoom(nickname: string) {
+  const code: string = await socket.emitWithAck('room:create', nickname)
+  session = { code, nickname }
+  return code
 }
 
-socket.on('connect', () => {
-  console.log(`Conectado al servidor con id ${socket.id}`)
+export async function joinRoom(code: string, nickname: string) {
+  const joined: boolean = await socket.emitWithAck('room:join', code, nickname)
+  if (joined) {
+    session = { code, nickname }
+  }
+  return joined
+}
+
+socket.on('connect', async () => {
   lastX = NaN
   lastZ = NaN
-  enterRoom()
+
+  if (!session) return
+
+  const joined = await joinRoom(session.code, session.nickname)
+  if (!joined) {
+    window.location.href = window.location.pathname
+  }
 })
 
 socket.on('disconnect', () => {

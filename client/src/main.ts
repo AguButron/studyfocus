@@ -3,11 +3,12 @@ import { sendPosition } from './network'
 import { updateRemotePlayers } from './remotePlayers'
 import { player, updatePlayer } from './player'
 import { camera, renderer, scene } from './scene'
+import { showHome } from './home'
 
 
 const MAX_DELTA = 100 // milisegundos
 
-let lastTime = performance.now()
+let lastTime = 0
 
 function loop(now: number) {
   const delta = Math.min(now - lastTime, MAX_DELTA)
@@ -21,4 +22,7 @@ function loop(now: number) {
   requestAnimationFrame(loop)
 }
 
-requestAnimationFrame(loop)
+showHome(() => {
+  lastTime = performance.now()
+  requestAnimationFrame(loop)
+})

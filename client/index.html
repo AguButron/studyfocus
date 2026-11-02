@@ -8,6 +8,21 @@
   </head>
   <body>
     <div id="app"></div>
+      <div id="home">
+        <h1>StudyFocus</h1>
+        <label>
+          Tu apodo
+          <input id="nickname" maxlength="20" autocomplete="off" />
+        </label>
+        <button id="create" type="button">Crear una sala</button>
+        <hr />
+        <label>
+          Código de sala
+          <input id="code" maxlength="6" autocomplete="off" />
+        </label>
+        <button id="join" type="button">Unirse</button>
+        <p id="home-error" role="alert"></p>
+      </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

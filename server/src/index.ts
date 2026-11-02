@@ -8,6 +8,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // sin letras y números
 
 interface PlayerState {
   id: string
+  nickname: string
   x: number
   z: number
 }
@@ -34,7 +35,7 @@ const io = new Server(PORT, {
 io.on('connection', (socket) => {
   console.log(`Conectado: ${socket.id}`)
 
-  const player: PlayerState = { id: socket.id, x: 0, z: 0 }
+  const player: PlayerState = { id: socket.id, nickname: '', x: 0, z: 0 }
   let currentCode: string | null = null
 
   function enterRoom(code: string, room: Room) {
@@ -45,9 +46,10 @@ io.on('connection', (socket) => {
     currentCode = code
   }
 
-  socket.on('room:create', (reply: (code: string) => void) => {
+  socket.on('room:create', (nickname: string, reply: (code: string) => void) => {
     if (currentCode) return
 
+    player.nickname = nickname
     const code = createRoomCode()
     const room: Room = new Map()
     rooms.set(code, room)
@@ -56,9 +58,10 @@ io.on('connection', (socket) => {
     reply(code)
   })
 
-  socket.on('room:join', (code: string, reply: (joined: boolean) => void) => {
+  socket.on('room:join', (code: string, nickname: string, reply: (joined: boolean) => void) => {
     if (currentCode) return
 
+    player.nickname = nickname
     const room = rooms.get(code)
     if (!room) {
       reply(false)

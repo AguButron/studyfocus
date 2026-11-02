@@ -11,3 +11,63 @@ body {
   justify-content: center;
   height: 100%;
 }
+
+#home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  align-items: stretch;
+  padding: 0 calc(50% - 150px);
+  background: #1e1e2e;
+  color: #cdd6f4;
+  font-family: system-ui, sans-serif;
+}
+
+#home[hidden] {
+  display: none;
+}
+
+#home h1 {
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+#home label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#home input,
+#home button {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #585b70;
+  font: inherit;
+}
+
+#home input {
+  background: #313244;
+  color: inherit;
+}
+
+#home button {
+  background: #89b4fa;
+  color: #1e1e2e;
+  cursor: pointer;
+}
+
+#home hr {
+  width: 100%;
+  border: none;
+  border-top: 1px solid #585b70;
+}
+
+#home-error {
+  min-height: 1.5em;
+  margin: 0;
+  color: #f38ba8;
+}
