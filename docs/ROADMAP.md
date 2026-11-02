@@ -66,11 +66,15 @@ Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minuto
 - [x] [Pasar a primera persona al sentarse](decisiones/0003-primera-persona-al-estudiar.md), con el temporizador como elemento principal
 - [x] Elegir qué se está haciendo: computador, lectura o escritura
 - [x] Rediseñar la pantalla inicial, la sala y la sesión de estudio
-- [ ] Mostrar a los demás en qué periodo está cada persona
+- [ ] Bloquear la tecla E durante el estudio
+- [ ] Cambiar entre las cámaras Escritorio, Mesa y Sala
+- [ ] Mostrar a los demás en qué periodo está cada persona y qué está haciendo
+- [ ] Ver los datos de otra persona al hacer clic en ella
+- [ ] Seguir en la misma silla y con el mismo temporizador al recargar la página
 - [ ] Avisar con un sonido el cambio entre estudio y descanso
 - [ ] Reducir el redibujado al estar sentado y detenerlo con la pestaña oculta
 
-**Terminada cuando:** dos amigos se sientan en la misma mesa, cada uno usa su temporizador con sus propios minutos, puede pausarlo, no lo pierde al recargar, ve en qué periodo está el otro, y el consumo baja mientras estudian.
+**Terminada cuando:** dos amigos se sientan en la misma mesa, cada uno usa su temporizador con sus propios minutos, puede pausarlo, no lo pierde al recargar, ve en qué periodo está el otro y qué está haciendo, y el consumo baja mientras estudian. El detalle de las tareas pendientes está en la [visión del proyecto](VISION.md#lo-siguiente).
 
 ## Fase 5: Publicar
 
@@ -78,7 +82,7 @@ La página en internet, con CI y amigos probándola. **Al terminar esta fase, el
 
 ## Fase 6: Crecer
 
-Cuentas, salas guardadas y estadísticas; animaciones del personaje según su periodo de estudio o descanso; luego, chat de voz.
+Cuentas, salas guardadas y estadísticas; animaciones del personaje según su periodo de estudio o descanso; luego, chat de voz. Avatares, moneda, tienda y espacios propios se describen en la [visión del proyecto](VISION.md).
 
 ## Cómo trabajamos cada tarea
 

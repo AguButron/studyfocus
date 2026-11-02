@@ -6,7 +6,9 @@ No es un juego para pasarlo bien: el personaje y la sala existen para dar la sen
 
 ## Principio de diseño
 
-Cada función debe ayudar a estudiar o a sentirse acompañado al hacerlo. Si distrae del estudio, no entra: nada de puntajes, niveles ni misiones.
+Cada función debe ayudar a estudiar o a sentirse acompañado al hacerlo. Si distrae durante una sesión de estudio, no entra. Las recompensas futuras premian el tiempo de estudio y sirven para motivar a volver, no para competir.
+
+La visión completa y las ideas a futuro están en [docs/VISION.md](docs/VISION.md).
 
 ## Estado
 
