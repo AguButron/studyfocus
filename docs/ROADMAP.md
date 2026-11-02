@@ -17,8 +17,11 @@ El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecáni
 
 - [x] Crear el proyecto con Vite y TypeScript
 - [x] Mostrar Phaser con una escena vacía en el navegador
-- [ ] Dibujar el personaje y moverlo con el teclado
-- [ ] Dibujar la sala con paredes y mesas
+- [x] Dibujar el personaje y moverlo con el teclado
+- [x] Decidir el paso a 3D y [registrar el motivo](decisiones/0001-usar-threejs.md)
+- [ ] Cambiar Phaser por Three.js y mostrar un cubo con cámara y luz
+- [ ] Mover el cubo sobre un suelo con el teclado
+- [ ] Construir la sala con paredes y mesas
 - [ ] Hacer que las paredes y mesas bloqueen el paso
 
 **Terminada cuando:** puedo caminar por la sala sin atravesar paredes ni mesas.
@@ -33,7 +36,7 @@ Crear una sala y unirse con un código o link, usando un apodo.
 
 ## Fase 4: Estudiar
 
-Sentarse en una mesa y usar un temporizador Pomodoro compartido. Es el centro del producto: una vez sentado, la pantalla debe ayudar a concentrarse y no invitar a seguir caminando.
+Sentarse en una mesa y usar un temporizador Pomodoro compartido. Es el centro del producto: una vez sentado, la pantalla debe ayudar a concentrarse y no invitar a seguir caminando. También debe gastar poca batería: la escena se redibuja muy poco mientras se estudia, y nada con la pestaña oculta.
 
 ## Fase 5: Publicar
 
