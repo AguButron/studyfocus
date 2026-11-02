@@ -44,7 +44,7 @@ Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
 Crear una sala y unirse con un código o link, usando un apodo. Las salas viven en la memoria del servidor: se borran al quedar vacías o al reiniciarlo. Guardarlas es parte de la fase 6.
 
 - [x] Separar a los jugadores por sala en el servidor, con códigos de sala
-- [ ] Mostrar una pantalla inicial para escribir el apodo y crear o unirse a una sala
+- [x] Mostrar una pantalla inicial para escribir el apodo y crear o unirse a una sala
 - [ ] Validar en el servidor el apodo, el código y las posiciones recibidas
 - [ ] Copiar un link de invitación y entrar directo a la sala desde él
 - [ ] Mostrar el apodo sobre cada personaje

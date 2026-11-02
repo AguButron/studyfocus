@@ -5,12 +5,17 @@ import { scene } from './scene'
 
 const PLAYER_SPEED = 3 // metros por segundo
 const PLAYER_HALF_SIZE = 0.5
+const SPAWN_RANGE = 1 // metros alrededor del centro
+
+function randomSpawn() {
+  return Math.random() * SPAWN_RANGE * 2 - SPAWN_RANGE
+}
 
 export const player = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
   new THREE.MeshStandardMaterial({ color: 0x89b4fa }),
 )
-player.position.y = 0.5
+player.position.set(randomSpawn(), 0.5, randomSpawn())
 scene.add(player)
 
 export function updatePlayer(delta: number) {

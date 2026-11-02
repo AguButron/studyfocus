@@ -46,7 +46,7 @@ export function showHome(onEnter: () => void) {
     if (await joinRoom(code, nickname)) {
       enter(code)
     } else {
-      errorText.textContent = 'Esa sala no existe.'
+      errorText.textContent = 'Esa sala no existe o está llena.'
     }
   })
 }
