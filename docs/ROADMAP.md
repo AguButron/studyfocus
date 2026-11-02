@@ -57,7 +57,7 @@ Sentarse en una mesa y usar un temporizador Pomodoro individual. Es el centro de
 
 Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minutos de estudio y de descanso, a partir del clásico 25-5, y puede pausarlo. Ver la [decisión](decisiones/0002-pomodoro-individual.md).
 
-- [ ] Agregar sillas y sentarse o levantarse con una tecla
+- [x] Agregar sillas y sentarse o levantarse con una tecla
 - [ ] Mostrar a los demás quién está sentado y dónde, sin que dos ocupen la misma silla
 - [ ] Crear el temporizador en el navegador, con estudio, descanso y pausa
 - [ ] Mostrar el temporizador y sus controles al estar sentado

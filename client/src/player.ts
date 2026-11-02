@@ -1,13 +1,13 @@
 import * as THREE from 'three'
 import { isPressed } from './input'
-import { collides, seats, type Seat } from './room'
 import { scene } from './scene'
+import { leaveSeat, socket, takeSeat } from './network'
+import { isSeatTaken } from './remotePlayers'
+import { collides, SEATED_Y, seats, STANDING_Y, type Seat } from './room'
 
 const PLAYER_SPEED = 3 // metros por segundo
 const PLAYER_HALF_SIZE = 0.5
 const SPAWN_RANGE = 1 // metros alrededor del centro
-const STANDING_Y = 0.5
-const SEATED_Y = 0.8
 const SIT_DISTANCE = 1.2 // metros
 
 function randomSpawn() {
@@ -22,12 +22,22 @@ player.position.set(randomSpawn(), STANDING_Y, randomSpawn())
 scene.add(player)
 
 let currentSeat: Seat | null = null
+let isRequestingSeat = false
+
+function standUp() {
+  currentSeat = null
+  player.position.y = STANDING_Y
+}
+
+// Al reconectar, el servidor ya no recuerda la silla
+socket.on('connect', standUp)
 
 function findNearestSeat() {
   let nearest: Seat | null = null
   let nearestDistance = SIT_DISTANCE
 
   for (const seat of seats) {
+    if (isSeatTaken(seat.id)) continue
     const distance = Math.hypot(seat.x - player.position.x, seat.z - player.position.z)
     if (distance <= nearestDistance) {
       nearest = seat
@@ -38,15 +48,22 @@ function findNearestSeat() {
   return nearest
 }
 
-export function toggleSit() {
+export async function toggleSit() {
+  if (isRequestingSeat) return
+
   if (currentSeat) {
-    currentSeat = null
-    player.position.y = STANDING_Y
+    standUp()
+    leaveSeat()
     return
   }
 
   const seat = findNearestSeat()
   if (!seat) return
+
+  isRequestingSeat = true
+  const taken = await takeSeat(seat.id)
+  isRequestingSeat = false
+  if (!taken) return
 
   currentSeat = seat
   player.position.set(seat.x, SEATED_Y, seat.z)

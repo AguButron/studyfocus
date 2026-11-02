@@ -10,10 +10,12 @@ const ROOM_HALF_SIZE = 6
 const MIN_MOVE_INTERVAL = 30 // milisegundos
 const MAX_MESSAGE_SIZE = 1024 // bytes
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // sin letras y números fáciles de confundir
+const SEAT_COUNT = 16
 
 interface PlayerState {
   id: string
   nickname: string
+  seatId: number | null
   x: number
   z: number
 }
@@ -53,6 +55,16 @@ function isValidPosition(value: unknown): value is { x: number; z: number } {
   )
 }
 
+function isFreeSeat(room: Room, seatId: unknown): seatId is number {
+  if (typeof seatId !== 'number' || !Number.isInteger(seatId)) return false
+  if (seatId < 0 || seatId >= SEAT_COUNT) return false
+
+  for (const other of room.values()) {
+    if (other.seatId === seatId) return false
+  }
+  return true
+}
+
 const io = new Server(PORT, {
   cors: { origin: CLIENT_URL },
   maxHttpBufferSize: MAX_MESSAGE_SIZE,
@@ -61,7 +73,7 @@ const io = new Server(PORT, {
 io.on('connection', (socket) => {
   console.log(`Conectado: ${socket.id}`)
 
-  const player: PlayerState = { id: socket.id, nickname: '', x: 0, z: 0 }
+  const player: PlayerState = { id: socket.id, nickname: '', seatId: null, x: 0, z: 0 }
   let currentCode: string | null = null
   let lastMoveAt = 0
 
@@ -105,6 +117,27 @@ io.on('connection', (socket) => {
     enterRoom(code as string, room)
     reply(true)
   })
+
+  socket.on('seat:take', (seatId: unknown, reply: unknown) => {
+  if (typeof reply !== 'function') return
+
+  const room = currentCode ? rooms.get(currentCode) : undefined
+  if (!room || player.seatId !== null || !isFreeSeat(room, seatId)) {
+    reply(false)
+    return
+  }
+
+  player.seatId = seatId
+  socket.to(currentCode!).emit('player:seated', player)
+  reply(true)
+})
+
+socket.on('seat:leave', () => {
+  if (!currentCode || player.seatId === null) return
+
+  player.seatId = null
+  socket.to(currentCode).emit('player:seated', player)
+})
 
   socket.on('player:move', (position: unknown) => {
     if (!currentCode || !isValidPosition(position)) return

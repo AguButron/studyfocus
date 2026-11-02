@@ -51,3 +51,12 @@ export function sendPosition(x: number, z: number) {
   lastZ = z
   socket.emit('player:move', { x, z })
 }
+
+export async function takeSeat(seatId: number) {
+  const taken: boolean = await socket.emitWithAck('seat:take', seatId)
+  return taken
+}
+
+export function leaveSeat() {
+  socket.emit('seat:leave')
+}

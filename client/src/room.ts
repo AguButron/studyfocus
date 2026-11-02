@@ -3,7 +3,6 @@ import { scene } from './scene'
 
 const WALL_COLOR = 0x585b70
 const TABLE_COLOR = 0xa6744f
-
 const CHAIR_COLOR = 0x74543a
 const TABLE_POSITIONS = [
   { x: -3, z: -2.5 },
@@ -13,6 +12,8 @@ const TABLE_POSITIONS = [
 ]
 const SEAT_OFFSET_X = 0.6
 const SEAT_OFFSET_Z = 1.2
+export const STANDING_Y = 0.5
+export const SEATED_Y = 0.8
 
 export interface Seat {
   id: number
