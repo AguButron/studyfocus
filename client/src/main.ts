@@ -1,66 +1,43 @@
-import Phaser from 'phaser'
+import * as THREE from 'three'
 import './style.css'
 
-const PLAYER_SPEED = 200 // píxeles por segundo
+const WIDTH = 800
+const HEIGHT = 600
+const ROTATION_SPEED = 1 // radianes por segundo
 
-class RoomScene extends Phaser.Scene {
-  private player!: Phaser.GameObjects.Rectangle
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
-  private keyW!: Phaser.Input.Keyboard.Key
-  private keyA!: Phaser.Input.Keyboard.Key
-  private keyS!: Phaser.Input.Keyboard.Key
-  private keyD!: Phaser.Input.Keyboard.Key
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0x2a2a3c)
 
-  constructor() {
-    super('RoomScene')
-  }
+const camera = new THREE.PerspectiveCamera(60, WIDTH / HEIGHT, 0.1, 100)
+camera.position.set(0, 2, 5)
+camera.lookAt(0, 0, 0)
 
-  create() {
-    this.player = this.add.rectangle(400, 300, 32, 32, 0x89b4fa)
-    this.cursors = this.input.keyboard!.createCursorKeys()
-    this.keyW = this.input.keyboard!.addKey('W')
-    this.keyA = this.input.keyboard!.addKey('A')
-    this.keyS = this.input.keyboard!.addKey('S')
-    this.keyD = this.input.keyboard!.addKey('D')
-  }
+const renderer = new THREE.WebGLRenderer({ antialias: true })
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.setSize(WIDTH, HEIGHT)
+document.querySelector('#app')!.append(renderer.domElement)
 
-  update(_time: number, delta: number) {
+scene.add(new THREE.AmbientLight(0xffffff, 0.6))
 
-    const distance = PLAYER_SPEED * (delta / 1000)
+const sun = new THREE.DirectionalLight(0xffffff, 2)
+sun.position.set(3, 5, 4)
+scene.add(sun)
 
-    let dx = 0
-    let dy = 0
-    
-    if (this.keyW.isDown || this.cursors.up.isDown) {
-      dy -= distance
-    }
+const geometry = new THREE.BoxGeometry(1, 1, 1)
+const material = new THREE.MeshStandardMaterial({ color: 0x89b4fa })
+const cube = new THREE.Mesh(geometry, material)
+scene.add(cube)
 
-    if (this.keyA.isDown || this.cursors.left.isDown) {
-      dx -= distance
-    }
+let lastTime = performance.now()
 
-    if (this.keyS.isDown || this.cursors.down.isDown) {
-      dy += distance
-    }
+function loop(now: number) {
+  const delta = now - lastTime
+  lastTime = now
 
-    if (this.keyD.isDown || this.cursors.right.isDown) {
-      dx += distance
-    }
+  cube.rotation.y += ROTATION_SPEED * (delta / 1000)
 
-    const length = Math.hypot(dx, dy)
-    if (length === 0) return
-
-    this.player.x += (dx / length) * distance
-    this.player.y += (dy / length) * distance
-
-  }
+  renderer.render(scene, camera)
+  requestAnimationFrame(loop)
 }
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  width: 800,
-  height: 600,
-  parent: 'app',
-  backgroundColor: '#2a2a3c',
-  scene: RoomScene,
-})
+requestAnimationFrame(loop)
