@@ -33,8 +33,8 @@ Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
 - [x] Dividir `main.ts` en varios archivos, sin cambiar el comportamiento
 - [x] Crear el servidor en `server/` y arrancarlo
 - [x] Conectar el cliente al servidor y ver cada conexión en sus registros
-- [ ] Enviar la posición del jugador y reenviarla a los demás
-- [ ] Dibujar a los otros jugadores y quitarlos cuando se desconectan
+- [x] Enviar la posición del jugador y reenviarla a los demás
+- [x] Dibujar a los otros jugadores y quitarlos cuando se desconectan
 - [ ] Suavizar el movimiento de los otros jugadores
 
 **Terminada cuando:** con dos pestañas abiertas, cada una ve moverse a la otra con suavidad, y al cerrar una, su personaje desaparece de la otra.

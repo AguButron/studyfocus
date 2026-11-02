@@ -8,23 +8,30 @@ interface PlayerState {
   z: number
 }
 
+const SMOOTHING = 12 // cuanto mayor, más rápido alcanza la posición recibida
 const geometry = new THREE.BoxGeometry(1, 1, 1)
 const material = new THREE.MeshStandardMaterial({ color: 0xf38ba8 })
 
-const remotePlayers = new Map<string, THREE.Mesh>()
+interface RemotePlayer {
+  mesh: THREE.Mesh
+  targetX: number
+  targetZ: number
+}
+
+const remotePlayers = new Map<string, RemotePlayer>()
 
 function addRemotePlayer(state: PlayerState) {
   const mesh = new THREE.Mesh(geometry, material)
   mesh.position.set(state.x, 0.5, state.z)
   scene.add(mesh)
-  remotePlayers.set(state.id, mesh)
+  remotePlayers.set(state.id, { mesh, targetX: state.x, targetZ: state.z })
 }
 
 function removeRemotePlayer(id: string) {
-  const mesh = remotePlayers.get(id)
-  if (!mesh) return
+  const remotePlayer = remotePlayers.get(id)
+  if (!remotePlayer) return
 
-  scene.remove(mesh)
+  scene.remove(remotePlayer.mesh)
   remotePlayers.delete(id)
 }
 
@@ -39,9 +46,18 @@ socket.on('player:joined', addRemotePlayer)
 socket.on('player:left', removeRemotePlayer)
 
 socket.on('player:moved', (state: PlayerState) => {
-  const mesh = remotePlayers.get(state.id)
-  if (!mesh) return
+  const remotePlayer = remotePlayers.get(state.id)
+  if (!remotePlayer) return
 
-  mesh.position.x = state.x
-  mesh.position.z = state.z
+  remotePlayer.targetX = state.x
+  remotePlayer.targetZ = state.z
 })
+
+export function updateRemotePlayers(delta: number) {
+  const factor = 1 - Math.exp(-SMOOTHING * (delta / 1000))
+
+  for (const { mesh, targetX, targetZ } of remotePlayers.values()) {
+    mesh.position.x += (targetX - mesh.position.x) * factor
+    mesh.position.z += (targetZ - mesh.position.z) * factor
+  }
+}
