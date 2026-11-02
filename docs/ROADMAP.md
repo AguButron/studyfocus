@@ -30,7 +30,7 @@ El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecáni
 
 Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
 
-- [ ] Dividir `main.ts` en varios archivos, sin cambiar el comportamiento
+- [x] Dividir `main.ts` en varios archivos, sin cambiar el comportamiento
 - [ ] Crear el servidor en `server/` y arrancarlo
 - [ ] Conectar el cliente al servidor y ver cada conexión en sus registros
 - [ ] Enviar la posición del jugador y reenviarla a los demás
@@ -58,7 +58,8 @@ Cuentas, salas guardadas y estadísticas; luego, chat de voz.
 ## Cómo trabajamos cada tarea
 
 1. **Definir:** una tarea pequeña que diga cuándo se considera terminada.
-2. **Aislar:** una rama de Git solo para esa tarea.
-3. **Implementar:** primero el concepto, luego el código.
-4. **Probar:** comprobar que funciona.
-5. **Revisar:** abrir un pull request, revisarlo e integrarlo.
+2. **Implementar:** primero el concepto, luego el código.
+3. **Probar:** comprobar que funciona y que `npm run build` compila.
+4. **Subir:** hacer commit y push directo a `main`.
+
+Trabajamos sin ramas ni pull requests porque hay una sola persona en el proyecto. Si se suma alguien más, conviene retomarlos.
