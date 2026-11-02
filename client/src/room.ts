@@ -20,6 +20,8 @@ export interface Seat {
   x: number
   z: number
   facingZ: 1 | -1 // hacia dónde queda la mesa
+  tableX: number
+  tableZ: number
 }
 
 export const seats: Seat[] = []
@@ -88,8 +90,8 @@ for (const table of TABLE_POSITIONS) {
     for (const offsetZ of [-SEAT_OFFSET_Z, SEAT_OFFSET_Z]) {
       const x = table.x + offsetX
       const z = table.z + offsetZ
-      addBox(0.5, 0.45, 0.5, x, z, CHAIR_COLOR, false)
-      seats.push({ id: seats.length, x, z, facingZ: offsetZ < 0 ? 1 : -1 })
+      addBox(0.5, 0.45, 0.5, x, z, CHAIR_COLOR)
+      seats.push({ id: seats.length, x, z, facingZ: offsetZ < 0 ? 1 : -1, tableX: table.x, tableZ: table.z })
     }
   }
 }

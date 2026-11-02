@@ -51,7 +51,7 @@ Crear una sala y unirse con un código o link, usando un apodo. Las salas viven 
 
 **Terminada cuando:** dos grupos en salas distintas no se ven entre sí, y un amigo puede entrar a mi sala abriendo el link que le paso.
 
-## Fase 4: Estudiar (actual)
+## Fase 4: Estudiar (completada)
 
 Sentarse en una mesa y usar un temporizador Pomodoro individual. Es el centro del producto: una vez sentado, la pantalla debe ayudar a concentrarse y no invitar a seguir caminando. También debe gastar poca batería: la escena se redibuja muy poco mientras se estudia, y nada con la pestaña oculta.
 
@@ -67,16 +67,22 @@ Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minuto
 - [x] Elegir qué se está haciendo: computador, lectura o escritura
 - [x] Rediseñar la pantalla inicial, la sala y la sesión de estudio
 - [x] Bloquear la tecla E durante el estudio
-- [ ] Cambiar entre las cámaras Escritorio, Mesa y Sala
-- [ ] Mostrar a los demás en qué periodo está cada persona y qué está haciendo
-- [ ] Ver los datos de otra persona al hacer clic en ella
-- [ ] Seguir en la misma silla y con el mismo temporizador al recargar la página
-- [ ] Avisar con un sonido el cambio entre estudio y descanso
-- [ ] Reducir el redibujado al estar sentado y detenerlo con la pestaña oculta
+- [x] [Ver al personaje desde atrás al elegir los minutos](decisiones/0004-camaras-al-estudiar.md)
+- [x] Cambiar entre las cámaras Escritorio, Mesa y Sala al comenzar el temporizador
+- [x] Al comenzar, achicar el temporizador arriba a la izquierda y dejar las cámaras arriba a la derecha
+- [x] Hacer que las sillas bloqueen el paso
+- [x] [Mostrar a los demás qué está haciendo cada persona, con sus manos en movimiento](decisiones/0005-compartir-actividad-ahora.md)
+- [x] Mostrar a los demás en qué periodo está cada persona
+- [x] Ver los datos de otra persona al hacer clic en ella, con un zoom de la cámara
+- [x] Subir la cámara Escritorio, para ver lo que tiene quien está al frente
+- [x] Cambiar Reiniciar por Abandonar, con confirmación, para terminar la sesión
+- [x] [Seguir en la misma silla y con el mismo temporizador al recargar la página](decisiones/0006-volver-al-recargar.md)
+- [x] Avisar con un sonido el cambio entre estudio y descanso
+- [x] Reducir el redibujado al estar sentado y detenerlo con la pestaña oculta
 
 **Terminada cuando:** dos amigos se sientan en la misma mesa, cada uno usa su temporizador con sus propios minutos, puede pausarlo, no lo pierde al recargar, ve en qué periodo está el otro y qué está haciendo, y el consumo baja mientras estudian. El detalle de las tareas pendientes está en la [visión del proyecto](VISION.md#lo-siguiente).
 
-## Fase 5: Publicar
+## Fase 5: Publicar (actual)
 
 La página en internet, con CI y amigos probándola. **Al terminar esta fase, el MVP está completo.**
 

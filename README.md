@@ -12,7 +12,7 @@ La visión completa y las ideas a futuro están en [docs/VISION.md](docs/VISION.
 
 ## Estado
 
-En desarrollo, fase 4. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+En desarrollo, fase 5. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Objetivo del MVP
 

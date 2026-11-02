@@ -1,18 +1,31 @@
+import type { Object3D } from 'three'
 import './style.css'
-import { hideActivity, showActivityAt, updateActivity } from './activity'
-import { updateCameraView, viewFromSeat, viewRoom } from './cameraView'
+import { getActivity, hideActivity, showActivityAt, updateActivity } from './activity'
+import {
+  focusCameraOn,
+  getChosenCamera,
+  jumpToCameraView,
+  releaseCameraFocus,
+  setCameraView,
+  updateCameraView,
+  type CameraView,
+} from './cameraView'
 import { showHome } from './home'
 import { onKeyPress } from './input'
 import { createLabel } from './label'
-import { sendPosition } from './network'
-import { isNearFreeSeat, onSeatChange, player, toggleSit, updatePlayer } from './player'
+import { sendPosition, sendStatus } from './network'
+import { isNearFreeSeat, onSeatChange, player, restorePlayer, toggleSit, updatePlayer } from './player'
+import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './playerCard'
 import { updateRemotePlayers } from './remotePlayers'
 import { setTallFrontWallVisible, type Seat } from './room'
 import { camera, renderer, scene } from './scene'
-import { isStudyRunning } from './timer'
-import { setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
+import { playPeriodSound } from './sound'
+import { getTimer, isStudyRunning, isTimerIdle, onPeriodChange, updateTimer } from './timer'
+import { setStudyPanelCompact, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
 
 const MAX_DELTA = 100 // milisegundos
+const SEATED_FRAME_TIME = 1000 / 12 // milisegundos: alcanza para que las manos se vean moverse
+const STATUS_INTERVAL = 500 // milisegundos
 const MOVE_HINT = 'Muévete con WASD o las flechas y acércate a una silla'
 const SIT_HINT = 'Pulsa E para sentarte'
 
@@ -20,55 +33,112 @@ const hud = document.querySelector<HTMLElement>('#hud')!
 const hint = document.querySelector<HTMLParagraphElement>('#hint')!
 
 let lastTime = 0
-let isStudying = false
+let isSceneMoving = false
+let isFocusing = false
+let playerLabel: Object3D | null = null
+let studySeat: Seat | null = null
+let studyView: CameraView | null = null
 
 function enterStudyMode(seat: Seat) {
-  isStudying = true
-  player.visible = false
-  setTallFrontWallVisible(true)
+  studySeat = seat
   showActivityAt(seat)
-  viewFromSeat(seat)
   hud.hidden = true
   hint.hidden = true
   setStudyScreenVisible(true)
+  updateStudyView()
 }
 
 function leaveStudyMode() {
-  isStudying = false
+  studySeat = null
+  studyView = null
   player.visible = true
+  playerLabel!.visible = true
   setTallFrontWallVisible(false)
+  setStudyPanelCompact(false)
   hideActivity()
-  viewRoom()
+  setCameraView('room', null)
   hud.hidden = false
   hint.hidden = false
   setStudyScreenVisible(false)
 }
 
+// Mientras se eligen los minutos se ve al personaje; al comenzar, manda la cámara elegida
+function updateStudyView() {
+  if (!studySeat) return
+
+  const view = isTimerIdle() ? 'behind' : getChosenCamera()
+  if (view === studyView) return
+
+  // Elegir otra cámara o comenzar una sesión termina el zoom
+  closePlayerCard()
+  studyView = view
+  player.visible = view !== 'desk'
+  playerLabel!.visible = view !== 'behind' // tan cerca, el apodo tapa la vista
+  setTallFrontWallVisible(view !== 'room')
+  setStudyPanelCompact(view !== 'behind')
+  setCameraView(view, studySeat)
+}
+
+function updateFocus() {
+  const target = getSelectedPlayerPosition()
+  if (target) {
+    focusCameraOn(target)
+  } else if (isFocusing) {
+    releaseCameraFocus()
+    setCameraView(studyView ?? 'room', studySeat)
+  }
+  isFocusing = target !== null
+}
+
+function shareStatus() {
+  updateTimer()
+  const { period, isRunning } = getTimer()
+  sendStatus({ activity: getActivity(), period, isRunning })
+}
+
 function loop(now: number) {
+  requestAnimationFrame(loop)
+
+  // Con la pestaña oculta el navegador ya detiene este bucle; sentado, basta con dibujar menos
+  if (studySeat && !isSceneMoving && now - lastTime < SEATED_FRAME_TIME) return
+
   const delta = Math.min(now - lastTime, MAX_DELTA)
   lastTime = now
 
-  updatePlayer(delta)
+  if (!isFocusing) {
+    updatePlayer(delta)
+  }
   sendPosition(player.position.x, player.position.z)
-  updateRemotePlayers(delta)
-  updateCameraView(delta)
+  const isAnyoneMoving = updateRemotePlayers(delta)
+  updateStudyView()
+  updateFocus()
+  isSceneMoving = updateCameraView(delta) || isAnyoneMoving
 
   updateActivity(delta, isStudyRunning())
 
-  if (!isStudying) {
+  if (!studySeat) {
     hint.textContent = isNearFreeSeat() ? SIT_HINT : MOVE_HINT
   }
 
   renderer.render(scene, camera)
-  requestAnimationFrame(loop)
 }
 
-showHome((nickname) => {
-  player.add(createLabel(nickname))
+showHome((nickname, resumed) => {
+  playerLabel = createLabel(nickname)
+  player.add(playerLabel)
   onSeatChange((seat) => (seat ? enterStudyMode(seat) : leaveStudyMode()))
   onKeyPress('KeyE', toggleSit)
   setUpTimerPanel(toggleSit)
+  setUpPlayerCard()
+  onPeriodChange(playPeriodSound)
   hint.hidden = false
+  if (resumed) {
+    restorePlayer(resumed)
+    jumpToCameraView()
+  }
+  shareStatus()
+  // Fuera del bucle de dibujo, que se detiene al estudiar con la pestaña oculta
+  setInterval(shareStatus, STATUS_INTERVAL)
   lastTime = performance.now()
   requestAnimationFrame(loop)
 })

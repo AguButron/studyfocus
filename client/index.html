@@ -34,13 +34,21 @@
         <div id="timer-time"></div>
         <div class="progress"><div id="timer-progress"></div></div>
 
-        <div class="study-actions">
+        <div id="timer-actions" class="study-actions">
           <button id="timer-toggle" class="button button-primary" type="button"></button>
-          <button id="timer-reset" class="button button-ghost" type="button">Reiniciar</button>
+          <button id="timer-abandon" class="button button-ghost" type="button" hidden>Abandonar</button>
+        </div>
+
+        <div id="abandon-confirm" hidden>
+          <p>¿Abandonar la sesión? Se perderá el tiempo que llevas.</p>
+          <div class="study-actions">
+            <button id="abandon-yes" class="button button-ghost" type="button">Sí, abandonar</button>
+            <button id="abandon-no" class="button button-primary" type="button">Seguir</button>
+          </div>
         </div>
         <p id="stand-up-hint" class="muted" hidden>Pausa el temporizador para levantarte.</p>
 
-        <div class="study-section">
+        <div id="duration-section" class="study-section">
           <h2>Duración</h2>
           <label class="slider">
             <span class="slider-label">Estudio <span id="study-value"></span></span>
@@ -50,10 +58,9 @@
             <span class="slider-label">Descanso <span id="break-value"></span></span>
             <input id="break-minutes" type="range" />
           </label>
-          <p id="minutes-hint" class="muted" hidden>Reinicia el temporizador para cambiar los minutos.</p>
         </div>
 
-        <div class="study-section">
+        <div id="activity-section" class="study-section">
           <h2>¿Qué estás haciendo?</h2>
           <div class="segmented">
             <button data-activity="computer" type="button">Computador</button>
@@ -62,7 +69,23 @@
           </div>
         </div>
       </div>
+
+      <div id="camera-panel" hidden>
+        <h2>Cámara <kbd>C</kbd></h2>
+        <div class="segmented">
+          <button data-camera="desk" type="button">Escritorio</button>
+          <button data-camera="table" type="button">Mesa</button>
+          <button data-camera="room" type="button">Sala</button>
+        </div>
+      </div>
     </section>
+
+    <div id="player-card" role="status" hidden>
+      <strong id="player-card-name"></strong>
+      <span id="player-card-status"></span>
+      <span id="player-card-activity" class="muted"></span>
+      <span class="player-card-hint muted"><kbd>Esc</kbd> para volver</span>
+    </div>
 
     <main id="home">
       <div class="home-card">

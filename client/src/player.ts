@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { isPressed } from './input'
 import { scene } from './scene'
-import { leaveSeat, socket, takeSeat } from './network'
+import { leaveSeat, onSeatLost, takeSeat, type ResumedPlayer } from './network'
 import { isSeatTaken } from './remotePlayers'
 import { collides, SEATED_Y, seats, STANDING_Y, type Seat } from './room'
 import { isStudyRunning } from './timer'
@@ -10,6 +10,7 @@ const PLAYER_SPEED = 3 // metros por segundo
 const PLAYER_HALF_SIZE = 0.5
 const SPAWN_RANGE = 1 // metros alrededor del centro
 const SIT_DISTANCE = 1.2 // metros
+const STAND_UP_DISTANCE = 0.8 // metros, algo más que media silla y medio personaje
 
 function randomSpawn() {
   return Math.random() * SPAWN_RANGE * 2 - SPAWN_RANGE
@@ -33,13 +34,25 @@ export function onSeatChange(listener: (seat: Seat | null) => void) {
 function standUp() {
   if (!currentSeat) return
 
-  currentSeat = null
+  // Queda detrás de la silla: sobre ella estaría chocando y no podría moverse
+  player.position.z = currentSeat.z - STAND_UP_DISTANCE * currentSeat.facingZ
   player.position.y = STANDING_Y
+  currentSeat = null
   seatListener(null)
 }
 
-// Al reconectar, el servidor ya no recuerda la silla
-socket.on('connect', standUp)
+onSeatLost(standUp)
+
+export function restorePlayer({ seatId, x, z }: ResumedPlayer) {
+  if (seatId === null) {
+    player.position.set(x, STANDING_Y, z)
+    return
+  }
+
+  currentSeat = seats[seatId]
+  player.position.set(currentSeat.x, SEATED_Y, currentSeat.z)
+  seatListener(currentSeat)
+}
 
 function findNearestSeat() {
   let nearest: Seat | null = null

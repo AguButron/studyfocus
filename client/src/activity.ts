@@ -39,15 +39,15 @@ function addTextLine(parent: THREE.Object3D, width: number, x: number, y: number
   return line
 }
 
-function createArm(side: -1 | 1) {
+function createArm(side: -1 | 1, sleeveColor: number) {
   const arm = new THREE.Group()
   addBox(arm, [0.08, 0.04, 0.12], [0, 0, 0], HAND_COLOR)
-  addBox(arm, [0.09, 0.07, 0.6], [0, -0.005, 0.36], SLEEVE_COLOR)
+  addBox(arm, [0.09, 0.07, 0.6], [0, -0.005, 0.36], sleeveColor)
   arm.rotation.y = side * 0.3
   return arm
 }
 
-function createComputer(): Activity {
+function createComputer(sleeveColor: number): Activity {
   const group = new THREE.Group()
   addBox(group, [0.46, 0.02, 0.32], [0, TABLE_TOP + 0.01, ITEM_Z], 0x313244)
 
@@ -69,8 +69,8 @@ function createComputer(): Activity {
     return line
   })
 
-  const leftArm = createArm(-1)
-  const rightArm = createArm(1)
+  const leftArm = createArm(-1, sleeveColor)
+  const rightArm = createArm(1, sleeveColor)
   leftArm.position.set(-0.09, TABLE_TOP + 0.05, HAND_Z)
   rightArm.position.set(0.09, TABLE_TOP + 0.05, HAND_Z)
   group.add(leftArm, rightArm)
@@ -89,7 +89,7 @@ function createComputer(): Activity {
   }
 }
 
-function createBook(): Activity {
+function createBook(sleeveColor: number): Activity {
   const group = new THREE.Group()
   addBox(group, [0.5, 0.01, 0.34], [0, TABLE_TOP + 0.005, ITEM_Z], 0x45475a)
 
@@ -107,8 +107,8 @@ function createBook(): Activity {
   group.add(flipPivot)
   const flippingPage = addBox(flipPivot, [0.24, 0.002, 0.32], [0.12, 0, 0], 0xfaf8f0)
 
-  const leftArm = createArm(-1)
-  const rightArm = createArm(1)
+  const leftArm = createArm(-1, sleeveColor)
+  const rightArm = createArm(1, sleeveColor)
   leftArm.position.set(-0.3, TABLE_TOP + 0.05, HAND_Z - 0.04)
   rightArm.position.set(0.3, TABLE_TOP + 0.05, HAND_Z - 0.04)
   group.add(leftArm, rightArm)
@@ -127,7 +127,7 @@ function createBook(): Activity {
   }
 }
 
-function createNotebook(): Activity {
+function createNotebook(sleeveColor: number): Activity {
   const group = new THREE.Group()
   addBox(group, [0.34, 0.016, 0.44], [0, TABLE_TOP + 0.008, ITEM_Z], 0xfaf8f0)
 
@@ -139,11 +139,11 @@ function createNotebook(): Activity {
     addTextLine(group, lineWidth, firstLineX, TABLE_TOP + 0.018, lineZ(index), LINE_COLOR),
   )
 
-  const leftArm = createArm(-1)
+  const leftArm = createArm(-1, sleeveColor)
   leftArm.position.set(-0.27, TABLE_TOP + 0.05, HAND_Z)
   group.add(leftArm)
 
-  const rightArm = createArm(1)
+  const rightArm = createArm(1, sleeveColor)
   group.add(rightArm)
 
   const pen = addBox(rightArm, [0.012, 0.012, 0.16], [-0.02, 0.03, -0.06], 0x1e1e2e)
@@ -167,19 +167,77 @@ function createNotebook(): Activity {
   }
 }
 
-const activities: Record<ActivityKind, Activity> = {
-  computer: createComputer(),
-  reading: createBook(),
-  writing: createNotebook(),
+const activityBuilders: Record<ActivityKind, (sleeveColor: number) => Activity> = {
+  computer: createComputer,
+  reading: createBook,
+  writing: createNotebook,
 }
 
-const root = new THREE.Group()
-root.visible = false
-scene.add(root)
+export interface ActivityView {
+  setKind: (kind: ActivityKind) => void
+  showAt: (seat: Seat) => void
+  hide: () => void
+  update: (delta: number, isActive: boolean) => void
+  dispose: () => void
+}
 
-for (const { group } of Object.values(activities)) {
-  group.visible = false
-  root.add(group)
+// Lo que un personaje tiene sobre la mesa y sus manos. Cada modelo se construye al usarlo por primera vez
+export function createActivityView(initialKind: ActivityKind, sleeveColor: number): ActivityView {
+  const root = new THREE.Group()
+  root.visible = false
+  scene.add(root)
+
+  const models: Partial<Record<ActivityKind, Activity>> = {}
+  let kind = initialKind
+  let time = 0
+
+  function getModel(modelKind: ActivityKind) {
+    let model = models[modelKind]
+    if (!model) {
+      model = activityBuilders[modelKind](sleeveColor)
+      models[modelKind] = model
+      root.add(model.group)
+    }
+    return model
+  }
+
+  getModel(kind).update(0, false)
+
+  return {
+    setKind(newKind) {
+      getModel(kind).group.visible = false
+      kind = newKind
+      const model = getModel(kind)
+      model.group.visible = true
+      model.update(time, false)
+    },
+    showAt(seat) {
+      root.position.set(seat.x, 0, seat.z)
+      // El grupo mira hacia -z: si la mesa queda hacia +z, se gira media vuelta
+      root.rotation.y = seat.facingZ > 0 ? Math.PI : 0
+      root.visible = true
+    },
+    hide() {
+      root.visible = false
+    },
+    update(delta, isActive) {
+      if (!root.visible) return
+
+      if (isActive) {
+        time += delta / 1000
+      }
+      getModel(kind).update(time, isActive)
+    },
+    dispose() {
+      scene.remove(root)
+      root.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose()
+          object.material.dispose()
+        }
+      })
+    },
+  }
 }
 
 function isActivityKind(value: unknown): value is ActivityKind {
@@ -196,19 +254,15 @@ function loadActivity(): ActivityKind {
 }
 
 let current = loadActivity()
-let time = 0
-activities[current].group.visible = true
-activities[current].update(0, false)
+const localView = createActivityView(current, SLEEVE_COLOR)
 
 export function getActivity() {
   return current
 }
 
 export function setActivity(activity: ActivityKind) {
-  activities[current].group.visible = false
   current = activity
-  activities[current].group.visible = true
-  activities[current].update(time, false)
+  localView.setKind(activity)
 
   try {
     localStorage.setItem(STORAGE_KEY, activity)
@@ -218,21 +272,13 @@ export function setActivity(activity: ActivityKind) {
 }
 
 export function showActivityAt(seat: Seat) {
-  root.position.set(seat.x, 0, seat.z)
-  // El grupo mira hacia -z: si la mesa queda hacia +z, se gira media vuelta
-  root.rotation.y = seat.facingZ > 0 ? Math.PI : 0
-  root.visible = true
+  localView.showAt(seat)
 }
 
 export function hideActivity() {
-  root.visible = false
+  localView.hide()
 }
 
 export function updateActivity(delta: number, isActive: boolean) {
-  if (!root.visible) return
-
-  if (isActive) {
-    time += delta / 1000
-  }
-  activities[current].update(time, isActive)
+  localView.update(delta, isActive)
 }

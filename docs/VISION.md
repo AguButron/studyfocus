@@ -10,7 +10,7 @@ Las recompensas y la personalización existen para que den ganas de volver a est
 
 ## Lo siguiente
 
-Estas tareas cierran la fase 4, en este orden sugerido.
+Estas tareas cerraron la fase 4, y ya están hechas. Quedan aquí como registro de lo que se pidió.
 
 ### 1. Bloquear la tecla E durante el estudio
 
@@ -22,15 +22,15 @@ En la pausa y en el descanso sí te puedes levantar.
 
 ### 2. Varias cámaras
 
-Mientras estudias se puede rotar entre las vistas, con una tecla o con botones.
+Mientras eliges los minutos, la cámara está detrás de tu personaje. Al comenzar el temporizador se puede rotar entre las vistas, con una tecla o con botones.
 
 | Cámara | Qué muestra |
 |---|---|
-| **Escritorio** | Primera persona mirando hacia abajo: tus manos y lo que estás haciendo (la actual) |
-| **Mesa** | Primera persona con la vista al frente: quienes están en tu mesa |
+| **Escritorio** | Primera persona mirando hacia abajo: tus manos, lo que estás haciendo y lo que tiene quien está al frente |
+| **Mesa** | Desde el costado de la mesa: tú y quienes están en ella |
 | **Sala** | Toda la sala, con toda la gente que se ha unido |
 
-**Terminada cuando:** se puede cambiar entre las tres sin levantarse, y el temporizador sigue visible en todas. En la cámara **Sala** el panel debe hacerse más pequeño, para no tapar lo que se quiere ver.
+**Terminada cuando:** se puede cambiar entre las tres sin levantarse, y el temporizador sigue visible en todas. Al comenzar, el temporizador se achica arriba a la izquierda y las cámaras quedan arriba a la derecha, para no tapar lo que se quiere ver.
 
 ### 3. Compartir periodo y actividad
 
@@ -38,9 +38,11 @@ Cada persona avisa a toda la sala si está en estudio o en descanso, y qué est�
 
 **Terminada cuando:** al cambiar de periodo o de actividad, todos en la sala se enteran, y quien entra después también lo ve.
 
+La actividad se ve en el objeto sobre la mesa y en las manos, y el periodo se lee al hacer clic en la persona.
+
 ### 4. Hacer clic en otra persona
 
-Al hacer clic en el personaje de otra persona, se ve su apodo, su periodo y su actividad.
+Al hacer clic en el personaje de otra persona, la cámara se acerca a ella y se ve su apodo, su periodo y su actividad. Con Esc o un clic en otro lado se vuelve a la cámara anterior.
 
 **Terminada cuando:** el clic funciona en la cámara **Mesa** y en la cámara **Sala**. En Three.js, para saber qué objeto está bajo el cursor se usa un *raycaster*.
 
@@ -54,13 +56,14 @@ Hoy, al recargar, el servidor te ve desconectarte: libera tu silla y, si estabas
 
 ### 6. Cierre de la fase 4
 
-Siguen pendientes el aviso con sonido y la reducción del redibujado. Esta última importa más ahora, porque habrá más cámaras y más personas en pantalla.
+El aviso con sonido y la reducción del redibujado, que importa más con varias cámaras y más personas en pantalla.
 
 ## Ideas para el futuro
 
 ### Sesión de estudio
 
-- Escribir qué estás haciendo, por ejemplo "Repaso de cálculo", y que aparezca como una descripción al hacer clic en ti.
+- Escribir qué estás haciendo, por ejemplo "Repaso de cálculo", y que aparezca como una descripción al hacer clic en ti. Puede durar solo la sesión, sin necesidad de cuentas.
+- Una descripción fija en esa misma tarjeta, por ejemplo qué estudias o en qué trabajas. Necesita las cuentas de la fase 6, para guardarla.
 - Animaciones distintas según el periodo y la actividad, visibles para los demás.
 
 ### Avatar
@@ -123,5 +126,5 @@ Estas ideas no las pediste: son propuestas para que las evalúes.
 | Quién ve tu actividad | Todas las personas de la misma sala. |
 | Recargar la página | Sigues donde mismo: misma silla y mismo temporizador. |
 | Progreso a largo plazo | Cada persona tendrá una cuenta, donde se guarda todo y queda registro. |
-| Cámaras | Se conservan **Escritorio**, **Mesa** y **Sala**, y se puede rotar entre ellas. |
+| Cámaras | Se ve al personaje desde atrás al elegir los minutos. Al comenzar, se puede rotar entre **Escritorio**, **Mesa** y **Sala**. |
 | Estilo del avatar | Pixel 3D (vóxeles), con el nivel de detalle de la [prueba](../prototipos/avatar-voxel/README.md). |

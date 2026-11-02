@@ -346,6 +346,15 @@ kbd {
   font-size: 14px;
 }
 
+#abandon-confirm p {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+#abandon-confirm .button {
+  flex: 1;
+}
+
 .study-section {
   display: flex;
   flex-direction: column;
@@ -420,7 +429,124 @@ kbd {
   color: var(--text);
 }
 
+/* Al comenzar el temporizador, el panel se achica arriba a la izquierda y las cámaras van a la derecha */
+
+#study-panel.compact {
+  top: 16px;
+  bottom: auto;
+  left: 16px;
+  gap: 8px;
+  width: 280px;
+  min-width: 0;
+  max-height: calc(100% - 32px);
+  padding: 14px 16px;
+  border: 1px solid var(--surface-raised);
+  border-radius: var(--radius);
+}
+
+#camera-panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--surface-raised);
+  border-radius: var(--radius);
+  background: var(--surface);
+  pointer-events: auto;
+}
+
+#camera-panel h2 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#camera-panel .segmented {
+  width: 250px;
+}
+
+/* Datos de otra persona, junto a ella: el zoom la deja al centro de la pantalla */
+
+#player-card {
+  position: fixed;
+  top: 50%;
+  left: calc(50% + 40vh); /* el tamaño de la persona en pantalla depende de la altura de la ventana */
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--surface-raised);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.player-card-hint {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.player-card-hint kbd {
+  margin-left: 0;
+}
+
+#study-panel.compact #timer-time {
+  font-size: 44px;
+}
+
+#study-panel.compact .study-actions .button {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+#study-panel.compact #duration-section {
+  display: none;
+}
+
+#study-panel.compact #activity-section {
+  padding-top: 10px;
+}
+
+/* En este ancho, tres columnas iguales no alcanzan para "Computador" */
+#study-panel.compact .segmented {
+  grid-template-columns: repeat(3, auto);
+}
+
+#study-panel.compact .segmented button {
+  padding: 8px 4px;
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
+  #study-panel.compact {
+    top: 8px;
+    right: auto;
+    left: 8px;
+    max-height: calc(100% - 80px);
+    border: 1px solid var(--surface-raised);
+  }
+
+  /* En pantallas angostas no caben los dos arriba */
+  #camera-panel {
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  #player-card {
+    top: auto;
+    bottom: 72px;
+    left: 8px;
+    transform: none;
+  }
+
   #study-panel {
     top: auto;
     right: 0;

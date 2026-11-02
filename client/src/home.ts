@@ -1,4 +1,4 @@
-import { createRoom, joinRoom } from './network'
+import { createRoom, joinRoom, resumeSavedRoom, type ResumedPlayer } from './network'
 
 const home = document.querySelector<HTMLDivElement>('#home')!
 const nicknameInput = document.querySelector<HTMLInputElement>('#nickname')!
@@ -36,18 +36,18 @@ async function copyLink() {
   }, COPY_FEEDBACK_TIME)
 }
 
-export function showHome(onEnter: (nickname: string) => void) {
+export async function showHome(onEnter: (nickname: string, resumed: ResumedPlayer | null) => void) {
   const codeFromUrl = new URLSearchParams(window.location.search).get('sala')
   if (codeFromUrl) {
     codeInput.value = codeFromUrl
   }
 
-  function enter(code: string, nickname: string) {
+  function enter(code: string, nickname: string, resumed: ResumedPlayer | null = null) {
     saveCodeInUrl(code)
     roomCodeText.textContent = code
     home.hidden = true
     hud.hidden = false
-    onEnter(nickname)
+    onEnter(nickname, resumed)
   }
 
   copyLinkButton.addEventListener('click', copyLink)
@@ -70,4 +70,15 @@ export function showHome(onEnter: (nickname: string) => void) {
       errorText.textContent = 'Esa sala no existe o está llena.'
     }
   })
+
+  if (!codeFromUrl) return
+
+  // Oculta mientras pregunta, para que al recargar no se vea pasar la pantalla inicial
+  home.hidden = true
+  const resumed = await resumeSavedRoom(codeFromUrl)
+  if (resumed) {
+    enter(resumed.code, resumed.nickname, resumed)
+  } else {
+    home.hidden = false
+  }
 }

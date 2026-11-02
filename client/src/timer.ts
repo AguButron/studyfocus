@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'studyfocus.timer'
+const STATE_KEY = 'studyfocus.timer'
+const MINUTES_KEY = 'studyfocus.minutes'
 const DEFAULT_STUDY_MINUTES = 25
 const DEFAULT_BREAK_MINUTES = 5
 const MS_PER_MINUTE = 60_000
@@ -17,19 +18,34 @@ interface TimerState {
   remainingMs: number // cuánto falta, solo si está en pausa
 }
 
-function createDefaultState(): TimerState {
-  return {
-    studyMinutes: DEFAULT_STUDY_MINUTES,
-    breakMinutes: DEFAULT_BREAK_MINUTES,
-    period: 'study',
-    isRunning: false,
-    endsAt: 0,
-    remainingMs: DEFAULT_STUDY_MINUTES * MS_PER_MINUTE,
+function isValidMinutes(value: unknown, limits: { min: number; max: number }) {
+  return Number.isInteger(value) && (value as number) >= limits.min && (value as number) <= limits.max
+}
+
+// Los minutos elegidos valen para todo el navegador y para la próxima vez
+function loadMinutes() {
+  const defaults = { studyMinutes: DEFAULT_STUDY_MINUTES, breakMinutes: DEFAULT_BREAK_MINUTES }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(MINUTES_KEY) ?? 'null')
+    return isValidMinutes(saved?.studyMinutes, STUDY_MINUTES) && isValidMinutes(saved?.breakMinutes, BREAK_MINUTES)
+      ? { studyMinutes: saved.studyMinutes as number, breakMinutes: saved.breakMinutes as number }
+      : defaults
+  } catch {
+    return defaults
   }
 }
 
-function isValidMinutes(value: unknown, limits: { min: number; max: number }) {
-  return Number.isInteger(value) && (value as number) >= limits.min && (value as number) <= limits.max
+function createDefaultState(): TimerState {
+  const { studyMinutes, breakMinutes } = loadMinutes()
+  return {
+    studyMinutes,
+    breakMinutes,
+    period: 'study',
+    isRunning: false,
+    endsAt: 0,
+    remainingMs: studyMinutes * MS_PER_MINUTE,
+  }
 }
 
 function isValidState(value: unknown): value is TimerState {
@@ -46,9 +62,10 @@ function isValidState(value: unknown): value is TimerState {
   )
 }
 
+// La sesión en curso es de cada pestaña y sobrevive a una recarga: dos pestañas son dos personas
 function loadState() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
+    const saved = JSON.parse(sessionStorage.getItem(STATE_KEY) ?? 'null')
     return isValidState(saved) ? saved : createDefaultState()
   } catch {
     return createDefaultState()
@@ -57,13 +74,18 @@ function loadState() {
 
 function saveState() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    sessionStorage.setItem(STATE_KEY, JSON.stringify(state))
   } catch {
     // Sin almacenamiento el temporizador funciona igual, pero no sobrevive a una recarga
   }
 }
 
 const state = loadState()
+let periodListener: (period: Period) => void = () => {}
+
+export function onPeriodChange(listener: (period: Period) => void) {
+  periodListener = listener
+}
 
 function periodDuration(period: Period) {
   const minutes = period === 'study' ? state.studyMinutes : state.breakMinutes
@@ -85,6 +107,7 @@ export function updateTimer() {
 
   if (changed) {
     saveState()
+    periodListener(state.period)
   }
 }
 
@@ -134,6 +157,12 @@ export function setMinutes(studyMinutes: number, breakMinutes: number) {
   state.studyMinutes = studyMinutes
   state.breakMinutes = breakMinutes
   resetTimer()
+
+  try {
+    localStorage.setItem(MINUTES_KEY, JSON.stringify({ studyMinutes, breakMinutes }))
+  } catch {
+    // Sin almacenamiento, los minutos elegidos solo duran hasta cerrar la pestaña
+  }
 }
 
 updateTimer()
