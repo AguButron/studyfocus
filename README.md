@@ -37,3 +37,15 @@ npm run dev
 ```
 
 Luego abre la dirección que aparece en la terminal, normalmente `http://localhost:5173`.
+
+## Ejecutar el servidor
+
+En otra terminal, porque cliente y servidor corren a la vez:
+
+```bash
+cd server
+npm install
+npm run dev
+```
+
+El servidor escucha en el puerto 3000.

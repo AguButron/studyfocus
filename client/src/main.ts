@@ -1,4 +1,5 @@
 import './style.css'
+import './network'
 import { updatePlayer } from './player'
 import { camera, renderer, scene } from './scene'
 
