@@ -45,7 +45,7 @@ Crear una sala y unirse con un código o link, usando un apodo. Las salas viven 
 
 - [x] Separar a los jugadores por sala en el servidor, con códigos de sala
 - [x] Mostrar una pantalla inicial para escribir el apodo y crear o unirse a una sala
-- [ ] Validar en el servidor el apodo, el código y las posiciones recibidas
+- [x] Validar en el servidor el apodo, el código y las posiciones recibidas
 - [ ] Copiar un link de invitación y entrar directo a la sala desde él
 - [ ] Mostrar el apodo sobre cada personaje
 

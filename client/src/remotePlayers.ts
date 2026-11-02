@@ -1,9 +1,11 @@
 import * as THREE from 'three'
 import { socket } from './network'
 import { scene } from './scene'
+import { createLabel, disposeLabel } from './label'
 
 interface PlayerState {
   id: string
+  nickname: string
   x: number
   z: number
 }
@@ -14,6 +16,7 @@ const material = new THREE.MeshStandardMaterial({ color: 0xf38ba8 })
 
 interface RemotePlayer {
   mesh: THREE.Mesh
+  label: THREE.Sprite
   targetX: number
   targetZ: number
 }
@@ -24,7 +27,10 @@ function addRemotePlayer(state: PlayerState) {
   const mesh = new THREE.Mesh(geometry, material)
   mesh.position.set(state.x, 0.5, state.z)
   scene.add(mesh)
-  remotePlayers.set(state.id, { mesh, targetX: state.x, targetZ: state.z })
+  const label = createLabel(state.nickname)
+  mesh.add(label)
+
+  remotePlayers.set(state.id, { mesh, label, targetX: state.x, targetZ: state.z })
 }
 
 function removeRemotePlayer(id: string) {
@@ -32,6 +38,7 @@ function removeRemotePlayer(id: string) {
   if (!remotePlayer) return
 
   scene.remove(remotePlayer.mesh)
+  disposeLabel(remotePlayer.label)
   remotePlayers.delete(id)
 }
 

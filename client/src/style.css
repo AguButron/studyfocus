@@ -71,3 +71,31 @@ body {
   margin: 0;
   color: #f38ba8;
 }
+
+#hud {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #313244;
+  color: #cdd6f4;
+  font-family: system-ui, sans-serif;
+}
+
+#hud[hidden] {
+  display: none;
+}
+
+#hud button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #585b70;
+  background: #89b4fa;
+  color: #1e1e2e;
+  font: inherit;
+  cursor: pointer;
+}

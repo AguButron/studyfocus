@@ -4,6 +4,7 @@ import { updateRemotePlayers } from './remotePlayers'
 import { player, updatePlayer } from './player'
 import { camera, renderer, scene } from './scene'
 import { showHome } from './home'
+import { createLabel } from './label'
 
 
 const MAX_DELTA = 100 // milisegundos
@@ -22,7 +23,8 @@ function loop(now: number) {
   requestAnimationFrame(loop)
 }
 
-showHome(() => {
+showHome((nickname) => {
+  player.add(createLabel(nickname))
   lastTime = performance.now()
   requestAnimationFrame(loop)
 })
