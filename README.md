@@ -10,7 +10,7 @@ Cada función debe ayudar a estudiar o a sentirse acompañado al hacerlo. Si dis
 
 ## Estado
 
-En desarrollo, fase 2. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+En desarrollo, fase 3. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Objetivo del MVP
 

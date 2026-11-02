@@ -26,7 +26,7 @@ El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecáni
 
 **Terminada cuando:** puedo caminar por la sala sin atravesar paredes ni mesas.
 
-## Fase 2: Multijugador (actual)
+## Fase 2: Multijugador (completada)
 
 Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
 
@@ -35,13 +35,21 @@ Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
 - [x] Conectar el cliente al servidor y ver cada conexión en sus registros
 - [x] Enviar la posición del jugador y reenviarla a los demás
 - [x] Dibujar a los otros jugadores y quitarlos cuando se desconectan
-- [ ] Suavizar el movimiento de los otros jugadores
+- [x] Suavizar el movimiento de los otros jugadores
 
 **Terminada cuando:** con dos pestañas abiertas, cada una ve moverse a la otra con suavidad, y al cerrar una, su personaje desaparece de la otra.
 
-## Fase 3: Salas
+## Fase 3: Salas (actual)
 
-Crear una sala y unirse con un código o link, usando un apodo.
+Crear una sala y unirse con un código o link, usando un apodo. Las salas viven en la memoria del servidor: se borran al quedar vacías o al reiniciarlo. Guardarlas es parte de la fase 6.
+
+- [ ] Separar a los jugadores por sala en el servidor, con códigos de sala
+- [ ] Mostrar una pantalla inicial para escribir el apodo y crear o unirse a una sala
+- [ ] Validar en el servidor el apodo, el código y las posiciones recibidas
+- [ ] Copiar un link de invitación y entrar directo a la sala desde él
+- [ ] Mostrar el apodo sobre cada personaje
+
+**Terminada cuando:** dos grupos en salas distintas no se ven entre sí, y un amigo puede entrar a mi sala abriendo el link que le paso.
 
 ## Fase 4: Estudiar
 
