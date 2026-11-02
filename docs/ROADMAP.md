@@ -19,7 +19,7 @@ El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecáni
 - [x] Mostrar Phaser con una escena vacía en el navegador
 - [x] Dibujar el personaje y moverlo con el teclado
 - [x] Decidir el paso a 3D y [registrar el motivo](decisiones/0001-usar-threejs.md)
-- [ ] Cambiar Phaser por Three.js y mostrar un cubo con cámara y luz
+- [x] Cambiar Phaser por Three.js y mostrar un cubo con cámara y luz
 - [ ] Mover el cubo sobre un suelo con el teclado
 - [ ] Construir la sala con paredes y mesas
 - [ ] Hacer que las paredes y mesas bloqueen el paso
