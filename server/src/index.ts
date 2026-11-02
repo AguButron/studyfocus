@@ -1,8 +1,13 @@
 import { randomInt } from 'node:crypto'
+import { existsSync } from 'node:fs'
+import { createServer, type RequestListener } from 'node:http'
+import { fileURLToPath } from 'node:url'
+import sirv from 'sirv'
 import { Server, type Socket } from 'socket.io'
 
-const PORT = 3000
-const CLIENT_URL = 'http://localhost:5173'
+const PORT = Number(process.env.PORT) || 3000 // el hosting indica el puerto con esta variable
+const DEV_CLIENT_URL = 'http://localhost:5173' // en producción, la página viene de este mismo servidor
+const CLIENT_DIR = fileURLToPath(new URL('../../client/dist', import.meta.url))
 const CODE_LENGTH = 6
 const MAX_NICKNAME_LENGTH = 20
 const MAX_PLAYERS_PER_ROOM = 12
@@ -102,8 +107,28 @@ function isFreeSeat(room: Room, seatId: unknown): seatId is number {
   return true
 }
 
-const io = new Server(PORT, {
-  cors: { origin: CLIENT_URL },
+function createPageHandler(): RequestListener {
+  // Mientras se desarrolla puede no estar compilado: la página la entrega Vite
+  if (!existsSync(CLIENT_DIR)) {
+    return (_request, response) => {
+      response.statusCode = 404
+      response.end()
+    }
+  }
+
+  const servePage = sirv(CLIENT_DIR, { etag: true })
+  return (request, response) => {
+    servePage(request, response, () => {
+      response.statusCode = 404
+      response.end()
+    })
+  }
+}
+
+const httpServer = createServer(createPageHandler())
+
+const io = new Server(httpServer, {
+  cors: { origin: DEV_CLIENT_URL },
   maxHttpBufferSize: MAX_MESSAGE_SIZE,
 })
 
@@ -264,4 +289,6 @@ socket.on('seat:leave', () => {
   })
 })
 
-console.log(`Servidor escuchando en el puerto ${PORT}`)
+httpServer.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`)
+})

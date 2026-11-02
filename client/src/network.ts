@@ -2,7 +2,7 @@ import { io } from 'socket.io-client'
 import type { ActivityKind } from './activity'
 import type { Period } from './timer'
 
-const SERVER_URL = 'http://localhost:3000'
+const DEV_SERVER_URL = 'http://localhost:3000'
 const SEND_INTERVAL = 66 // milisegundos, unas 15 veces por segundo
 const SESSION_KEY = 'studyfocus.session'
 const CONNECT_TIMEOUT = 3000 // milisegundos
@@ -21,7 +21,8 @@ export interface ResumedPlayer {
   z: number
 }
 
-export const socket = io(SERVER_URL)
+// En producción, el servidor es el mismo que entrega esta página
+export const socket = import.meta.env.DEV ? io(DEV_SERVER_URL) : io()
 
 let lastSentAt = 0
 let lastX = NaN

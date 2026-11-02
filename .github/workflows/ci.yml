@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Compilar el cliente
+        run: |
+          npm ci --prefix client
+          npm run build --prefix client
+
+      - name: Revisar los tipos del servidor
+        run: |
+          npm ci --prefix server
+          npm run build --prefix server

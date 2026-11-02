@@ -86,6 +86,15 @@ Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minuto
 
 La página en internet, con CI y amigos probándola. **Al terminar esta fase, el MVP está completo.**
 
+- [x] [Entregar la página y el servidor desde un solo servicio](decisiones/0007-un-solo-servicio.md), con el puerto configurable
+- [x] Compilar el cliente y revisar el servidor en CI, en cada push
+- [ ] Elegir el hosting y crear el servicio
+- [ ] Probar la página publicada con el HTTPS y los WebSocket reales
+- [ ] Probarla con amigos desde sus casas, incluidos cortes de conexión
+- [ ] Corregir lo que aparezca en esa prueba
+
+**Terminada cuando:** un amigo abre el link desde su casa, se sienta en mi mesa y estudiamos juntos una sesión completa sin problemas.
+
 ## Fase 6: Crecer
 
 Cuentas, salas guardadas y estadísticas; animaciones del personaje según su periodo de estudio o descanso; luego, chat de voz. Avatares, moneda, tienda y espacios propios se describen en la [visión del proyecto](VISION.md).

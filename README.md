@@ -51,3 +51,14 @@ npm run dev
 ```
 
 El servidor escucha en el puerto 3000.
+
+## Ejecutar como en producción
+
+Un solo servidor entrega la página y atiende las conexiones, en el puerto de la variable `PORT` (3000 si no está definida):
+
+```bash
+npm run build
+npm start
+```
+
+Luego abre `http://localhost:3000`. Para volver a desarrollar después de esto, ejecuta de nuevo `npm install` en `server`, porque el comando anterior deja solo lo necesario para producción.
