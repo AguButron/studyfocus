@@ -1,0 +1,19 @@
+# Dependencias: se reinstalan con npm install
+node_modules/
+
+# Archivos generados al compilar
+dist/
+
+# Secretos y configuración local: nunca subirlos
+.env
+.env.*
+!.env.example
+
+# Registros
+*.log
+
+# Archivos del sistema y del editor
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
