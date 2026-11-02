@@ -7,7 +7,6 @@ Marca cada tarea con `[x]` al terminarla. Las fases 2 a 6 se dividirán en tarea
 - [x] Inicializar el repositorio
 - [x] Escribir el README y esta hoja de ruta
 - [x] Hacer el primer commit
-- [x] Crear una cuenta de GitHub, si aún no existe
 - [x] Crear el repositorio remoto y subir el código
 
 **Terminada cuando:** el código está en GitHub.
@@ -16,7 +15,7 @@ Marca cada tarea con `[x]` al terminarla. Las fases 2 a 6 se dividirán en tarea
 
 El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecánicas de juego.
 
-- [ ] Crear el proyecto con Vite y TypeScript
+- [x] Crear el proyecto con Vite y TypeScript
 - [ ] Mostrar Phaser con una escena vacía en el navegador
 - [ ] Dibujar el personaje y moverlo con el teclado
 - [ ] Dibujar la sala con paredes y mesas
