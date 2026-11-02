@@ -10,11 +10,11 @@ Cada función debe ayudar a estudiar o a sentirse acompañado al hacerlo. Si dis
 
 ## Estado
 
-En desarrollo, fase 3. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+En desarrollo, fase 4. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Objetivo del MVP
 
-Creo una sala, le paso un link a un amigo, ambos caminamos con nuestro personaje, nos sentamos en la misma mesa y vemos un temporizador de estudio compartido.
+Creo una sala, le paso un link a un amigo, ambos caminamos con nuestro personaje, nos sentamos en la misma mesa y cada uno estudia a su ritmo con su propio temporizador.
 
 ## Tecnologías previstas
 

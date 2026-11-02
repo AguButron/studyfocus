@@ -7,3 +7,11 @@ window.addEventListener('blur', () => pressedKeys.clear())
 export function isPressed(...codes: string[]) {
   return codes.some((code) => pressedKeys.has(code))
 }
+
+export function onKeyPress(code: string, action: () => void) {
+  window.addEventListener('keydown', (event) => {
+    if (event.code === code && !event.repeat) {
+      action()
+    }
+  })
+}

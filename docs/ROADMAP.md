@@ -39,21 +39,35 @@ Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
 
 **Terminada cuando:** con dos pestañas abiertas, cada una ve moverse a la otra con suavidad, y al cerrar una, su personaje desaparece de la otra.
 
-## Fase 3: Salas (actual)
+## Fase 3: Salas (completada)
 
 Crear una sala y unirse con un código o link, usando un apodo. Las salas viven en la memoria del servidor: se borran al quedar vacías o al reiniciarlo. Guardarlas es parte de la fase 6.
 
 - [x] Separar a los jugadores por sala en el servidor, con códigos de sala
 - [x] Mostrar una pantalla inicial para escribir el apodo y crear o unirse a una sala
 - [x] Validar en el servidor el apodo, el código y las posiciones recibidas
-- [ ] Copiar un link de invitación y entrar directo a la sala desde él
-- [ ] Mostrar el apodo sobre cada personaje
+- [x] Copiar un link de invitación y entrar directo a la sala desde él
+- [x] Mostrar el apodo sobre cada personaje
 
 **Terminada cuando:** dos grupos en salas distintas no se ven entre sí, y un amigo puede entrar a mi sala abriendo el link que le paso.
 
-## Fase 4: Estudiar
+## Fase 4: Estudiar (actual)
 
-Sentarse en una mesa y usar un temporizador Pomodoro compartido. Es el centro del producto: una vez sentado, la pantalla debe ayudar a concentrarse y no invitar a seguir caminando. También debe gastar poca batería: la escena se redibuja muy poco mientras se estudia, y nada con la pestaña oculta.
+Sentarse en una mesa y usar un temporizador Pomodoro individual. Es el centro del producto: una vez sentado, la pantalla debe ayudar a concentrarse y no invitar a seguir caminando. También debe gastar poca batería: la escena se redibuja muy poco mientras se estudia, y nada con la pestaña oculta.
+
+Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minutos de estudio y de descanso, a partir del clásico 25-5, y puede pausarlo. Ver la [decisión](decisiones/0002-pomodoro-individual.md).
+
+- [ ] Agregar sillas y sentarse o levantarse con una tecla
+- [ ] Mostrar a los demás quién está sentado y dónde, sin que dos ocupen la misma silla
+- [ ] Crear el temporizador en el navegador, con estudio, descanso y pausa
+- [ ] Mostrar el temporizador y sus controles al estar sentado
+- [ ] Elegir los minutos de estudio y descanso, y recordarlos para la próxima vez
+- [ ] Conservar el temporizador al recargar la página
+- [ ] Mostrar a los demás en qué periodo está cada persona
+- [ ] Avisar con un sonido el cambio entre estudio y descanso
+- [ ] Reducir el redibujado al estar sentado y detenerlo con la pestaña oculta
+
+**Terminada cuando:** dos amigos se sientan en la misma mesa, cada uno usa su temporizador con sus propios minutos, puede pausarlo, no lo pierde al recargar, ve en qué periodo está el otro, y el consumo baja mientras estudian.
 
 ## Fase 5: Publicar
 
@@ -61,7 +75,7 @@ La página en internet, con CI y amigos probándola. **Al terminar esta fase, el
 
 ## Fase 6: Crecer
 
-Cuentas, salas guardadas y estadísticas; luego, chat de voz.
+Cuentas, salas guardadas y estadísticas; animaciones del personaje según su periodo de estudio o descanso; luego, chat de voz.
 
 ## Cómo trabajamos cada tarea
 
