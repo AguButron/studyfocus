@@ -1,6 +1,6 @@
 # StudyFocus
 
-Un espacio virtual para estudiar de forma ordenada con tus amigos, sin necesidad de estar juntos físicamente. Entras a una sala 2D, llevas a tu personaje hasta una mesa, te sientas y estudian juntos.
+Un espacio virtual para estudiar de forma ordenada con tus amigos, sin necesidad de estar juntos físicamente. Entras a una sala 3D, llevas a tu personaje hasta una mesa, te sientas y estudian juntos.
 
 No es un juego para pasarlo bien: el personaje y la sala existen para dar la sensación de compartir una mesa de estudio.
 
@@ -18,8 +18,10 @@ Creo una sala, le paso un link a un amigo, ambos caminamos con nuestro personaje
 
 ## Tecnologías previstas
 
-- **Cliente:** TypeScript, Phaser y Vite
+- **Cliente:** TypeScript, Three.js y Vite
 - **Servidor:** TypeScript, Node.js y Socket.IO
+
+Las decisiones importantes y sus motivos están en [docs/decisiones](docs/decisiones). Mientras se completa la migración, el código del cliente todavía usa Phaser.
 
 ## Requisitos para desarrollar
 
