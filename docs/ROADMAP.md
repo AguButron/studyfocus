@@ -21,8 +21,8 @@ El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecáni
 - [x] Decidir el paso a 3D y [registrar el motivo](decisiones/0001-usar-threejs.md)
 - [x] Cambiar Phaser por Three.js y mostrar un cubo con cámara y luz
 - [x] Mover el cubo sobre un suelo con el teclado
-- [ ] Construir la sala con paredes y mesas
-- [ ] Hacer que las paredes y mesas bloqueen el paso
+- [x] Construir la sala con paredes y mesas
+- [x] Hacer que las paredes y mesas bloqueen el paso
 
 **Terminada cuando:** puedo caminar por la sala sin atravesar paredes ni mesas.
 
