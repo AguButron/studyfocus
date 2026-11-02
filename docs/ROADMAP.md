@@ -11,7 +11,7 @@ Marca cada tarea con `[x]` al terminarla. Las fases 2 a 6 se dividirán en tarea
 
 **Terminada cuando:** el código está en GitHub.
 
-## Fase 1: Un jugador (actual)
+## Fase 1: Un jugador (completada)
 
 El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecánicas de juego.
 
@@ -26,9 +26,18 @@ El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecáni
 
 **Terminada cuando:** puedo caminar por la sala sin atravesar paredes ni mesas.
 
-## Fase 2: Multijugador
+## Fase 2: Multijugador (actual)
 
 Un servidor con Socket.IO. Dos pestañas se ven moverse en tiempo real.
+
+- [ ] Dividir `main.ts` en varios archivos, sin cambiar el comportamiento
+- [ ] Crear el servidor en `server/` y arrancarlo
+- [ ] Conectar el cliente al servidor y ver cada conexión en sus registros
+- [ ] Enviar la posición del jugador y reenviarla a los demás
+- [ ] Dibujar a los otros jugadores y quitarlos cuando se desconectan
+- [ ] Suavizar el movimiento de los otros jugadores
+
+**Terminada cuando:** con dos pestañas abiertas, cada una ve moverse a la otra con suavidad, y al cerrar una, su personaje desaparece de la otra.
 
 ## Fase 3: Salas
 
