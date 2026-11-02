@@ -10,7 +10,7 @@ Cada función debe ayudar a estudiar o a sentirse acompañado al hacerlo. Si dis
 
 ## Estado
 
-En desarrollo, fase 1. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+En desarrollo, fase 2. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Objetivo del MVP
 
@@ -28,4 +28,12 @@ Las decisiones importantes y sus motivos están en [docs/decisiones](docs/decisi
 - Git
 - Node.js 24 o superior
 
-Las instrucciones para ejecutar el proyecto se agregarán en la fase 1, cuando haya código que ejecutar.
+## Ejecutar el cliente
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Luego abre la dirección que aparece en la terminal, normalmente `http://localhost:5173`.
