@@ -1,10 +1,16 @@
 # StudyFocus
 
-Una sala virtual 2D donde entras con tus amigos, mueves a tu personaje, te sientas en una mesa y estudian juntos.
+Un espacio virtual para estudiar de forma ordenada con tus amigos, sin necesidad de estar juntos físicamente. Entras a una sala 2D, llevas a tu personaje hasta una mesa, te sientas y estudian juntos.
+
+No es un juego para pasarlo bien: el personaje y la sala existen para dar la sensación de compartir una mesa de estudio.
+
+## Principio de diseño
+
+Cada función debe ayudar a estudiar o a sentirse acompañado al hacerlo. Si distrae del estudio, no entra: nada de puntajes, niveles ni misiones.
 
 ## Estado
 
-En desarrollo, fase 0. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+En desarrollo, fase 1. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Objetivo del MVP
 

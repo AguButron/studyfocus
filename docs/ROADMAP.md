@@ -2,17 +2,19 @@
 
 Marca cada tarea con `[x]` al terminarla. Las fases 2 a 6 se dividirán en tareas cuando estemos por empezarlas, porque lo que aprendamos antes puede cambiarlas.
 
-## Fase 0: Organización (actual)
+## Fase 0: Organización (completada)
 
 - [x] Inicializar el repositorio
 - [x] Escribir el README y esta hoja de ruta
-- [ ] Hacer el primer commit
-- [ ] Crear una cuenta de GitHub, si aún no existe
-- [ ] Crear el repositorio remoto y subir el código
+- [x] Hacer el primer commit
+- [x] Crear una cuenta de GitHub, si aún no existe
+- [x] Crear el repositorio remoto y subir el código
 
 **Terminada cuando:** el código está en GitHub.
 
-## Fase 1: Un jugador
+## Fase 1: Un jugador (actual)
+
+El objetivo es llegar a una mesa, no entretener: movimiento simple y sin mecánicas de juego.
 
 - [ ] Crear el proyecto con Vite y TypeScript
 - [ ] Mostrar Phaser con una escena vacía en el navegador
@@ -32,7 +34,7 @@ Crear una sala y unirse con un código o link, usando un apodo.
 
 ## Fase 4: Estudiar
 
-Sentarse en una mesa y usar un temporizador Pomodoro compartido.
+Sentarse en una mesa y usar un temporizador Pomodoro compartido. Es el centro del producto: una vez sentado, la pantalla debe ayudar a concentrarse y no invitar a seguir caminando.
 
 ## Fase 5: Publicar
 
