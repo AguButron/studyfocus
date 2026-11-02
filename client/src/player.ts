@@ -4,6 +4,7 @@ import { scene } from './scene'
 import { leaveSeat, socket, takeSeat } from './network'
 import { isSeatTaken } from './remotePlayers'
 import { collides, SEATED_Y, seats, STANDING_Y, type Seat } from './room'
+import { isStudyRunning } from './timer'
 
 const PLAYER_SPEED = 3 // metros por segundo
 const PLAYER_HALF_SIZE = 0.5
@@ -60,6 +61,7 @@ export async function toggleSit() {
   if (isRequestingSeat) return
 
   if (currentSeat) {
+    if (isStudyRunning()) return
     standUp()
     leaveSeat()
     return

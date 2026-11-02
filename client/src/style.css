@@ -82,8 +82,13 @@ input:focus-visible {
   color: var(--text);
 }
 
-.button-ghost:hover {
+.button-ghost:hover:not(:disabled) {
   background: var(--surface-raised);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 kbd {
@@ -334,6 +339,11 @@ kbd {
 #timer-toggle {
   flex: 1;
   background: var(--period-color);
+}
+
+#stand-up-hint {
+  margin: 0;
+  font-size: 14px;
 }
 
 .study-section {

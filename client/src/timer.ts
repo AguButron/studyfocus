@@ -104,6 +104,12 @@ export function isTimerIdle() {
   return !state.isRunning && state.period === 'study' && state.remainingMs === periodDuration('study')
 }
 
+// Estudiando ahora mismo: en pausa o en descanso no cuenta
+export function isStudyRunning() {
+  updateTimer()
+  return state.isRunning && state.period === 'study'
+}
+
 export function toggleTimer() {
   if (state.isRunning) {
     state.remainingMs = state.endsAt - Date.now()

@@ -2,6 +2,7 @@ import { getActivity, setActivity, type ActivityKind } from './activity'
 import {
   BREAK_MINUTES,
   getTimer,
+  isStudyRunning,
   isTimerIdle,
   resetTimer,
   setMinutes,
@@ -25,6 +26,7 @@ const studyValue = document.querySelector<HTMLSpanElement>('#study-value')!
 const breakValue = document.querySelector<HTMLSpanElement>('#break-value')!
 const minutesHint = document.querySelector<HTMLParagraphElement>('#minutes-hint')!
 const standUpButton = document.querySelector<HTMLButtonElement>('#stand-up')!
+const standUpHint = document.querySelector<HTMLParagraphElement>('#stand-up-hint')!
 const activityButtons = document.querySelectorAll<HTMLButtonElement>('[data-activity]')
 const miniPeriod = document.querySelector<HTMLSpanElement>('#mini-period')!
 const miniTime = document.querySelector<HTMLSpanElement>('#mini-time')!
@@ -59,6 +61,10 @@ function render() {
   progressBar.style.transform = `scaleX(${1 - timer.remainingMs / timer.durationMs})`
 
   toggleButton.textContent = timer.isRunning ? 'Pausar' : isIdle ? 'Iniciar' : 'Reanudar'
+
+  const isLocked = isStudyRunning()
+  standUpButton.disabled = isLocked
+  standUpHint.hidden = !isLocked
 
   studyInput.disabled = !isIdle
   breakInput.disabled = !isIdle

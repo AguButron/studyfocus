@@ -66,7 +66,7 @@ Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minuto
 - [x] [Pasar a primera persona al sentarse](decisiones/0003-primera-persona-al-estudiar.md), con el temporizador como elemento principal
 - [x] Elegir qué se está haciendo: computador, lectura o escritura
 - [x] Rediseñar la pantalla inicial, la sala y la sesión de estudio
-- [ ] Bloquear la tecla E durante el estudio
+- [x] Bloquear la tecla E durante el estudio
 - [ ] Cambiar entre las cámaras Escritorio, Mesa y Sala
 - [ ] Mostrar a los demás en qué periodo está cada persona y qué está haciendo
 - [ ] Ver los datos de otra persona al hacer clic en ella

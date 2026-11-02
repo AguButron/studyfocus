@@ -9,7 +9,7 @@ import { isNearFreeSeat, onSeatChange, player, toggleSit, updatePlayer } from '.
 import { updateRemotePlayers } from './remotePlayers'
 import { setTallFrontWallVisible, type Seat } from './room'
 import { camera, renderer, scene } from './scene'
-import { getTimer } from './timer'
+import { isStudyRunning } from './timer'
 import { setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
 
 const MAX_DELTA = 100 // milisegundos
@@ -53,8 +53,7 @@ function loop(now: number) {
   updateRemotePlayers(delta)
   updateCameraView(delta)
 
-  const timer = getTimer()
-  updateActivity(delta, timer.isRunning && timer.period === 'study')
+  updateActivity(delta, isStudyRunning())
 
   if (!isStudying) {
     hint.textContent = isNearFreeSeat() ? SIT_HINT : MOVE_HINT
