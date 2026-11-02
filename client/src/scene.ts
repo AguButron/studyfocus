@@ -1,19 +1,20 @@
 import * as THREE from 'three'
 
-const WIDTH = 800
-const HEIGHT = 600
-
 export const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x2a2a3c)
+scene.background = new THREE.Color(0x181825)
 
-export const camera = new THREE.PerspectiveCamera(60, WIDTH / HEIGHT, 0.1, 100)
-camera.position.set(0, 10, 10)
-camera.lookAt(0, 0, 0)
+export const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100)
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.setSize(WIDTH, HEIGHT)
+renderer.setSize(window.innerWidth, window.innerHeight)
 document.querySelector('#app')!.append(renderer.domElement)
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(window.innerWidth, window.innerHeight)
+})
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.6))
 

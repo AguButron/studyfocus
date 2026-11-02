@@ -58,11 +58,14 @@ Sentarse en una mesa y usar un temporizador Pomodoro individual. Es el centro de
 Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minutos de estudio y de descanso, a partir del clásico 25-5, y puede pausarlo. Ver la [decisión](decisiones/0002-pomodoro-individual.md).
 
 - [x] Agregar sillas y sentarse o levantarse con una tecla
-- [ ] Mostrar a los demás quién está sentado y dónde, sin que dos ocupen la misma silla
-- [ ] Crear el temporizador en el navegador, con estudio, descanso y pausa
-- [ ] Mostrar el temporizador y sus controles al estar sentado
-- [ ] Elegir los minutos de estudio y descanso, y recordarlos para la próxima vez
-- [ ] Conservar el temporizador al recargar la página
+- [x] Mostrar a los demás quién está sentado y dónde, sin que dos ocupen la misma silla
+- [x] Crear el temporizador en el navegador, con estudio, descanso y pausa
+- [x] Mostrar el temporizador y sus controles al estar sentado
+- [x] Elegir con una barra los minutos de estudio y descanso, y recordarlos para la próxima vez
+- [x] Conservar el temporizador al recargar la página
+- [x] [Pasar a primera persona al sentarse](decisiones/0003-primera-persona-al-estudiar.md), con el temporizador como elemento principal
+- [x] Elegir qué se está haciendo: computador, lectura o escritura
+- [x] Rediseñar la pantalla inicial, la sala y la sesión de estudio
 - [ ] Mostrar a los demás en qué periodo está cada persona
 - [ ] Avisar con un sonido el cambio entre estudio y descanso
 - [ ] Reducir el redibujado al estar sentado y detenerlo con la pestaña oculta

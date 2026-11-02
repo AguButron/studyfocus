@@ -8,26 +8,86 @@
   </head>
   <body>
     <div id="app"></div>
-      <div id="hud" hidden>
-        Sala <span id="room-code"></span>
-        <button id="copy-link" type="button">Copiar link</button>
-        <span>E para sentarte o levantarte</span>
+
+    <header id="hud" hidden>
+      <span class="brand">StudyFocus</span>
+      <div class="hud-room">
+        <span class="muted">Sala</span>
+        <span id="room-code"></span>
+        <button id="copy-link" class="button button-ghost" type="button">Copiar link</button>
       </div>
-      <div id="home">
-        <h1>StudyFocus</h1>
-        <label>
+      <div class="hud-timer">
+        <span id="mini-period" class="muted"></span>
+        <span id="mini-time"></span>
+      </div>
+    </header>
+
+    <p id="hint" hidden></p>
+
+    <section id="study" aria-label="Sesión de estudio" hidden>
+      <div id="study-panel">
+        <div class="study-header">
+          <span id="timer-period" class="period-badge"></span>
+          <button id="stand-up" class="button button-ghost" type="button">Levantarte <kbd>E</kbd></button>
+        </div>
+
+        <div id="timer-time"></div>
+        <div class="progress"><div id="timer-progress"></div></div>
+
+        <div class="study-actions">
+          <button id="timer-toggle" class="button button-primary" type="button"></button>
+          <button id="timer-reset" class="button button-ghost" type="button">Reiniciar</button>
+        </div>
+
+        <div class="study-section">
+          <h2>Duración</h2>
+          <label class="slider">
+            <span class="slider-label">Estudio <span id="study-value"></span></span>
+            <input id="study-minutes" type="range" />
+          </label>
+          <label class="slider">
+            <span class="slider-label">Descanso <span id="break-value"></span></span>
+            <input id="break-minutes" type="range" />
+          </label>
+          <p id="minutes-hint" class="muted" hidden>Reinicia el temporizador para cambiar los minutos.</p>
+        </div>
+
+        <div class="study-section">
+          <h2>¿Qué estás haciendo?</h2>
+          <div class="segmented">
+            <button data-activity="computer" type="button">Computador</button>
+            <button data-activity="reading" type="button">Leyendo</button>
+            <button data-activity="writing" type="button">Escribiendo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main id="home">
+      <div class="home-card">
+        <h1 class="brand">StudyFocus</h1>
+        <p class="home-tagline">Tu mesa de estudio con amigos, estén donde estén.</p>
+
+        <label class="field">
           Tu apodo
           <input id="nickname" maxlength="20" autocomplete="off" />
         </label>
-        <button id="create" type="button">Crear una sala</button>
-        <hr />
-        <label>
-          Código de sala
-          <input id="code" maxlength="6" autocomplete="off" />
-        </label>
-        <button id="join" type="button">Unirse</button>
+        <button id="create" class="button button-primary" type="button">Crear una sala</button>
+
+        <div class="home-divider"><span>o únete con un código</span></div>
+
+        <div class="home-join">
+          <label class="field">
+            Código de sala
+            <input id="code" maxlength="6" autocomplete="off" />
+          </label>
+          <button id="join" class="button button-ghost" type="button">Unirse</button>
+        </div>
+
         <p id="home-error" role="alert"></p>
       </div>
+    </main>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

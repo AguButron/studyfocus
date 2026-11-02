@@ -23,10 +23,18 @@ scene.add(player)
 
 let currentSeat: Seat | null = null
 let isRequestingSeat = false
+let seatListener: (seat: Seat | null) => void = () => {}
+
+export function onSeatChange(listener: (seat: Seat | null) => void) {
+  seatListener = listener
+}
 
 function standUp() {
+  if (!currentSeat) return
+
   currentSeat = null
   player.position.y = STANDING_Y
+  seatListener(null)
 }
 
 // Al reconectar, el servidor ya no recuerda la silla
@@ -67,6 +75,7 @@ export async function toggleSit() {
 
   currentSeat = seat
   player.position.set(seat.x, SEATED_Y, seat.z)
+  seatListener(seat)
 }
 
 export function updatePlayer(delta: number) {
@@ -93,4 +102,8 @@ export function updatePlayer(delta: number) {
   if (!collides(player.position.x, nextZ, PLAYER_HALF_SIZE)) {
     player.position.z = nextZ
   }
+}
+
+export function isNearFreeSeat() {
+  return findNearestSeat() !== null
 }

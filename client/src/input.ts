@@ -8,8 +8,13 @@ export function isPressed(...codes: string[]) {
   return codes.some((code) => pressedKeys.has(code))
 }
 
+function isTextField(target: EventTarget | null) {
+  return target instanceof HTMLInputElement && target.type !== 'range'
+}
+
 export function onKeyPress(code: string, action: () => void) {
   window.addEventListener('keydown', (event) => {
+    if (isTextField(event.target)) return
     if (event.code === code && !event.repeat) {
       action()
     }

@@ -19,6 +19,7 @@ export interface Seat {
   id: number
   x: number
   z: number
+  facingZ: 1 | -1 // hacia dónde queda la mesa
 }
 
 export const seats: Seat[] = []
@@ -72,6 +73,14 @@ addBox(0.3, 2.5, 12, -6, 0, WALL_COLOR)
 addBox(0.3, 2.5, 12, 6, 0, WALL_COLOR)
 addBox(12, 0.3, 0.3, 0, 6, WALL_COLOR)
 
+// Desde arriba, una pared alta taparía la sala; solo hace falta en primera persona
+const tallFrontWall = addBox(12, 2.5, 0.3, 0, 6, WALL_COLOR, false)
+tallFrontWall.visible = false
+
+export function setTallFrontWallVisible(visible: boolean) {
+  tallFrontWall.visible = visible
+}
+
 for (const table of TABLE_POSITIONS) {
   addBox(2.4, 0.75, 1.2, table.x, table.z, TABLE_COLOR)
 
@@ -80,7 +89,7 @@ for (const table of TABLE_POSITIONS) {
       const x = table.x + offsetX
       const z = table.z + offsetZ
       addBox(0.5, 0.45, 0.5, x, z, CHAIR_COLOR, false)
-      seats.push({ id: seats.length, x, z })
+      seats.push({ id: seats.length, x, z, facingZ: offsetZ < 0 ? 1 : -1 })
     }
   }
 }
