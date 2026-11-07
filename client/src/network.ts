@@ -136,7 +136,11 @@ socket.on('connect', async () => {
   if (!session) return
 
   const resumed: ResumedPlayer | null = await socket.emitWithAck('room:resume', token)
-  if (resumed) return
+  if (resumed) {
+    // Tras un reinicio del servidor, alguien pudo haber tomado la silla mientras tanto
+    if (resumed.seatId === null) seatLostListener()
+    return
+  }
 
   // Tardó demasiado en volver: el servidor ya liberó su lugar
   seatLostListener()
@@ -161,7 +165,7 @@ export function sendPosition(x: number, z: number) {
   socket.emit('player:move', { x, z })
 }
 
-export function sendStatus(status: { activity: ActivityKind; period: Period; isRunning: boolean }) {
+export function sendStatus(status: { activity: ActivityKind; period: Period; isRunning: boolean; periodId: string }) {
   const serialized = JSON.stringify(status)
   if (serialized === lastStatus) return
 

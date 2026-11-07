@@ -2,16 +2,12 @@
 export interface RoomKind {
   id: string
   name: string
-  description: string
-  details: string
 }
 
 export const ROOM_KINDS: RoomKind[] = [
   {
     id: 'study',
     name: 'Sala de estudio',
-    description: 'Mesas compartidas para estudiar en silencio, cada quien con su temporizador.',
-    details: 'Hasta 12 personas · 16 sillas',
   },
 ]
 

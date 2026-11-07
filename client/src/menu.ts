@@ -95,10 +95,8 @@ function showRoomKinds() {
     card.className = 'sf-room'
     card.setAttribute('aria-pressed', String(kind.id === selectedKind))
     card.innerHTML = `<span class="sf-room-plan sf-paper" aria-hidden="true">${plan}</span>
-      <span class="sf-room-name"></span><span class="sf-room-text"></span><span class="sf-room-meta"></span>`
+      <span class="sf-room-name"></span>`
     card.querySelector('.sf-room-name')!.textContent = kind.name
-    card.querySelector('.sf-room-text')!.textContent = kind.description
-    card.querySelector('.sf-room-meta')!.textContent = kind.details
     card.addEventListener('click', () => {
       selectedKind = kind.id
       showRoomKinds()
@@ -108,7 +106,7 @@ function showRoomKinds() {
 
   const soon = document.createElement('div')
   soon.className = 'sf-room sf-room--soon'
-  soon.innerHTML = '<strong>Más salas</strong><span class="sf-room-text">Pronto podrás elegir otros espacios para estudiar.</span>'
+  soon.innerHTML = '<span class="sf-badge sf-badge--soon">Próximamente</span>'
   roomKindsList.append(soon)
 }
 

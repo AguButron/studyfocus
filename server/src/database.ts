@@ -67,6 +67,25 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS study_segments_user ON study_segments (user_id, started_at);
   CREATE INDEX IF NOT EXISTS study_segments_room ON study_segments (room_code, started_at);
 
+  -- Quién está en qué sala, en qué silla y con qué periodo de estudio: sirve para volver tras un reinicio
+  CREATE TABLE IF NOT EXISTS active_sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    room_code TEXT NOT NULL,
+    seat_id INTEGER,
+    x DOUBLE PRECISION NOT NULL DEFAULT 0,
+    z DOUBLE PRECISION NOT NULL DEFAULT 0,
+    activity TEXT NOT NULL,
+    period TEXT NOT NULL,
+    is_running BOOLEAN NOT NULL,
+    period_id TEXT,
+    pending_segments JSONB NOT NULL DEFAULT '[]',
+    pending_ms INTEGER NOT NULL DEFAULT 0,
+    studied_ms INTEGER NOT NULL DEFAULT 0,
+    joined_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+
   -- Cada amistad se guarda dos veces, una por dirección, y así buscar los amigos de alguien es simple
   CREATE TABLE IF NOT EXISTS friendships (
     user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,

@@ -16,6 +16,7 @@ interface TimerState {
   isRunning: boolean
   endsAt: number // cuándo termina el periodo, solo si está corriendo
   remainingMs: number // cuánto falta, solo si está en pausa
+  periodId: string // cambia con cada periodo nuevo: el servidor cuenta el estudio solo si el periodo termina
 }
 
 function isValidMinutes(value: unknown, limits: { min: number; max: number }) {
@@ -45,6 +46,7 @@ function createDefaultState(): TimerState {
     isRunning: false,
     endsAt: 0,
     remainingMs: studyMinutes * MS_PER_MINUTE,
+    periodId: crypto.randomUUID(),
   }
 }
 
@@ -66,7 +68,9 @@ function isValidState(value: unknown): value is TimerState {
 function loadState() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(STATE_KEY) ?? 'null')
-    return isValidState(saved) ? saved : createDefaultState()
+    if (!isValidState(saved)) return createDefaultState()
+    // Un temporizador guardado antes de que existiera el identificador del periodo
+    return { ...saved, periodId: typeof saved.periodId === 'string' ? saved.periodId : crypto.randomUUID() }
   } catch {
     return createDefaultState()
   }
@@ -102,6 +106,7 @@ export function updateTimer() {
   while (now >= state.endsAt) {
     state.period = state.period === 'study' ? 'break' : 'study'
     state.endsAt += periodDuration(state.period)
+    state.periodId = crypto.randomUUID()
     changed = true
   }
 
@@ -119,6 +124,7 @@ export function getTimer() {
     durationMs: periodDuration(state.period),
     studyMinutes: state.studyMinutes,
     breakMinutes: state.breakMinutes,
+    periodId: state.periodId,
   }
 }
 
@@ -144,10 +150,12 @@ export function toggleTimer() {
   saveState()
 }
 
+// Abandonar empieza un periodo nuevo: lo estudiado en el anterior no cuenta
 export function resetTimer() {
   state.period = 'study'
   state.isRunning = false
   state.remainingMs = periodDuration('study')
+  state.periodId = crypto.randomUUID()
   saveState()
 }
 

@@ -11,8 +11,9 @@ Las estadísticas, y más adelante las monedas, dependen del tiempo de estudio. 
 ## Decisión
 
 - El servidor mide el tiempo con su propio reloj. Cuenta mientras la persona está en una sala, con la conexión abierta y con el temporizador corriendo en un periodo de estudio, según el estado que la página ya comparte con la sala.
-- Lo estudiado se guarda en tramos en la tabla `study_segments`: al cambiar de estado, al salir, al cortarse la conexión y cada 5 minutos. Si el servidor se cae, se pierden a lo más esos 5 minutos.
-- Un periodo de estudio seguido cuenta como máximo 125 minutos, el periodo más largo del temporizador con margen. Una página alterada que nunca pase al descanso no suma más que eso.
+- **Solo cuentan los periodos de estudio terminados** (cambio del 2026-11-07). El servidor anota lo estudiado en la memoria mientras el periodo sigue, y lo guarda en la tabla `study_segments` cuando el periodo termina y empieza el descanso. Si se abandona, si se sale de la sala o si la conexión no vuelve en 15 segundos, no se guarda.
+- Cada periodo del temporizador tiene un identificador que la página envía con su estado. Abandonar empieza uno nuevo, y así el servidor distingue una pausa de un abandono. Las pausas no suman, pero no borran lo estudiado antes en el mismo periodo.
+- Un periodo de estudio cuenta como máximo 125 minutos, el periodo más largo del temporizador con margen. Una página alterada que nunca pase al descanso no suma más que eso.
 - Los días se cuentan en la zona horaria de la persona, que la página envía al pedir las estadísticas.
 - "Con quién estudiaste" son las personas que estudiaban en la misma sala al mismo tiempo, según sus tramos.
 - Al salir de una sala, el servidor responde cuánto se estudió en ella y con quién, y el menú lo muestra como resumen.
@@ -24,5 +25,6 @@ Las estadísticas, y más adelante las monedas, dependen del tiempo de estudio. 
 ## Consecuencias
 
 - Con la pestaña abierta y el temporizador corriendo se suma tiempo aunque no se esté estudiando. Antes de dar monedas por el tiempo, hará falta algo más, como una confirmación ocasional o un límite diario.
-- Recargar la página no corta la cuenta: vuelve a contar en cuanto la conexión regresa.
+- Recargar la página no corta la cuenta: vuelve a contar en cuanto la conexión regresa, dentro del mismo periodo.
+- Si el servidor se reinicia, por ejemplo al publicar una versión nueva, cada persona vuelve a su silla y con su periodo en curso: la tabla `active_sessions` guarda la sala, la silla y lo estudiado del periodo poco después de cada cambio, y al menos cada minuto. Se pierde a lo más ese minuto y el rato en que el servidor estuvo apagado.
 - Un tramo que cruza la medianoche cuenta para el día en que empezó.

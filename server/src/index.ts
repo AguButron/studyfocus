@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import sirv from 'sirv'
 import { Server, type Socket } from 'socket.io'
 import { createAccountsHandler, findAccount } from './accounts.ts'
+import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from './activeSessions.ts'
 import { createFriendsHandler } from './friends.ts'
 import { clearPresence, setPresence } from './presence.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
@@ -24,14 +25,26 @@ const PERIODS = ['study', 'break']
 const ROOM_KINDS = ['study'] // por ahora hay un solo tipo de sala
 const MAX_TOKEN_LENGTH = 64
 const RECONNECT_WAIT = 15_000 // milisegundos que se guarda el lugar de quien se desconecta
-const STUDY_SAVE_INTERVAL = 5 * 60_000 // milisegundos: si el servidor se cae, se pierde a lo más esto
 const ROOM_CLEANUP_INTERVAL = 10 * 60_000 // milisegundos
-const MAX_STUDY_RUN = 125 * 60_000 // milisegundos: el periodo más largo que permite el temporizador, con margen
+const MAX_STUDY_PERIOD = 125 * 60_000 // milisegundos: el periodo más largo que permite el temporizador, con margen
+const MAX_PERIOD_ID_LENGTH = 64
+const SAVE_DELAY = 1000 // milisegundos: junta varios cambios seguidos en una sola escritura
+const STUDY_SAVE_INTERVAL = 60_000 // milisegundos: si el servidor se cae, se pierde a lo más esto del periodo
 
 interface PlayerStatus {
   activity: string
   period: string
   isRunning: boolean
+}
+
+// El estado que manda la página: además dice qué periodo es, para saber si terminó o se abandonó
+interface StatusMessage extends PlayerStatus {
+  periodId: string
+}
+
+interface StudySegment {
+  start: number
+  end: number
 }
 
 interface PlayerState extends PlayerStatus {
@@ -54,10 +67,14 @@ interface Session {
   socket: Socket | null // sin conexión mientras se espera que vuelva
   leaveTimer: NodeJS.Timeout | null
   joinedAt: number
-  studyRunStart: number | null // cuándo empezó el periodo de estudio en curso
-  studySince: number | null // desde cuándo falta guardar lo estudiado
-  studiedMs: number // lo estudiado desde que entró a la sala
+  periodId: string | null // el periodo del temporizador en curso
+  studySince: number | null // desde cuándo se está estudiando sin anotarlo
+  pendingSegments: StudySegment[] // lo estudiado en este periodo: se guarda solo si termina
+  pendingMs: number
+  studiedMs: number // lo estudiado en periodos terminados desde que entró a la sala
   lastSave: Promise<unknown>
+  saveTimer: NodeJS.Timeout | null
+  lastPersist: Promise<unknown> // las escrituras de la sesión van en orden, para que borrarla sea lo último
 }
 
 const rooms = new Map<string, Room>()
@@ -111,6 +128,7 @@ setInterval(async () => {
     if (room.size === 0) rooms.delete(code)
   }
   try {
+    await deleteAbandonedSessions()
     const deleted = await deleteAbandonedRooms([...rooms.keys()])
     if (deleted > 0) console.log(`Salas abandonadas borradas: ${deleted}`)
   } catch (error) {
@@ -134,16 +152,19 @@ function isValidPosition(value: unknown): value is { x: number; z: number } {
   )
 }
 
-function isValidStatus(value: unknown): value is PlayerStatus {
+function isValidStatus(value: unknown): value is StatusMessage {
   if (typeof value !== 'object' || value === null) return false
 
-  const { activity, period, isRunning } = value as Record<string, unknown>
+  const { activity, period, isRunning, periodId } = value as Record<string, unknown>
   return (
     typeof activity === 'string' &&
     ACTIVITIES.includes(activity) &&
     typeof period === 'string' &&
     PERIODS.includes(period) &&
-    typeof isRunning === 'boolean'
+    typeof isRunning === 'boolean' &&
+    typeof periodId === 'string' &&
+    periodId.length > 0 &&
+    periodId.length <= MAX_PERIOD_ID_LENGTH
   )
 }
 
@@ -212,38 +233,104 @@ function isStudying(player: PlayerState) {
   return player.isRunning && player.period === 'study'
 }
 
-// Guarda lo estudiado hasta ahora y decide si se sigue contando. Solo cuenta con la conexión abierta,
-// y nunca más que un periodo de estudio seguido: así una página alterada no puede sumar horas de más.
+// Anota lo estudiado hasta ahora en el periodo en curso y decide si se sigue contando. Solo cuenta con
+// la conexión abierta, y nunca más que un periodo completo: así una página alterada no suma horas de más.
 function updateStudyClock(session: Session, isActive = session.socket !== null) {
   const now = Date.now()
 
-  if (session.studySince !== null && session.studyRunStart !== null) {
-    const end = Math.min(now, session.studyRunStart + MAX_STUDY_RUN)
+  if (session.studySince !== null) {
+    const end = Math.min(now, session.studySince + MAX_STUDY_PERIOD - session.pendingMs)
     if (end > session.studySince) {
-      session.studiedMs += end - session.studySince
-      session.lastSave = recordStudy(session.accountId, session.code, session.studySince, end).catch((error) => {
-        console.error('No se pudo guardar el tiempo de estudio:', error)
-      })
+      // Un tramo que sigue al anterior sin pausa se junta con él
+      const last = session.pendingSegments[session.pendingSegments.length - 1]
+      if (last?.end === session.studySince) {
+        last.end = end
+      } else {
+        session.pendingSegments.push({ start: session.studySince, end })
+      }
+      session.pendingMs += end - session.studySince
     }
   }
 
-  if (isActive && isStudying(session.player)) {
-    session.studyRunStart ??= now
-    session.studySince = now
-  } else {
-    session.studyRunStart = null
-    session.studySince = null
-  }
+  session.studySince = isActive && isStudying(session.player) ? now : null
 }
 
+// Al cambiar de periodo: si el de estudio terminó y empieza el descanso, se guarda; si se abandonó, no
+function finishPeriod(session: Session, isCompleted: boolean) {
+  if (isCompleted) {
+    session.studiedMs += session.pendingMs
+    const segments = session.pendingSegments
+    session.lastSave = Promise.all(
+      segments.map((segment) => recordStudy(session.accountId, session.code, segment.start, segment.end)),
+    ).catch((error) => {
+      console.error('No se pudo guardar el tiempo de estudio:', error)
+    })
+  }
+  session.pendingSegments = []
+  session.pendingMs = 0
+}
+
+// Guarda la sesión en la base poco después de un cambio, para volver a ella si el servidor se reinicia
+function persist(session: Session) {
+  if (session.saveTimer) return
+
+  session.saveTimer = setTimeout(() => {
+    session.saveTimer = null
+    if (sessions.get(session.token) !== session) return
+
+    // Incluye el tramo que se está estudiando ahora, sin cerrarlo
+    const { player } = session
+    const segments = session.pendingSegments.map((segment) => ({ ...segment }))
+    let pendingMs = session.pendingMs
+    if (session.studySince !== null) {
+      const end = Math.min(Date.now(), session.studySince + MAX_STUDY_PERIOD - pendingMs)
+      if (end > session.studySince) {
+        segments.push({ start: session.studySince, end })
+        pendingMs += end - session.studySince
+      }
+    }
+    const saved = {
+      accountId: session.accountId,
+      code: session.code,
+      seatId: player.seatId,
+      x: player.x,
+      z: player.z,
+      activity: player.activity,
+      period: player.period,
+      isRunning: player.isRunning,
+      periodId: session.periodId,
+      pendingSegments: segments,
+      pendingMs,
+      studiedMs: session.studiedMs,
+      joinedAt: session.joinedAt,
+    }
+    session.lastPersist = session.lastPersist
+      .then(() => saveSession(session.token, saved))
+      .catch((error) => console.error('No se pudo guardar la sesión:', error))
+  }, SAVE_DELAY)
+}
+
+// Lo estudiado en el periodo en curso se guarda cada tanto, aunque nada más cambie
 setInterval(() => {
   for (const session of sessions.values()) {
-    if (session.studySince !== null) updateStudyClock(session)
+    if (session.studySince === null) continue
+    updateStudyClock(session)
+    persist(session)
   }
 }, STUDY_SAVE_INTERVAL)
 
 function removeFromRoom(leavingSession: Session) {
+  if (leavingSession.saveTimer) {
+    clearTimeout(leavingSession.saveTimer)
+    leavingSession.saveTimer = null
+  }
+  leavingSession.lastPersist = leavingSession.lastPersist
+    .then(() => deleteSession(leavingSession.token))
+    .catch((error) => console.error('No se pudo borrar la sesión:', error))
+
+  // Salir en medio de un periodo de estudio es abandonarlo
   updateStudyClock(leavingSession, false)
+  finishPeriod(leavingSession, false)
   const { token, accountId, player, code } = leavingSession
   sessions.delete(token)
   clearPresence(accountId, leavingSession)
@@ -277,6 +364,53 @@ io.on('connection', (socket) => {
   let session: Session | null = null
   let lastMoveAt = 0
   let isEntering = false // crear o unirse esperan a la base de datos: evita entrar dos veces
+  let lastPeriodId: string | null = null // el estado puede llegar antes de entrar a la sala
+  let lastStatus: StatusMessage | null = null
+
+  // Tras un reinicio, la sesión ya no está en la memoria, pero sí en la base: se arma de nuevo
+  async function restoreSession(token: string): Promise<Session | null> {
+    const account = socket.data.account
+    const saved = account ? await loadSession(token) : null
+    if (!saved || saved.accountId !== account.id) return null
+
+    const room = await findRoom(saved.code)
+    if (!room || room.size >= MAX_PLAYERS_PER_ROOM) return null
+
+    const restoredPlayer: PlayerState = {
+      id: socket.id,
+      nickname: account.name,
+      username: account.username,
+      seatId: isFreeSeat(room, saved.seatId) ? saved.seatId : null,
+      x: saved.x,
+      z: saved.z,
+      activity: saved.activity,
+      period: saved.period,
+      isRunning: saved.isRunning,
+    }
+    const restored: Session = {
+      token,
+      accountId: account.id,
+      player: restoredPlayer,
+      code: saved.code,
+      socket: null,
+      leaveTimer: null,
+      joinedAt: saved.joinedAt,
+      periodId: saved.periodId,
+      studySince: null,
+      pendingSegments: saved.pendingSegments,
+      pendingMs: saved.pendingMs,
+      studiedMs: saved.studiedMs,
+      lastSave: Promise.resolve(),
+      saveTimer: null,
+      lastPersist: Promise.resolve(),
+    }
+    room.set(restoredPlayer.id, restoredPlayer)
+    sessions.set(token, restored)
+    setPresence(account.id, restored)
+    socket.to(saved.code).emit('player:joined', restoredPlayer)
+    console.log(`Sesión retomada tras un reinicio en la sala ${saved.code}`)
+    return restored
+  }
 
   function enterRoom(code: string, room: Room, token: string) {
     socket.emit('players:init', [...room.values()])
@@ -292,14 +426,19 @@ io.on('connection', (socket) => {
       socket,
       leaveTimer: null,
       joinedAt: Date.now(),
-      studyRunStart: null,
+      periodId: lastPeriodId,
       studySince: null,
+      pendingSegments: [],
+      pendingMs: 0,
       studiedMs: 0,
       lastSave: Promise.resolve(),
+      saveTimer: null,
+      lastPersist: Promise.resolve(),
     }
     sessions.set(token, session)
     setPresence(session.accountId, session)
     updateStudyClock(session)
+    persist(session)
   }
 
   // Para crear o unirse hace falta una cuenta, y el apodo es su nombre
@@ -367,10 +506,7 @@ io.on('connection', (socket) => {
     player = { ...player, id: socket.id, seatId: null, x: 0, z: 0 }
     if (typeof reply !== 'function') return
 
-    // Los demás de la sala guardan lo suyo, para que el resumen los encuentre
-    const others = [...sessions.values()].filter((other) => other.code === leavingSession.code)
-    for (const other of others) updateStudyClock(other)
-    await Promise.all([leavingSession, ...others].map((each) => each.lastSave))
+    await leavingSession.lastSave
 
     let companions: { name: string; seconds: number }[] = []
     try {
@@ -382,11 +518,20 @@ io.on('connection', (socket) => {
   })
 
   // Vuelve quien recargó o perdió la conexión: nunca salió de la sala, así que los demás no notan nada
-  socket.on('room:resume', (token: unknown, reply: unknown) => {
-    if (typeof reply !== 'function' || currentCode) return
+  socket.on('room:resume', async (token: unknown, reply: unknown) => {
+    if (typeof reply !== 'function' || currentCode || isEntering || typeof token !== 'string') return
 
-    const existing = typeof token === 'string' ? sessions.get(token) : undefined
+    let existing = sessions.get(token)
     if (!existing) {
+      isEntering = true
+      try {
+        existing = (await restoreSession(token)) ?? undefined
+      } catch (error) {
+        console.error('No se pudo retomar la sesión:', error)
+      }
+      isEntering = false
+    }
+    if (!existing || !socket.connected) {
       reply(null)
       return
     }
@@ -408,7 +553,14 @@ io.on('connection', (socket) => {
     const others = [...rooms.get(existing.code)!.values()].filter((other) => other !== player)
     socket.emit('players:init', others)
     socket.join(existing.code)
+    // El estado que llegó antes de retomar la sesión es el más reciente
+    if (lastStatus && lastStatus.periodId === existing.periodId) {
+      player.activity = lastStatus.activity
+      player.period = lastStatus.period
+      player.isRunning = lastStatus.isRunning
+    }
     updateStudyClock(existing)
+    persist(existing)
     reply({ code: existing.code, nickname: player.nickname, seatId: player.seatId, x: player.x, z: player.z })
   })
 
@@ -423,6 +575,7 @@ io.on('connection', (socket) => {
 
   player.seatId = seatId
   socket.to(currentCode!).emit('player:seated', player)
+  if (session) persist(session)
   reply(true)
 })
 
@@ -431,6 +584,7 @@ socket.on('seat:leave', () => {
 
   player.seatId = null
   socket.to(currentCode).emit('player:seated', player)
+  if (session) persist(session)
 })
 
   socket.on('player:move', (position: unknown) => {
@@ -449,11 +603,21 @@ socket.on('seat:leave', () => {
   socket.on('player:status', (status: unknown) => {
     if (!isValidStatus(status)) return
 
+    // Un periodo nuevo: lo estudiado hasta ahora es del anterior, que terminó si ahora toca descanso
+    if (session && status.periodId !== session.periodId) {
+      updateStudyClock(session)
+      finishPeriod(session, player.period === 'study' && status.period === 'break')
+      session.periodId = status.periodId
+    }
+    lastPeriodId = status.periodId
+
     player.activity = status.activity
     player.period = status.period
     player.isRunning = status.isRunning
+    lastStatus = status
     if (session) {
       updateStudyClock(session)
+      persist(session)
     }
     if (currentCode) {
       socket.to(currentCode).emit('player:status', player)

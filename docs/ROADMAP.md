@@ -115,6 +115,7 @@ Cuentas, salas guardadas, un menú principal y estadísticas. Para entrar a una 
 - [x] [Escuchar música propia en la sala](decisiones/0012-musica-personal.md): el lofi de StudyFocus o un video de YouTube
 - [x] [Nombre de usuario fijo, apodo que cambia una vez al mes y perfil](decisiones/0013-usuario-apodo-y-perfil.md), visible en la tarjeta de cada persona
 - [x] Agregar una portada que presenta la app, al llegar sin sesión o al hacer clic en el logo
+- [x] Volver a la misma silla y con el mismo periodo tras un reinicio del servidor
 - [ ] Agregar una foto de perfil
 
 **Terminada cuando:** inicio sesión desde otro dispositivo, vuelvo a mi sala con su mismo link y veo cuánto he estudiado, aunque el servidor se haya reiniciado.

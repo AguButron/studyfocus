@@ -93,8 +93,8 @@ function updateFocus() {
 
 function shareStatus() {
   updateTimer()
-  const { period, isRunning } = getTimer()
-  sendStatus({ activity: getActivity(), period, isRunning })
+  const { period, isRunning, periodId } = getTimer()
+  sendStatus({ activity: getActivity(), period, isRunning, periodId })
 }
 
 function loop(now: number) {
