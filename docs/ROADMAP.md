@@ -97,21 +97,29 @@ La página en internet, con CI y amigos probándola. **Al terminar esta fase, el
 
 ## Fase 6: Crecer (actual)
 
-Cuentas, salas guardadas y estadísticas. Hoy nada sobrevive a un reinicio del servidor, así que lo primero es tener dónde guardar. Entrar con un link y un apodo, sin cuenta, debe seguir funcionando: la cuenta agrega cosas, pero no es un requisito para estudiar con un amigo.
+Cuentas, salas guardadas, un menú principal y estadísticas. Para entrar a una sala hay que iniciar sesión, porque los amigos, las estadísticas y la tienda necesitan saber quién es cada persona. Ver la [decisión](decisiones/0009-cuenta-obligatoria-y-menu.md).
 
 - [x] Conectar el servidor a una base de datos, con la dirección en una variable de entorno
-- [x] [Crear una cuenta local o iniciar sesión con Google](decisiones/0008-cuentas.md), sin quitar la entrada con apodo
+- [x] [Crear una cuenta local o iniciar sesión con Google](decisiones/0008-cuentas.md)
 - [x] Crear la base de datos en Neon y probar las cuentas locales contra ella
 - [ ] Probar las cuentas en la página publicada
 - [ ] Recuperar una contraseña olvidada y verificar el correo
 - [x] Guardar las salas de quien tiene cuenta, para que su link siga sirviendo tras un reinicio
-- [ ] Contar en el servidor el tiempo de estudio de cada cuenta
-- [ ] Mostrar las estadísticas de estudio y un resumen al terminar
-- [ ] Mostrar una descripción fija en la tarjeta de cada persona
+- [x] [Borrar las salas al quedar vacías](decisiones/0014-salas-vacias-se-borran.md), y quitar "Tus salas" del menú
+- [x] [Exigir una cuenta y cambiar la pantalla inicial por un menú](decisiones/0009-cuenta-obligatoria-y-menu.md) con Salas, Amigos, Estadísticas, Tienda y Perfil
+- [x] Elegir el tipo de sala al crearla, con un solo tipo por ahora
+- [x] Volver al menú desde la sala con el botón Salir
+- [x] [Agregar amigos con un código](decisiones/0010-amigos.md), y ver quién está estudiando y en qué sala
+- [x] [Contar en el servidor el tiempo de estudio de cada cuenta](decisiones/0011-tiempo-de-estudio-en-el-servidor.md)
+- [x] Mostrar las estadísticas de estudio y un resumen al salir de la sala
+- [x] [Escuchar música propia en la sala](decisiones/0012-musica-personal.md): el lofi de StudyFocus o un video de YouTube
+- [x] [Nombre de usuario fijo, apodo que cambia una vez al mes y perfil](decisiones/0013-usuario-apodo-y-perfil.md), visible en la tarjeta de cada persona
+- [x] Agregar una portada que presenta la app, al llegar sin sesión o al hacer clic en el logo
+- [ ] Agregar una foto de perfil
 
 **Terminada cuando:** inicio sesión desde otro dispositivo, vuelvo a mi sala con su mismo link y veo cuánto he estudiado, aunque el servidor se haya reiniciado.
 
-El inicio de sesión con Google quedó pospuesto: el código está, pero el botón no aparece hasta definir `GOOGLE_CLIENT_ID`. Después vienen las animaciones según el periodo y el chat de voz. Avatares, moneda, tienda y espacios propios se describen en la [visión del proyecto](VISION.md).
+El inicio de sesión con Google quedó pospuesto: el código está, pero el botón no aparece hasta definir `GOOGLE_CLIENT_ID`. Después vienen las animaciones según el periodo y el chat de voz. La tienda y los modelos de los personajes quedan para el final; ellos, la moneda y los espacios propios se describen en la [visión del proyecto](VISION.md).
 
 ## Cómo trabajamos cada tarea
 

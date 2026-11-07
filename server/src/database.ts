@@ -23,14 +23,60 @@ const SCHEMA = `
   CREATE TABLE IF NOT EXISTS rooms (
     code TEXT PRIMARY KEY,
     owner_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    kind TEXT NOT NULL DEFAULT 'study',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_used_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 
+  -- Las tablas creadas antes de que hubiera tipos de sala no tienen esta columna
+  ALTER TABLE rooms ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'study';
+
   CREATE INDEX IF NOT EXISTS rooms_owner ON rooms (owner_id, last_used_at DESC);
+
+  -- El nombre de usuario es único y no cambia; el apodo (name) se cambia a lo más una vez al mes
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS name_changed_at TIMESTAMPTZ;
+
+  -- El perfil que ven los demás al hacer clic en ti
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS studies TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS institution TEXT;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT;
+
+  -- El código que se comparte para que te agreguen como amigo
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS friend_code TEXT UNIQUE;
+
+  CREATE TABLE IF NOT EXISTS friend_requests (
+    from_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    to_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (from_id, to_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS friend_requests_to ON friend_requests (to_id);
+
+  -- Los tramos de estudio que mide el servidor, de los que salen las estadísticas
+  CREATE TABLE IF NOT EXISTS study_segments (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    room_code TEXT NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    ended_at TIMESTAMPTZ NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS study_segments_user ON study_segments (user_id, started_at);
+  CREATE INDEX IF NOT EXISTS study_segments_room ON study_segments (room_code, started_at);
+
+  -- Cada amistad se guarda dos veces, una por dirección, y así buscar los amigos de alguien es simple
+  CREATE TABLE IF NOT EXISTS friendships (
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    friend_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, friend_id)
+  );
 `
 
-// Sin esta variable no hay cuentas, pero se puede estudiar igual: las salas viven en la memoria
+// Sin esta variable no hay cuentas, y sin cuenta no se puede entrar a una sala
 const pool = process.env.DATABASE_URL
   ? new pg.Pool({ connectionString: process.env.DATABASE_URL, max: MAX_CONNECTIONS })
   : null

@@ -1,0 +1,228 @@
+import { sendAccount, type Account } from './account'
+import { setUpFriends, startFriends, stopFriends } from './friends'
+import { drawRoomPlan } from './roomPlan'
+import { COUNTRIES, getFlag } from './countries'
+import { ROOM_KINDS } from './roomKinds'
+import { refreshStats, setUpSummary, showSavedSummary } from './stats'
+
+type Panel = 'rooms' | 'friends' | 'stats' | 'shop' | 'profile'
+
+interface MenuActions {
+  createRoom(kind: string): void
+  joinRoom(code: string): void
+  onAccountChange(account: Account | null): void
+}
+
+const PANEL_KEY = 'studyfocus.panel'
+
+const menu = document.querySelector<HTMLDivElement>('#menu')!
+const menuLinks = document.querySelectorAll<HTMLButtonElement>('.sf-nav-link[data-panel]')
+const panels = document.querySelectorAll<HTMLElement>('.menu-panel')
+const userNameText = document.querySelector<HTMLSpanElement>('#menu-user-name')!
+const roomKindsList = document.querySelector<HTMLDivElement>('#room-kinds')!
+const createRoomButton = document.querySelector<HTMLButtonElement>('#create-room')!
+const roomsError = document.querySelector<HTMLParagraphElement>('#rooms-error')!
+const joinForm = document.querySelector<HTMLFormElement>('#join-form')!
+const codeInput = document.querySelector<HTMLInputElement>('#code')!
+const profileForm = document.querySelector<HTMLFormElement>('#profile-form')!
+const profileNameInput = document.querySelector<HTMLInputElement>('#profile-name')!
+const profileMessage = document.querySelector<HTMLParagraphElement>('#profile-message')!
+const profileEmail = document.querySelector<HTMLParagraphElement>('#profile-email')!
+const profileUsername = document.querySelector<HTMLElement>('#profile-username')!
+const profileNameHint = document.querySelector<HTMLSpanElement>('#profile-name-hint')!
+const profileSave = document.querySelector<HTMLButtonElement>('#profile-save')!
+const NAME_HINT = 'Es el que verán los demás en la sala. Puedes cambiarlo una vez al mes.'
+const aboutForm = document.querySelector<HTMLFormElement>('#about-form')!
+const aboutStudies = document.querySelector<HTMLInputElement>('#about-studies')!
+const aboutInstitution = document.querySelector<HTMLInputElement>('#about-institution')!
+const aboutCountry = document.querySelector<HTMLSelectElement>('#about-country')!
+const aboutBio = document.querySelector<HTMLTextAreaElement>('#about-bio')!
+const aboutBioCount = document.querySelector<HTMLSpanElement>('#about-bio-count')!
+const aboutMessage = document.querySelector<HTMLParagraphElement>('#about-message')!
+const dateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long' })
+const logoutButton = document.querySelector<HTMLButtonElement>('#logout')!
+
+let selectedKind = ROOM_KINDS[0].id
+
+function isPanel(value: unknown): value is Panel {
+  return typeof value === 'string' && [...panels].some((panel) => panel.dataset.panel === value)
+}
+
+function showPanel(panel: Panel) {
+  for (const link of menuLinks) {
+    if (link.dataset.panel === panel) {
+      link.setAttribute('aria-current', 'page')
+      link.scrollIntoView({ block: 'nearest', inline: 'nearest' }) // en pantallas angostas el menú se desliza
+    } else {
+      link.removeAttribute('aria-current')
+    }
+  }
+  for (const section of panels) {
+    section.hidden = section.dataset.panel !== panel
+  }
+  if (panel === 'stats') {
+    refreshStats()
+  }
+
+  try {
+    sessionStorage.setItem(PANEL_KEY, panel)
+  } catch {
+    // Sin almacenamiento, al recargar se vuelve al panel de salas
+  }
+}
+
+// Al volver de una sala se abre el panel de salas, donde aparece el resumen
+function showSummaryFirst() {
+  return !document.querySelector<HTMLDivElement>('#session-summary')!.hidden
+}
+
+function loadPanel(): Panel {
+  try {
+    const saved = sessionStorage.getItem(PANEL_KEY)
+    return isPanel(saved) ? saved : 'rooms'
+  } catch {
+    return 'rooms'
+  }
+}
+
+function showRoomKinds() {
+  roomKindsList.replaceChildren()
+  const plan = drawRoomPlan() // hoy hay un solo tipo de sala, con esta distribución
+
+  for (const kind of ROOM_KINDS) {
+    const card = document.createElement('button')
+    card.type = 'button'
+    card.className = 'sf-room'
+    card.setAttribute('aria-pressed', String(kind.id === selectedKind))
+    card.innerHTML = `<span class="sf-room-plan sf-paper" aria-hidden="true">${plan}</span>
+      <span class="sf-room-name"></span><span class="sf-room-text"></span><span class="sf-room-meta"></span>`
+    card.querySelector('.sf-room-name')!.textContent = kind.name
+    card.querySelector('.sf-room-text')!.textContent = kind.description
+    card.querySelector('.sf-room-meta')!.textContent = kind.details
+    card.addEventListener('click', () => {
+      selectedKind = kind.id
+      showRoomKinds()
+    })
+    roomKindsList.append(card)
+  }
+
+  const soon = document.createElement('div')
+  soon.className = 'sf-room sf-room--soon'
+  soon.innerHTML = '<strong>Más salas</strong><span class="sf-room-text">Pronto podrás elegir otros espacios para estudiar.</span>'
+  roomKindsList.append(soon)
+}
+
+function showAccount(account: Account) {
+  userNameText.textContent = account.name
+  profileUsername.textContent = account.username ? `@${account.username}` : ''
+  profileNameInput.value = account.name
+  profileEmail.textContent = account.email ? `Correo: ${account.email}` : 'Cuenta de Google'
+
+  // El apodo se cambia a lo más una vez al mes: mientras tanto, el campo queda bloqueado
+  const nextChange = account.nextNameChange ? new Date(account.nextNameChange) : null
+  profileNameInput.disabled = nextChange !== null
+  profileSave.disabled = nextChange !== null
+  profileNameHint.textContent = nextChange ? `Podrás cambiar tu apodo de nuevo el ${dateFormat.format(nextChange)}.` : NAME_HINT
+
+  aboutStudies.value = account.profile.studies ?? ''
+  aboutInstitution.value = account.profile.institution ?? ''
+  aboutCountry.value = account.profile.country ?? ''
+  aboutBio.value = account.profile.bio ?? ''
+  showBioCount()
+}
+
+function showBioCount() {
+  aboutBioCount.textContent = `${aboutBio.value.length} de ${aboutBio.maxLength} caracteres`
+}
+
+function fillCountries() {
+  const none = new Option('Prefiero no decirlo', '')
+  aboutCountry.replaceChildren(none, ...COUNTRIES.map(({ code, name }) => new Option(`${getFlag(code)} ${name}`, code)))
+}
+
+let actions: MenuActions
+
+export function setUpMenu(menuActions: MenuActions) {
+  actions = menuActions
+
+  for (const link of menuLinks) {
+    link.addEventListener('click', () => showPanel(link.dataset.panel as Panel))
+  }
+
+  createRoomButton.addEventListener('click', () => actions.createRoom(selectedKind))
+  setUpFriends((code) => actions.joinRoom(code))
+  setUpSummary(() => showPanel('stats'))
+
+  joinForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const code = codeInput.value.trim().toUpperCase()
+    if (code) {
+      actions.joinRoom(code)
+    } else {
+      showRoomsError('Escribe el código de la sala.')
+    }
+  })
+
+  fillCountries()
+  aboutBio.addEventListener('input', showBioCount)
+
+  aboutForm.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    aboutMessage.textContent = ''
+    aboutMessage.classList.remove('sf-error')
+    const { account, error } = await sendAccount('profile', {
+      studies: aboutStudies.value,
+      institution: aboutInstitution.value,
+      country: aboutCountry.value,
+      bio: aboutBio.value,
+    })
+    if (!account) {
+      aboutMessage.textContent = error
+      aboutMessage.classList.add('sf-error')
+      return
+    }
+    showAccount(account)
+    aboutMessage.textContent = 'Perfil guardado.'
+    actions.onAccountChange(account)
+  })
+
+  profileForm.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    profileMessage.textContent = ''
+    const { account, error } = await sendAccount('name', { name: profileNameInput.value })
+    if (!account) {
+      profileMessage.textContent = error
+      return
+    }
+    showAccount(account)
+    profileMessage.textContent = 'Apodo guardado.'
+    actions.onAccountChange(account)
+  })
+
+  logoutButton.addEventListener('click', async () => {
+    const { error } = await sendAccount('logout')
+    if (error) {
+      profileMessage.textContent = error
+      return
+    }
+    actions.onAccountChange(null)
+  })
+}
+
+export function showRoomsError(message: string) {
+  roomsError.textContent = message
+}
+
+export function showMenu(account: Account) {
+  showAccount(account)
+  showRoomKinds()
+  showSavedSummary()
+  showPanel(showSummaryFirst() ? 'rooms' : loadPanel())
+  startFriends()
+  menu.hidden = false
+}
+
+export function hideMenu() {
+  stopFriends()
+  menu.hidden = true
+}

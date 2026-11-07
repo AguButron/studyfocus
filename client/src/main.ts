@@ -13,6 +13,7 @@ import {
 import { showHome } from './home'
 import { onKeyPress } from './input'
 import { createLabel } from './label'
+import { setUpMusic } from './music'
 import { sendPosition, sendStatus } from './network'
 import { isNearFreeSeat, onSeatChange, player, restorePlayer, toggleSit, updatePlayer } from './player'
 import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './playerCard'
@@ -130,6 +131,7 @@ showHome((nickname, resumed) => {
   onKeyPress('KeyE', toggleSit)
   setUpTimerPanel(toggleSit)
   setUpPlayerCard()
+  setUpMusic()
   onPeriodChange(playPeriodSound)
   hint.hidden = false
   if (resumed) {

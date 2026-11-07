@@ -9,6 +9,7 @@ import type { Period } from './timer'
 interface PlayerState {
   id: string
   nickname: string
+  username: string | null
   seatId: number | null
   x: number
   z: number

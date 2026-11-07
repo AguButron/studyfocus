@@ -1,15 +1,16 @@
 import { io } from 'socket.io-client'
 import type { ActivityKind } from './activity'
+import type { StudySummary } from './stats'
 import type { Period } from './timer'
 
 const SEND_INTERVAL = 66 // milisegundos, unas 15 veces por segundo
 const SESSION_KEY = 'studyfocus.session'
 const CONNECT_TIMEOUT = 3000 // milisegundos
+const LEAVE_TIMEOUT = 5000 // milisegundos: el servidor arma el resumen antes de responder
 
 interface Session {
   token: string
   code: string
-  nickname: string
 }
 
 export interface ResumedPlayer {
@@ -47,8 +48,8 @@ function loadSavedSession(): Session | null {
   }
 }
 
-function startSession(code: string, nickname: string) {
-  session = { token, code, nickname }
+function startSession(code: string) {
+  session = { token, code }
 
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
@@ -57,18 +58,38 @@ function startSession(code: string, nickname: string) {
   }
 }
 
-export async function createRoom(nickname: string) {
-  const code: string = await socket.emitWithAck('room:create', nickname, token)
-  startSession(code, nickname)
+// El apodo en la sala es el nombre de la cuenta: el servidor lo toma de ella
+export async function createRoom(kind: string) {
+  const code: string | null = await socket.emitWithAck('room:create', kind, token)
+  if (code) {
+    startSession(code)
+  }
   return code
 }
 
-export async function joinRoom(code: string, nickname: string) {
-  const joined: boolean = await socket.emitWithAck('room:join', code, nickname, token)
+export async function joinRoom(code: string) {
+  const joined: boolean = await socket.emitWithAck('room:join', code, token)
   if (joined) {
-    startSession(code, nickname)
+    startSession(code)
   }
   return joined
+}
+
+// Espera la respuesta para que el aviso alcance a salir antes de recargar la página
+export async function leaveRoom() {
+  const summary: StudySummary | null = await socket
+    .timeout(LEAVE_TIMEOUT)
+    .emitWithAck('room:leave')
+    .catch(() => null)
+  session = null
+  token = crypto.randomUUID()
+
+  try {
+    sessionStorage.removeItem(SESSION_KEY)
+  } catch {
+    // Sin almacenamiento no había nada guardado
+  }
+  return summary
 }
 
 // El servidor lee la cuenta al conectarse: hay que reconectar al iniciar o cerrar sesión
@@ -119,7 +140,7 @@ socket.on('connect', async () => {
 
   // Tardó demasiado en volver: el servidor ya liberó su lugar
   seatLostListener()
-  const joined = await joinRoom(session.code, session.nickname)
+  const joined = await joinRoom(session.code)
   if (!joined) {
     window.location.href = window.location.pathname
   }

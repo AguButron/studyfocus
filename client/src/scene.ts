@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 
 export const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x181825)
+scene.background = new THREE.Color(0x121417) // el fondo "paper" del tema Grafito
 
 export const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100)
 

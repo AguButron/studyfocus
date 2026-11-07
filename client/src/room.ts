@@ -12,6 +12,9 @@ const TABLE_POSITIONS = [
 ]
 const SEAT_OFFSET_X = 0.6
 const SEAT_OFFSET_Z = 1.2
+export const TABLE_WIDTH = 2.4
+export const TABLE_DEPTH = 1.2
+export const CHAIR_SIZE = 0.5
 export const STANDING_Y = 0.5
 export const SEATED_Y = 0.8
 
@@ -84,13 +87,13 @@ export function setTallFrontWallVisible(visible: boolean) {
 }
 
 for (const table of TABLE_POSITIONS) {
-  addBox(2.4, 0.75, 1.2, table.x, table.z, TABLE_COLOR)
+  addBox(TABLE_WIDTH, 0.75, TABLE_DEPTH, table.x, table.z, TABLE_COLOR)
 
   for (const offsetX of [-SEAT_OFFSET_X, SEAT_OFFSET_X]) {
     for (const offsetZ of [-SEAT_OFFSET_Z, SEAT_OFFSET_Z]) {
       const x = table.x + offsetX
       const z = table.z + offsetZ
-      addBox(0.5, 0.45, 0.5, x, z, CHAIR_COLOR)
+      addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, x, z, CHAIR_COLOR)
       seats.push({ id: seats.length, x, z, facingZ: offsetZ < 0 ? 1 : -1, tableX: table.x, tableZ: table.z })
     }
   }

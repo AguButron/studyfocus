@@ -14,12 +14,14 @@ import {
 } from './timer'
 
 const UPDATE_INTERVAL = 250 // milisegundos
+const MAX_CELLS = 30 // en periodos más largos, cada celda junta varios minutos
+const MS_PER_MINUTE = 60_000
 
 const studyScreen = document.querySelector<HTMLElement>('#study')!
 const studyPanel = document.querySelector<HTMLDivElement>('#study-panel')!
 const periodText = document.querySelector<HTMLSpanElement>('#timer-period')!
 const timeText = document.querySelector<HTMLDivElement>('#timer-time')!
-const progressBar = document.querySelector<HTMLDivElement>('#timer-progress')!
+const progressCells = document.querySelector<HTMLDivElement>('#timer-progress')!
 const toggleButton = document.querySelector<HTMLButtonElement>('#timer-toggle')!
 const timerActions = document.querySelector<HTMLDivElement>('#timer-actions')!
 const abandonButton = document.querySelector<HTMLButtonElement>('#timer-abandon')!
@@ -55,6 +57,37 @@ function setUpSlider(input: HTMLInputElement, limits: { min: number; max: number
   input.value = String(minutes)
 }
 
+// La parte elegida del riel se pinta con el color del periodo
+function paintSlider(input: HTMLInputElement) {
+  const min = Number(input.min)
+  const share = (Number(input.value) - min) / (Number(input.max) - min)
+  input.style.setProperty('--value', `${share * 100}%`)
+}
+
+// Una celda por minuto: las pasadas se llenan y la actual se va llenando de a poco
+function renderCells(durationMs: number, remainingMs: number) {
+  const minutes = Math.max(1, Math.round(durationMs / MS_PER_MINUTE))
+  const count = Math.ceil(minutes / Math.ceil(minutes / MAX_CELLS))
+
+  if (progressCells.children.length !== count) {
+    progressCells.style.setProperty('--cells', String(count))
+    progressCells.replaceChildren(...Array.from({ length: count }, () => document.createElement('i')))
+  }
+
+  const elapsed = Math.min(1, Math.max(0, 1 - remainingMs / durationMs)) * count
+  const done = Math.floor(elapsed)
+  Array.from(progressCells.children as HTMLCollectionOf<HTMLElement>).forEach((cell, index) => {
+    const isNow = index === done && elapsed > done
+    cell.toggleAttribute('data-on', index < done)
+    cell.toggleAttribute('data-now', isNow)
+    cell.style.setProperty('--fill', isNow ? `${(elapsed - done) * 100}%` : '')
+  })
+
+  progressCells.setAttribute('aria-valuemin', '0')
+  progressCells.setAttribute('aria-valuemax', String(minutes))
+  progressCells.setAttribute('aria-valuenow', String(Math.floor((durationMs - remainingMs) / MS_PER_MINUTE)))
+}
+
 function render() {
   updateTimer()
 
@@ -66,9 +99,10 @@ function render() {
   periodText.textContent = periodName
   timeText.textContent = time
   miniPeriod.textContent = periodName
+  miniPeriod.dataset.period = timer.period
   miniTime.textContent = time
   studyPanel.dataset.period = timer.period
-  progressBar.style.transform = `scaleX(${1 - timer.remainingMs / timer.durationMs})`
+  renderCells(timer.durationMs, timer.remainingMs)
 
   toggleButton.textContent = timer.isRunning ? 'Pausar' : isIdle ? 'Iniciar' : 'Reanudar'
 
@@ -85,6 +119,8 @@ function render() {
   breakInput.disabled = !isIdle
   studyInput.value = String(timer.studyMinutes)
   breakInput.value = String(timer.breakMinutes)
+  paintSlider(studyInput)
+  paintSlider(breakInput)
   studyValue.textContent = `${timer.studyMinutes} min`
   breakValue.textContent = `${timer.breakMinutes} min`
 }

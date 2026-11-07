@@ -1,68 +1,75 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="papel">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&family=JetBrains+Mono:wght@100..800&display=swap"
+    />
     <title>StudyFocus</title>
   </head>
   <body>
     <div id="app"></div>
 
-    <header id="hud" hidden>
-      <span class="brand">StudyFocus</span>
-      <div class="hud-room">
-        <span class="muted">Sala</span>
-        <span id="room-code"></span>
-        <button id="copy-link" class="button button-ghost" type="button">Copiar link</button>
+    <header id="hud" class="sf-hud" hidden>
+      <span class="sf-wordmark">StudyFocus</span>
+      <div class="sf-hud-group">
+        <span class="sf-hud-label">Sala</span>
+        <span id="room-code" class="sf-hud-code"></span>
+        <button id="copy-link" class="sf-btn sf-btn--sm" type="button">Copiar link</button>
+        <button id="leave-room" class="sf-btn sf-btn--sm" type="button">Salir</button>
       </div>
-      <div class="hud-timer">
-        <span id="mini-period" class="muted"></span>
-        <span id="mini-time"></span>
+      <div class="sf-hud-group">
+        <span id="mini-period" class="sf-badge sf-badge--period"></span>
+        <span id="mini-time" class="sf-hud-clock"></span>
       </div>
     </header>
 
-    <p id="hint" hidden></p>
+    <p id="hint" class="sf-tip" hidden></p>
 
     <section id="study" aria-label="Sesión de estudio" hidden>
-      <div id="study-panel">
-        <div class="study-header">
-          <span id="timer-period" class="period-badge"></span>
-          <button id="stand-up" class="button button-ghost" type="button">Levantarte <kbd>E</kbd></button>
+      <div id="study-panel" class="sf-timer">
+        <div class="sf-timer-head">
+          <span id="timer-period" class="sf-badge sf-badge--period"></span>
+          <button id="stand-up" class="sf-btn sf-btn--sm" type="button">Levantarte <kbd class="sf-kbd">E</kbd></button>
         </div>
 
-        <div id="timer-time"></div>
-        <div class="progress"><div id="timer-progress"></div></div>
+        <div id="timer-time" class="sf-timer-time"></div>
+        <div id="timer-progress" class="sf-cells" role="progressbar" aria-label="Minutos de este periodo"></div>
 
-        <div id="timer-actions" class="study-actions">
-          <button id="timer-toggle" class="button button-primary" type="button"></button>
-          <button id="timer-abandon" class="button button-ghost" type="button" hidden>Abandonar</button>
+        <div id="timer-actions" class="sf-timer-actions">
+          <button id="timer-toggle" class="sf-btn sf-btn--period sf-btn--lg" type="button"></button>
+          <button id="timer-abandon" class="sf-btn sf-btn--lg" type="button" hidden>Abandonar</button>
         </div>
 
         <div id="abandon-confirm" hidden>
           <p>¿Abandonar la sesión? Se perderá el tiempo que llevas.</p>
-          <div class="study-actions">
-            <button id="abandon-yes" class="button button-ghost" type="button">Sí, abandonar</button>
-            <button id="abandon-no" class="button button-primary" type="button">Seguir</button>
+          <div class="sf-timer-actions">
+            <button id="abandon-yes" class="sf-btn sf-btn--danger" type="button">Sí, abandonar</button>
+            <button id="abandon-no" class="sf-btn sf-btn--primary" type="button">Seguir</button>
           </div>
         </div>
         <p id="stand-up-hint" class="muted" hidden>Pausa el temporizador para levantarte.</p>
 
-        <div id="duration-section" class="study-section">
-          <h2>Duración</h2>
-          <label class="slider">
-            <span class="slider-label">Estudio <span id="study-value"></span></span>
-            <input id="study-minutes" type="range" />
+        <div id="duration-section" class="sf-section">
+          <h2 class="sf-section-title">Duración</h2>
+          <label class="sf-slider" data-period="study">
+            <span class="sf-slider-label">Estudio <span id="study-value" class="sf-slider-value"></span></span>
+            <input id="study-minutes" class="sf-range" type="range" />
           </label>
-          <label class="slider">
-            <span class="slider-label">Descanso <span id="break-value"></span></span>
-            <input id="break-minutes" type="range" />
+          <label class="sf-slider" data-period="break">
+            <span class="sf-slider-label">Descanso <span id="break-value" class="sf-slider-value"></span></span>
+            <input id="break-minutes" class="sf-range" type="range" />
           </label>
         </div>
 
-        <div id="activity-section" class="study-section">
-          <h2>¿Qué estás haciendo?</h2>
-          <div class="segmented">
+        <div id="activity-section" class="sf-section">
+          <h2 class="sf-section-title">¿Qué estás haciendo?</h2>
+          <div class="sf-seg">
             <button data-activity="computer" type="button">Computador</button>
             <button data-activity="reading" type="button">Leyendo</button>
             <button data-activity="writing" type="button">Escribiendo</button>
@@ -70,9 +77,9 @@
         </div>
       </div>
 
-      <div id="camera-panel" hidden>
-        <h2>Cámara <kbd>C</kbd></h2>
-        <div class="segmented">
+      <div id="camera-panel" class="sf-card sf-card--float" hidden>
+        <h2>Cámara <kbd class="sf-kbd">C</kbd></h2>
+        <div class="sf-seg">
           <button data-camera="desk" type="button">Escritorio</button>
           <button data-camera="table" type="button">Mesa</button>
           <button data-camera="room" type="button">Sala</button>
@@ -80,70 +87,402 @@
       </div>
     </section>
 
-    <div id="player-card" role="status" hidden>
-      <strong id="player-card-name"></strong>
-      <span id="player-card-status"></span>
-      <span id="player-card-activity" class="muted"></span>
-      <span class="player-card-hint muted"><kbd>Esc</kbd> para volver</span>
+    <div id="player-card" class="sf-player" role="status" hidden>
+      <strong id="player-card-name" class="sf-player-name"></strong>
+      <span id="player-card-status" class="sf-presence"></span>
+      <span id="player-card-activity" class="sf-row-detail"></span>
+      <span id="player-card-studies" class="player-card-about" hidden></span>
+      <span id="player-card-bio" class="player-card-bio" hidden></span>
+      <span class="sf-player-hint"><kbd class="sf-kbd">Esc</kbd> para volver</span>
     </div>
 
-    <main id="home">
-      <div class="home-card">
-        <h1 class="brand">StudyFocus</h1>
-        <p class="home-tagline">Tu mesa de estudio con amigos, estén donde estén.</p>
+    <aside id="music" class="music" aria-label="Música" hidden>
+      <div id="music-panel" class="music-panel sf-card sf-card--float" hidden>
+        <div class="music-panel-head">
+          <h2 class="sf-section-title">Música para estudiar</h2>
+          <button id="music-close" class="sf-btn sf-btn--sm sf-btn--quiet" type="button" aria-label="Cerrar el panel de música">✕</button>
+        </div>
+        <div class="sf-seg">
+          <button data-music="off" type="button">Sin música</button>
+          <button data-music="studyfocus" type="button">StudyFocus</button>
+          <button data-music="youtube" type="button">YouTube</button>
+        </div>
 
-        <div id="account" hidden>
-          <div id="account-signed-in" hidden>
-            <span>Sesión iniciada como <strong id="account-name"></strong></span>
-            <button id="logout" class="button button-ghost" type="button">Cerrar sesión</button>
+        <label id="music-volume-field" class="sf-slider" hidden>
+          <span class="sf-slider-label">Volumen <span id="music-volume-value" class="sf-slider-value"></span></span>
+          <input id="music-volume" class="sf-range" type="range" min="0" max="100" step="5" />
+        </label>
+
+        <form id="music-youtube-form" class="music-youtube" hidden>
+          <label class="sf-field">
+            Link de YouTube
+            <span class="sf-inline">
+              <input id="music-youtube-url" class="sf-input" type="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…" />
+              <button class="sf-btn sf-btn--primary" type="submit">Poner</button>
+            </span>
+          </label>
+          <p id="music-error" class="sf-error" role="alert"></p>
+        </form>
+      </div>
+
+      <div id="music-video" class="music-video sf-card sf-card--float" hidden></div>
+
+      <button id="music-toggle" class="sf-btn sf-btn--sm music-toggle sf-card--float" type="button" aria-expanded="false" aria-controls="music-panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+        <span id="music-label">Música</span>
+      </button>
+    </aside>
+
+    <main id="home" class="sf-paper">
+      <p id="home-status" class="muted" role="status">Cargando…</p>
+
+      <div id="landing" class="landing" hidden>
+        <header class="landing-top">
+          <span class="sf-wordmark">StudyFocus</span>
+          <button id="landing-top-action" class="sf-btn sf-btn--sm" type="button">Iniciar sesión</button>
+        </header>
+
+        <section class="landing-hero" aria-labelledby="landing-title">
+          <div class="landing-hero-text">
+            <span class="sf-badge">Una sala de estudio en 3D</span>
+            <h1 id="landing-title">Estudia acompañado, <span class="sf-mark">aunque cada uno esté en su casa.</span></h1>
+            <p class="landing-lead">
+              En StudyFocus te sientas en la misma mesa que tus amigos. Cada uno lleva su propio temporizador y estudia a su
+              ritmo, y se nota quién está concentrado. No hay cámaras ni chat que distraigan.
+            </p>
+            <div class="landing-actions">
+              <button id="landing-start" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear una cuenta</button>
+              <button id="landing-login" class="sf-btn sf-btn--lg" type="button">Ya tengo cuenta</button>
+            </div>
           </div>
 
-          <div id="saved-rooms" hidden>
-            <span class="muted">Las salas que crees quedan guardadas en tu cuenta.</span>
-            <div id="saved-rooms-list"></div>
-          </div>
+          <figure class="landing-plan sf-card">
+            <div id="landing-plan-art" class="landing-plan-art sf-paper" aria-hidden="true"></div>
+            <figcaption class="landing-legend">
+              <span data-legend="study">Estudiando</span>
+              <span data-legend="break">En descanso</span>
+              <span data-legend="free">Silla libre</span>
+            </figcaption>
+          </figure>
+        </section>
 
-          <details id="account-signed-out" hidden>
-            <summary>Iniciar sesión o crear una cuenta (opcional)</summary>
-            <div class="account-options">
-              <div id="google-button" hidden></div>
-              <form id="account-form">
-                <label class="field">
-                  Correo
-                  <input id="account-email" type="email" maxlength="254" autocomplete="email" required />
-                </label>
-                <label class="field">
-                  Contraseña
-                  <input id="account-password" type="password" maxlength="128" autocomplete="current-password" required />
-                </label>
-                <div class="study-actions">
-                  <button class="button button-primary" type="submit" data-path="login">Entrar</button>
-                  <button class="button button-ghost" type="submit" data-path="register">Crear cuenta</button>
-                </div>
+        <section class="landing-section" aria-labelledby="landing-how">
+          <h2 id="landing-how" class="sf-section-title">Cómo funciona</h2>
+          <ol class="landing-steps">
+            <li class="sf-card">
+              <span class="landing-step-number">01</span>
+              <strong>Crea una sala</strong>
+              <p>Elige el tipo de sala y comparte el link con tus amigos.</p>
+            </li>
+            <li class="sf-card">
+              <span class="landing-step-number">02</span>
+              <strong>Siéntate a la mesa</strong>
+              <p>Camina con tu personaje hasta una silla libre, cerca de los demás.</p>
+            </li>
+            <li class="sf-card">
+              <span class="landing-step-number">03</span>
+              <strong>Estudia a tu ritmo</strong>
+              <p>Elige tus minutos de estudio y de descanso. Mientras estudias, no te puedes levantar.</p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="landing-section" aria-labelledby="landing-features">
+          <h2 id="landing-features" class="sf-section-title">Lo que tiene</h2>
+          <ul class="landing-features">
+            <li>
+              <strong>Tu propio temporizador</strong>
+              <p>Pomodoro con los minutos que tú elijas. Sigue corriendo aunque recargues la página.</p>
+            </li>
+            <li>
+              <strong>Ves cómo estudian los demás</strong>
+              <p>Sus manos en el computador, el libro o el cuaderno, y si están estudiando o en descanso.</p>
+            </li>
+            <li>
+              <strong>Amigos</strong>
+              <p>Agrégalos con su código, ve quién está estudiando ahora y entra a su sala.</p>
+            </li>
+            <li>
+              <strong>Estadísticas</strong>
+              <p>Cuánto estudiaste hoy y esta semana, tu racha de días y con quién estudiaste.</p>
+            </li>
+            <li>
+              <strong>Tu música</strong>
+              <p>El lofi de StudyFocus o un video de YouTube. Solo lo escuchas tú.</p>
+            </li>
+            <li>
+              <strong>Sin distracciones</strong>
+              <p>Sin chat ni videollamadas: la compañía está en ver que los demás también estudian.</p>
+            </li>
+          </ul>
+        </section>
+
+        <section class="landing-principle" aria-label="El principio de StudyFocus">
+          <p>Cada función ayuda a estudiar o a sentirse acompañado. <span class="sf-mark">Si distrae, no entra.</span></p>
+        </section>
+
+        <footer class="landing-footer">
+          <strong>¿Estudiamos?</strong>
+          <button id="landing-end-action" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear una cuenta</button>
+        </footer>
+      </div>
+
+      <section id="auth" class="auth-card sf-card" aria-label="Iniciar sesión" hidden>
+        <h1 class="auth-wordmark">
+          <button class="sf-wordmark sf-wordmark--xl home-logo" type="button" title="Ver la portada">StudyFocus</button>
+        </h1>
+        <p class="auth-tagline">Tu mesa de estudio con amigos, estén donde estén.</p>
+        <p id="auth-invite" class="auth-invite" hidden></p>
+
+        <div class="sf-seg">
+          <button data-auth-mode="login" type="button" aria-pressed="true">Iniciar sesión</button>
+          <button data-auth-mode="register" type="button" aria-pressed="false">Crear cuenta</button>
+        </div>
+
+        <form id="auth-form">
+          <label id="auth-username-field" class="sf-field" hidden>
+            Nombre de usuario
+            <input id="auth-username" class="sf-input" maxlength="21" autocomplete="username" autocapitalize="none" spellcheck="false" />
+            <span class="sf-field-hint">Es único y no se puede cambiar. Tus amigos lo usan para reconocerte.</span>
+          </label>
+          <label id="auth-name-field" class="sf-field" hidden>
+            Apodo
+            <input id="auth-name" class="sf-input" maxlength="20" autocomplete="nickname" />
+            <span class="sf-field-hint">Es el que verán los demás en la sala. Podrás cambiarlo una vez al mes.</span>
+          </label>
+          <label class="sf-field">
+            <span id="auth-login-label">Correo o nombre de usuario</span>
+            <input id="auth-email" class="sf-input" type="text" maxlength="254" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+          </label>
+          <label class="sf-field">
+            Contraseña
+            <input id="auth-password" class="sf-input" type="password" maxlength="128" autocomplete="current-password" required />
+          </label>
+          <button id="auth-submit" class="sf-btn sf-btn--primary sf-btn--lg sf-btn--block" type="submit">Entrar</button>
+        </form>
+
+        <div id="google-button" hidden></div>
+        <p id="auth-error" class="sf-error" role="alert"></p>
+      </section>
+
+      <section id="choose-username" class="auth-card sf-card" aria-labelledby="choose-username-title" hidden>
+        <h1 id="choose-username-title" class="choose-username-title">Elige tu nombre de usuario</h1>
+        <p class="auth-tagline">Es único y no se puede cambiar. Tus amigos lo usan para reconocerte, aunque tengan el mismo apodo.</p>
+        <form id="choose-username-form">
+          <label class="sf-field">
+            Nombre de usuario
+            <input id="choose-username-input" class="sf-input" maxlength="21" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+            <span class="sf-field-hint">Letras sin tildes, números, _ y puntos, empezando con una letra.</span>
+          </label>
+          <button class="sf-btn sf-btn--primary sf-btn--lg sf-btn--block" type="submit">Guardar</button>
+        </form>
+        <p id="choose-username-error" class="sf-error" role="alert"></p>
+      </section>
+
+      <div id="menu" hidden>
+        <nav class="menu-nav" aria-label="Menú principal">
+          <button class="sf-wordmark home-logo" type="button" title="Ver la portada">StudyFocus</button>
+          <div class="sf-nav">
+            <button class="sf-nav-link" data-panel="rooms" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M14 12h.01" /></svg>
+              <span class="sf-nav-label">Salas</span>
+            </button>
+            <button class="sf-nav-link" data-panel="friends" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+              <span class="sf-nav-label">Amigos</span>
+              <span id="friends-badge" class="sf-badge sf-badge--count" hidden></span>
+            </button>
+            <button class="sf-nav-link" data-panel="stats" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-9" /></svg>
+              <span class="sf-nav-label">Estadísticas</span>
+            </button>
+            <button class="sf-nav-link" data-panel="shop" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0" /></svg>
+              <span class="sf-nav-label">Tienda</span>
+            </button>
+            <button class="sf-nav-link" data-panel="profile" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>
+              <span class="sf-nav-label">Perfil</span>
+            </button>
+          </div>
+          <span id="menu-user-name" class="menu-user"></span>
+        </nav>
+
+        <div class="menu-content">
+          <section class="menu-panel sf-panel" data-panel="rooms" aria-labelledby="rooms-title">
+            <header class="sf-panel-head">
+              <h2 id="rooms-title">Salas</h2>
+              <p>Elige dónde estudiar hoy y comparte el link con tus amigos.</p>
+            </header>
+
+            <div id="session-summary" class="session-summary sf-card" role="status" hidden>
+              <div>
+                <strong class="session-summary-title">Sesión terminada</strong>
+                <p id="session-summary-text"></p>
+              </div>
+              <div class="sf-row-actions">
+                <button id="session-summary-stats" class="sf-btn sf-btn--sm" type="button">Ver estadísticas</button>
+                <button id="session-summary-close" class="sf-btn sf-btn--sm sf-btn--quiet" type="button" aria-label="Cerrar el resumen">✕</button>
+              </div>
+            </div>
+
+            <div id="room-kinds" class="sf-rooms"></div>
+            <div class="panel-actions">
+              <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>
+              <p id="rooms-error" class="sf-error" role="alert"></p>
+            </div>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Unirse con un código</h3>
+              <form id="join-form" class="sf-inline">
+                <input id="code" class="sf-input sf-input--code" maxlength="6" autocomplete="off" aria-label="Código de sala" placeholder="ABC123" />
+                <button class="sf-btn" type="submit">Unirse</button>
               </form>
             </div>
-          </details>
+          </section>
 
-          <p id="account-error" role="alert"></p>
+          <section class="menu-panel sf-panel" data-panel="friends" aria-labelledby="friends-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="friends-title">Amigos</h2>
+              <p>Agrega a tus amigos para ver quién está estudiando y entrar a su sala.</p>
+            </header>
+
+            <div class="sf-code-card">
+              <span class="sf-code-card-label">Tu código de amigo</span>
+              <strong id="friend-code" class="sf-code">········</strong>
+              <button id="copy-friend-code" class="sf-btn sf-btn--sm" type="button">Copiar</button>
+            </div>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Agregar un amigo</h3>
+              <form id="add-friend-form" class="sf-inline">
+                <input id="add-friend-code" class="sf-input sf-input--code" maxlength="9" autocomplete="off" aria-label="Código de amigo" placeholder="ABCD-1234" />
+                <button class="sf-btn sf-btn--primary" type="submit">Enviar solicitud</button>
+              </form>
+              <p id="friends-message" class="form-message" role="status"></p>
+            </div>
+
+            <div id="received-section" class="sf-section" hidden>
+              <h3 class="sf-section-title">Solicitudes para ti</h3>
+              <ul id="received-list" class="sf-list"></ul>
+            </div>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Tus amigos</h3>
+              <p id="friends-empty" class="sf-row-detail">Todavía no tienes amigos agregados. Comparte tu código para empezar.</p>
+              <ul id="friends-list" class="sf-list"></ul>
+            </div>
+
+            <div id="sent-section" class="sf-section" hidden>
+              <h3 class="sf-section-title">Solicitudes enviadas</h3>
+              <ul id="sent-list" class="sf-list"></ul>
+            </div>
+          </section>
+
+          <section class="menu-panel sf-panel" data-panel="stats" aria-labelledby="stats-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="stats-title">Estadísticas</h2>
+              <p>Se cuenta solo el tiempo con el temporizador corriendo en un periodo de estudio.</p>
+            </header>
+
+            <div class="stat-cards">
+              <div class="stat-card sf-card">
+                <span class="stat-label">Hoy</span>
+                <strong id="stat-today">–</strong>
+              </div>
+              <div class="stat-card sf-card">
+                <span class="stat-label">Últimos 7 días</span>
+                <strong id="stat-week">–</strong>
+              </div>
+              <div class="stat-card sf-card">
+                <span class="stat-label">Racha</span>
+                <strong id="stat-streak">–</strong>
+              </div>
+              <div class="stat-card sf-card">
+                <span class="stat-label">En total</span>
+                <strong id="stat-total">–</strong>
+              </div>
+            </div>
+            <p id="stats-message" class="form-message" role="status"></p>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Esta semana</h3>
+              <div id="stat-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
+            </div>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Con quién estudiaste</h3>
+              <p id="companions-empty" class="sf-row-detail">Cuando estudies en la misma sala que alguien, aparecerá aquí.</p>
+              <ul id="companions-list" class="sf-list"></ul>
+            </div>
+          </section>
+
+          <section class="menu-panel sf-panel" data-panel="shop" aria-labelledby="shop-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="shop-title">Tienda</h2>
+              <span class="sf-badge sf-badge--soon">Próximamente</span>
+            </header>
+            <ul class="soon-list">
+              <li>Ganar monedas con tu tiempo de estudio.</li>
+              <li>Cambiarlas por ropa, gorros, emotes y mascotas para tu personaje.</li>
+            </ul>
+          </section>
+
+          <section class="menu-panel sf-panel" data-panel="profile" aria-labelledby="profile-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="profile-title">Perfil</h2>
+            </header>
+
+            <div class="sf-code-card">
+              <span class="sf-code-card-label">Tu nombre de usuario</span>
+              <strong id="profile-username" class="sf-code"></strong>
+            </div>
+
+            <form id="profile-form" class="profile-form">
+              <label class="sf-field">
+                Apodo
+                <input id="profile-name" class="sf-input" maxlength="20" autocomplete="nickname" required />
+                <span id="profile-name-hint" class="sf-field-hint">Es el que verán los demás en la sala. Puedes cambiarlo una vez al mes.</span>
+              </label>
+              <button id="profile-save" class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+            </form>
+            <p id="profile-message" class="form-message" role="status"></p>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Sobre ti</h3>
+              <p class="sf-row-detail">Lo ven los demás al hacer clic en ti dentro de una sala. Todo es opcional.</p>
+              <form id="about-form" class="profile-form">
+                <label class="sf-field">
+                  Qué estudias
+                  <input id="about-studies" class="sf-input" maxlength="80" placeholder="Ingeniería civil, medicina, 4° medio…" />
+                </label>
+                <label class="sf-field">
+                  Dónde estudias
+                  <input id="about-institution" class="sf-input" maxlength="80" placeholder="Universidad de Chile, Liceo…" />
+                </label>
+                <label class="sf-field">
+                  Nacionalidad
+                  <select id="about-country" class="sf-input"></select>
+                </label>
+                <label class="sf-field">
+                  Descripción
+                  <textarea id="about-bio" class="sf-input about-bio" maxlength="300" rows="4" placeholder="Algo sobre ti, lo que estás preparando o cómo te gusta estudiar."></textarea>
+                  <span id="about-bio-count" class="sf-field-hint"></span>
+                </label>
+                <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+              </form>
+              <p id="about-message" class="form-message" role="status"></p>
+            </div>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Cuenta</h3>
+              <p id="profile-email" class="sf-row-detail"></p>
+              <div>
+                <button id="logout" class="sf-btn" type="button">Cerrar sesión</button>
+              </div>
+            </div>
+          </section>
         </div>
-
-        <label class="field">
-          Tu apodo
-          <input id="nickname" maxlength="20" autocomplete="off" />
-        </label>
-        <button id="create" class="button button-primary" type="button">Crear una sala</button>
-
-        <div class="home-divider"><span>o únete con un código</span></div>
-
-        <div class="home-join">
-          <label class="field">
-            Código de sala
-            <input id="code" maxlength="6" autocomplete="off" />
-          </label>
-          <button id="join" class="button button-ghost" type="button">Unirse</button>
-        </div>
-
-        <p id="home-error" role="alert"></p>
       </div>
     </main>
 

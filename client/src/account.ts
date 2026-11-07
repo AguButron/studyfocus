@@ -1,26 +1,34 @@
-import { reconnect } from './network'
+// Las llamadas al servidor sobre la cuenta. La sesión vive en una cookie que esta página no puede leer.
+
+// Lo que cada persona cuenta de sí misma. Todo es opcional.
+export interface Profile {
+  name: string
+  username: string | null
+  bio: string | null
+  studies: string | null
+  institution: string | null
+  country: string | null // código de dos letras, como CL
+}
+
+export interface Account {
+  name: string // el apodo, que ven los demás en la sala
+  email: string | null
+  username: string | null // único y fijo; las cuentas de antes lo eligen al entrar
+  profile: Profile
+  nextNameChange: string | null // desde cuándo se puede volver a cambiar el apodo
+}
+
+export interface AccountInfo {
+  isAvailable: boolean
+  googleClientId: string | null
+  account: Account | null
+}
+
+type AccountResult = { account: Account; error: null } | { account: null; error: string }
 
 const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
 const GOOGLE_BUTTON_WIDTH = 300 // píxeles
-
-const accountSection = document.querySelector<HTMLDivElement>('#account')!
-const signedInSection = document.querySelector<HTMLDivElement>('#account-signed-in')!
-const signedOutSection = document.querySelector<HTMLDetailsElement>('#account-signed-out')!
-const accountNameText = document.querySelector<HTMLElement>('#account-name')!
-const logoutButton = document.querySelector<HTMLButtonElement>('#logout')!
-const googleButton = document.querySelector<HTMLDivElement>('#google-button')!
-const accountForm = document.querySelector<HTMLFormElement>('#account-form')!
-const emailInput = document.querySelector<HTMLInputElement>('#account-email')!
-const passwordInput = document.querySelector<HTMLInputElement>('#account-password')!
-const accountError = document.querySelector<HTMLParagraphElement>('#account-error')!
-const savedRoomsSection = document.querySelector<HTMLDivElement>('#saved-rooms')!
-const savedRoomsList = document.querySelector<HTMLDivElement>('#saved-rooms-list')!
-
-interface AccountInfo {
-  isAvailable: boolean
-  googleClientId: string | null
-  name: string | null
-}
+const CONNECTION_ERROR = 'No se pudo conectar con el servidor. Revisa tu conexión.'
 
 declare const google: {
   accounts: {
@@ -31,86 +39,47 @@ declare const google: {
   }
 }
 
-let nicknameInput: HTMLInputElement
-let pickRoom: (code: string) => void = () => {}
-
-async function showSavedRooms() {
-  savedRoomsList.replaceChildren()
-
-  let codes: string[] = []
+export async function loadAccount(): Promise<AccountInfo | null> {
   try {
-    const response = await fetch('/api/account/rooms')
-    if (response.ok) {
-      codes = (await response.json()).rooms
-    }
+    const response = await fetch('/api/account')
+    return response.ok ? await response.json() : null
   } catch {
-    // Sin la lista se puede entrar igual con el código
-  }
-
-  for (const code of codes) {
-    const button = document.createElement('button')
-    button.className = 'button button-ghost'
-    button.type = 'button'
-    button.textContent = code
-    button.addEventListener('click', () => pickRoom(code))
-    savedRoomsList.append(button)
+    return null
   }
 }
 
-function showAccount(name: string | null) {
-  signedInSection.hidden = name === null
-  signedOutSection.hidden = name !== null
-  accountNameText.textContent = name
-  savedRoomsSection.hidden = name === null
-
-  if (name) {
-    showSavedRooms()
-    if (!nicknameInput.value) {
-      nicknameInput.value = name
-    }
-  }
-}
-
-async function send(path: string, body: unknown = {}) {
-  accountError.textContent = ''
-
+export async function sendAccount(path: string, body: unknown = {}): Promise<AccountResult> {
   try {
     const response = await fetch(`/api/account/${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    const result: { name?: string; error?: string } = await response.json()
-    if (!response.ok) {
-      accountError.textContent = result.error ?? 'No se pudo completar.'
-      return null
-    }
-    return result
+    const result: Account & { error?: string } = await response.json()
+    if (!response.ok) return { account: null, error: result.error ?? 'No se pudo completar.' }
+    return { account: result, error: null }
   } catch {
-    accountError.textContent = 'No se pudo conectar. Puedes entrar con tu apodo.'
+    return { account: null, error: CONNECTION_ERROR }
+  }
+}
+
+export async function loadProfile(username: string): Promise<Profile | null> {
+  try {
+    const response = await fetch(`/api/profile?usuario=${encodeURIComponent(username)}`)
+    return response.ok ? await response.json() : null
+  } catch {
     return null
   }
 }
 
-async function submitAccount(path: string, body: unknown) {
-  const result = await send(path, body)
-  if (result?.name) {
-    passwordInput.value = ''
-    showAccount(result.name)
-    reconnect()
-  }
-}
-
-function setupGoogleButton(clientId: string) {
+// Solo aparece si el servidor tiene un ID de cliente de Google
+export function setupGoogleButton(container: HTMLElement, clientId: string, onCredential: (credential: string) => void) {
   const script = document.createElement('script')
   script.src = GOOGLE_SCRIPT_URL
   script.async = true
   script.addEventListener('load', () => {
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: ({ credential }) => submitAccount('google', { credential }),
-    })
-    google.accounts.id.renderButton(googleButton, {
+    google.accounts.id.initialize({ client_id: clientId, callback: ({ credential }) => onCredential(credential) })
+    google.accounts.id.renderButton(container, {
       theme: 'filled_black',
       text: 'continue_with',
       width: GOOGLE_BUTTON_WIDTH,
@@ -118,39 +87,5 @@ function setupGoogleButton(clientId: string) {
     })
   })
   document.head.append(script)
-  googleButton.hidden = false
-}
-
-export async function setupAccount(input: HTMLInputElement, onPickRoom: (code: string) => void) {
-  nicknameInput = input
-  pickRoom = onPickRoom
-
-  accountForm.addEventListener('submit', (event) => {
-    event.preventDefault()
-    const path = event.submitter?.dataset.path ?? 'login'
-    submitAccount(path, { email: emailInput.value, password: passwordInput.value })
-  })
-
-  logoutButton.addEventListener('click', async () => {
-    if (await send('logout')) {
-      showAccount(null)
-      reconnect()
-    }
-  })
-
-  let info: AccountInfo
-  try {
-    const response = await fetch('/api/account')
-    if (!response.ok) return
-    info = await response.json()
-  } catch {
-    return // Sin cuentas se puede estudiar igual
-  }
-  if (!info.isAvailable) return
-
-  accountSection.hidden = false
-  showAccount(info.name)
-  if (info.googleClientId) {
-    setupGoogleButton(info.googleClientId)
-  }
+  container.hidden = false
 }

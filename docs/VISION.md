@@ -85,7 +85,7 @@ El aviso con sonido y la reducción del redibujado, que importa más con varias 
 ### Ya estaban en el plan
 
 - Una cuenta personal por usuario, donde se guarde todo el progreso y quede registro de todo.
-- Salas que no se borren.
+- Salas que no se borren. Se descartó: las salas se borran al quedar vacías ([decisión](decisiones/0014-salas-vacias-se-borran.md)).
 - Estadísticas de estudio.
 - Chat de voz.
 

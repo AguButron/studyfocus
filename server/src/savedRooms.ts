@@ -1,26 +1,20 @@
 import { hasDatabase, query } from './database.ts'
 
-const MAX_LISTED_ROOMS = 20
+// Una sala se borra cuando queda vacía. Mientras tiene gente, su fila sirve para que, si el servidor
+// se reinicia (por ejemplo, al publicar un cambio), quienes estaban en ella puedan volver a entrar.
+// Lo que pasa dentro de la sala sigue en la memoria: aquí solo queda que existe, de quién es y de qué tipo.
 
-// Las salas de quien tiene cuenta se guardan para que su link siga sirviendo después de un reinicio.
-// Lo que pasa dentro de la sala sigue en la memoria: aquí solo queda que existe y de quién es.
+const ORPHAN_WAIT = 10 // minutos: tras un reinicio, lo que tienen para volver a su sala
 
-export async function isCodeSaved(code: string) {
-  if (!hasDatabase()) return false
-
-  const { rows } = await query('SELECT 1 FROM rooms WHERE code = $1', [code])
-  return rows.length > 0
-}
-
-export async function saveRoom(code: string, ownerId: string) {
+export async function saveRoom(code: string, ownerId: string, kind: string) {
   const { rows } = await query(
-    'INSERT INTO rooms (code, owner_id) VALUES ($1, $2) ON CONFLICT (code) DO NOTHING RETURNING code',
-    [code, ownerId],
+    'INSERT INTO rooms (code, owner_id, kind) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING RETURNING code',
+    [code, ownerId, kind],
   )
   return rows.length > 0
 }
 
-// Marca la sala como usada, y así la lista de cada persona muestra primero las más recientes
+// Marca la sala como usada. Falso si no existe: nunca existió o ya quedó vacía.
 export async function touchSavedRoom(code: string) {
   if (!hasDatabase()) return false
 
@@ -28,10 +22,19 @@ export async function touchSavedRoom(code: string) {
   return rows.length > 0
 }
 
-export async function listRooms(ownerId: string) {
-  const { rows } = await query<{ code: string }>(
-    'SELECT code FROM rooms WHERE owner_id = $1 ORDER BY last_used_at DESC LIMIT $2',
-    [ownerId, MAX_LISTED_ROOMS],
+export async function deleteSavedRoom(code: string) {
+  if (!hasDatabase()) return
+
+  await query('DELETE FROM rooms WHERE code = $1', [code])
+}
+
+// Las salas que tenían gente cuando el servidor se reinició y a las que nadie volvió
+export async function deleteAbandonedRooms(activeCodes: string[]) {
+  if (!hasDatabase()) return 0
+
+  const { rowCount } = await query(
+    `DELETE FROM rooms WHERE code <> ALL($1::text[]) AND last_used_at < now() - make_interval(mins => $2)`,
+    [activeCodes, ORPHAN_WAIT],
   )
-  return rows.map((row) => row.code)
+  return rowCount ?? 0
 }

@@ -56,7 +56,7 @@ El servidor escucha en el puerto 3000.
 
 ### Cuentas
 
-Son opcionales: sin configurarlas se puede estudiar igual, entrando con un apodo. Para activarlas, copia `server/.env.example` como `server/.env` y completa:
+Para entrar a una sala hay que iniciar sesión, así que el servidor necesita una base de datos. Copia `server/.env.example` como `server/.env` y completa:
 
 - `DATABASE_URL`: la dirección de una base de datos PostgreSQL. Las tablas se crean solas.
 - `GOOGLE_CLIENT_ID`: el ID de cliente de Google. Sin él, solo funcionan las cuentas locales.
