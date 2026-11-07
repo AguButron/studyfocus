@@ -4,16 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "start": "node src/index.ts",
     "build": "tsc"
   },
   "dependencies": {
+    "google-auth-library": "^11.3.2",
+    "pg": "^8.23.1",
     "sirv": "^3.0.2",
     "socket.io": "^4.8.4"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

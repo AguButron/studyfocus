@@ -92,6 +92,41 @@
         <h1 class="brand">StudyFocus</h1>
         <p class="home-tagline">Tu mesa de estudio con amigos, estén donde estén.</p>
 
+        <div id="account" hidden>
+          <div id="account-signed-in" hidden>
+            <span>Sesión iniciada como <strong id="account-name"></strong></span>
+            <button id="logout" class="button button-ghost" type="button">Cerrar sesión</button>
+          </div>
+
+          <div id="saved-rooms" hidden>
+            <span class="muted">Las salas que crees quedan guardadas en tu cuenta.</span>
+            <div id="saved-rooms-list"></div>
+          </div>
+
+          <details id="account-signed-out" hidden>
+            <summary>Iniciar sesión o crear una cuenta (opcional)</summary>
+            <div class="account-options">
+              <div id="google-button" hidden></div>
+              <form id="account-form">
+                <label class="field">
+                  Correo
+                  <input id="account-email" type="email" maxlength="254" autocomplete="email" required />
+                </label>
+                <label class="field">
+                  Contraseña
+                  <input id="account-password" type="password" maxlength="128" autocomplete="current-password" required />
+                </label>
+                <div class="study-actions">
+                  <button class="button button-primary" type="submit" data-path="login">Entrar</button>
+                  <button class="button button-ghost" type="submit" data-path="register">Crear cuenta</button>
+                </div>
+              </form>
+            </div>
+          </details>
+
+          <p id="account-error" role="alert"></p>
+        </div>
+
         <label class="field">
           Tu apodo
           <input id="nickname" maxlength="20" autocomplete="off" />

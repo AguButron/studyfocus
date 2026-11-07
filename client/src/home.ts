@@ -1,3 +1,4 @@
+import { setupAccount } from './account'
 import { createRoom, joinRoom, resumeSavedRoom, type ResumedPlayer } from './network'
 
 const home = document.querySelector<HTMLDivElement>('#home')!
@@ -59,17 +60,19 @@ export async function showHome(onEnter: (nickname: string, resumed: ResumedPlaye
     enter(await createRoom(nickname), nickname)
   })
 
-  joinButton.addEventListener('click', async () => {
+  async function join(code: string) {
     const nickname = readNickname()
     if (!nickname) return
 
-    const code = codeInput.value.trim().toUpperCase()
     if (await joinRoom(code, nickname)) {
       enter(code, nickname)
     } else {
       errorText.textContent = 'Esa sala no existe o está llena.'
     }
-  })
+  }
+
+  joinButton.addEventListener('click', () => join(codeInput.value.trim().toUpperCase()))
+  setupAccount(nicknameInput, join)
 
   if (!codeFromUrl) return
 

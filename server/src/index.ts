@@ -4,9 +4,10 @@ import { createServer, type RequestListener } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import sirv from 'sirv'
 import { Server, type Socket } from 'socket.io'
+import { createAccountsHandler, findAccount } from './accounts.ts'
+import { isCodeSaved, saveRoom, touchSavedRoom } from './savedRooms.ts'
 
 const PORT = Number(process.env.PORT) || 3000 // el hosting indica el puerto con esta variable
-const DEV_CLIENT_URL = 'http://localhost:5173' // en producción, la página viene de este mismo servidor
 const CLIENT_DIR = fileURLToPath(new URL('../../client/dist', import.meta.url))
 const CODE_LENGTH = 6
 const MAX_NICKNAME_LENGTH = 20
@@ -51,13 +52,43 @@ const sessions = new Map<string, Session>()
 
 function createRoomCode() {
   let code = ''
-  do {
-    code = ''
-    for (let i = 0; i < CODE_LENGTH; i++) {
-      code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
-    }
-  } while (rooms.has(code))
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]
+  }
   return code
+}
+
+// Si falla la base de datos, la sala se crea igual, solo que sin guardarse
+async function createFreeRoomCode(accountId: string | null) {
+  while (true) {
+    const code = createRoomCode()
+    if (rooms.has(code)) continue
+
+    try {
+      if (accountId ? await saveRoom(code, accountId) : !(await isCodeSaved(code))) return code
+    } catch (error) {
+      console.error('No se pudo guardar la sala:', error)
+      return code
+    }
+  }
+}
+
+// Una sala guardada puede no estar en la memoria: tras un reinicio, o si quedó vacía
+async function findRoom(code: string) {
+  let isSaved = false
+  try {
+    isSaved = await touchSavedRoom(code)
+  } catch (error) {
+    console.error('No se pudo revisar la sala guardada:', error)
+  }
+
+  const room = rooms.get(code)
+  if (room || !isSaved) return room
+
+  const loadedRoom: Room = new Map()
+  rooms.set(code, loadedRoom)
+  console.log(`Sala guardada abierta: ${code}`)
+  return loadedRoom
 }
 
 function parseNickname(value: unknown) {
@@ -125,11 +156,31 @@ function createPageHandler(): RequestListener {
   }
 }
 
-const httpServer = createServer(createPageHandler())
+const handleAccounts = createAccountsHandler()
+const handlePage = createPageHandler()
 
+const httpServer = createServer((request, response) => {
+  if (request.url?.startsWith('/api/')) {
+    handleAccounts(request, response)
+  } else {
+    handlePage(request, response)
+  }
+})
+
+// La página viene de este mismo servidor, o de Vite, que le pasa la conexión mientras se desarrolla
 const io = new Server(httpServer, {
-  cors: { origin: DEV_CLIENT_URL },
   maxHttpBufferSize: MAX_MESSAGE_SIZE,
+})
+
+// La cuenta se lee al conectarse: al iniciar o cerrar sesión, el cliente se reconecta
+io.use(async (socket, next) => {
+  try {
+    socket.data.accountId = (await findAccount(socket.handshake.headers.cookie))?.id ?? null
+  } catch (error) {
+    console.error('No se pudo leer la cuenta al conectarse:', error)
+    socket.data.accountId = null
+  }
+  next()
 })
 
 function removeFromRoom({ token, player, code }: Session) {
@@ -160,6 +211,7 @@ io.on('connection', (socket) => {
   let currentCode: string | null = null
   let session: Session | null = null
   let lastMoveAt = 0
+  let isEntering = false // crear o unirse esperan a la base de datos: evita entrar dos veces
 
   function enterRoom(code: string, room: Room, token: string) {
     socket.emit('players:init', [...room.values()])
@@ -171,8 +223,8 @@ io.on('connection', (socket) => {
     sessions.set(token, session)
   }
 
-  socket.on('room:create', (value: unknown, token: unknown, reply: unknown) => {
-    if (typeof reply !== 'function' || currentCode) return
+  socket.on('room:create', async (value: unknown, token: unknown, reply: unknown) => {
+    if (typeof reply !== 'function' || currentCode || isEntering) return
 
     const nickname = parseNickname(value)
     if (!nickname || !isNewToken(token)) {
@@ -180,27 +232,40 @@ io.on('connection', (socket) => {
       return
     }
 
+    isEntering = true
+    const code = await createFreeRoomCode(socket.data.accountId)
+    isEntering = false
+    if (!socket.connected || !isNewToken(token)) return
+
     player.nickname = nickname
-    const code = createRoomCode()
     const room: Room = new Map()
     rooms.set(code, room)
     enterRoom(code, room, token)
-    console.log(`Sala creada: ${code}`)
+    console.log(`Sala creada: ${code}${socket.data.accountId ? ' (guardada)' : ''}`)
     reply(code)
   })
 
-  socket.on('room:join', (code: unknown, value: unknown, token: unknown, reply: unknown) => {
-    if (typeof reply !== 'function' || currentCode) return
+  socket.on('room:join', async (code: unknown, value: unknown, token: unknown, reply: unknown) => {
+    if (typeof reply !== 'function' || currentCode || isEntering) return
 
     const nickname = parseNickname(value)
-    const room = typeof code === 'string' ? rooms.get(code) : undefined
-    if (!nickname || !isNewToken(token) || !room || room.size >= MAX_PLAYERS_PER_ROOM) {
+    if (!nickname || !isNewToken(token) || typeof code !== 'string' || code.length !== CODE_LENGTH) {
+      reply(false)
+      return
+    }
+
+    isEntering = true
+    const room = await findRoom(code)
+    isEntering = false
+    if (!socket.connected || !isNewToken(token)) return
+
+    if (!room || room.size >= MAX_PLAYERS_PER_ROOM) {
       reply(false)
       return
     }
 
     player.nickname = nickname
-    enterRoom(code as string, room, token)
+    enterRoom(code, room, token)
     reply(true)
   })
 

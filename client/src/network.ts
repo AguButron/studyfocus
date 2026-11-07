@@ -2,7 +2,6 @@ import { io } from 'socket.io-client'
 import type { ActivityKind } from './activity'
 import type { Period } from './timer'
 
-const DEV_SERVER_URL = 'http://localhost:3000'
 const SEND_INTERVAL = 66 // milisegundos, unas 15 veces por segundo
 const SESSION_KEY = 'studyfocus.session'
 const CONNECT_TIMEOUT = 3000 // milisegundos
@@ -21,8 +20,9 @@ export interface ResumedPlayer {
   z: number
 }
 
-// En producción, el servidor es el mismo que entrega esta página
-export const socket = import.meta.env.DEV ? io(DEV_SERVER_URL) : io()
+// El servidor es el mismo que entrega esta página. Mientras se desarrolla, Vite le pasa la conexión,
+// así la cookie de la cuenta llega igual que en producción
+export const socket = io()
 
 let lastSentAt = 0
 let lastX = NaN
@@ -69,6 +69,14 @@ export async function joinRoom(code: string, nickname: string) {
     startSession(code, nickname)
   }
   return joined
+}
+
+// El servidor lee la cuenta al conectarse: hay que reconectar al iniciar o cerrar sesión
+export function reconnect() {
+  if (session) return // ya en una sala, la cuenta vale desde la próxima vez
+
+  socket.disconnect()
+  socket.connect()
 }
 
 function waitForConnection() {

@@ -12,7 +12,9 @@ La visión completa y las ideas a futuro están en [docs/VISION.md](docs/VISION.
 
 ## Estado
 
-En desarrollo, fase 5. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+MVP completo, en desarrollo la fase 6. El avance está en [docs/ROADMAP.md](docs/ROADMAP.md).
+
+Publicada en <https://studyfocus-yukw.onrender.com/>. Con el plan gratis se duerme sin uso, así que la primera visita puede tardar cerca de un minuto.
 
 ## Objetivo del MVP
 
@@ -51,6 +53,15 @@ npm run dev
 ```
 
 El servidor escucha en el puerto 3000.
+
+### Cuentas
+
+Son opcionales: sin configurarlas se puede estudiar igual, entrando con un apodo. Para activarlas, copia `server/.env.example` como `server/.env` y completa:
+
+- `DATABASE_URL`: la dirección de una base de datos PostgreSQL. Las tablas se crean solas.
+- `GOOGLE_CLIENT_ID`: el ID de cliente de Google. Sin él, solo funcionan las cuentas locales.
+
+En el hosting, estas mismas variables se definen en su panel. En producción no se lee el archivo `.env`.
 
 ## Ejecutar como en producción
 

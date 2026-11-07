@@ -110,6 +110,7 @@ kbd {
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow-y: auto;
   background: radial-gradient(circle at 50% 0%, #2a2b3f, var(--background) 65%);
 }
 
@@ -119,6 +120,7 @@ kbd {
   gap: 16px;
   width: 100%;
   max-width: 420px;
+  margin: auto; /* centrada, pero sin cortarse arriba si no cabe */
   padding: 32px;
   border: 1px solid var(--surface-raised);
   border-radius: 16px;
@@ -182,6 +184,71 @@ kbd {
 .home-join .field {
   flex: 1;
   min-width: 0;
+}
+
+#account-signed-in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+#logout {
+  white-space: nowrap;
+}
+
+#saved-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+#saved-rooms-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#saved-rooms-list .button {
+  padding: 6px 12px;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.05em;
+}
+
+#account-signed-out summary {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.account-options,
+#account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-options {
+  margin-top: 12px;
+}
+
+#account-form .study-actions .button {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: inherit;
+}
+
+#account-error {
+  margin: 4px 0 0;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+#account-error:empty {
+  display: none;
 }
 
 #home-error {

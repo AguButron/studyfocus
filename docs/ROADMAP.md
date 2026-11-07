@@ -82,22 +82,36 @@ Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minuto
 
 **Terminada cuando:** dos amigos se sientan en la misma mesa, cada uno usa su temporizador con sus propios minutos, puede pausarlo, no lo pierde al recargar, ve en qué periodo está el otro y qué está haciendo, y el consumo baja mientras estudian. El detalle de las tareas pendientes está en la [visión del proyecto](VISION.md#lo-siguiente).
 
-## Fase 5: Publicar (actual)
+## Fase 5: Publicar (completada)
 
 La página en internet, con CI y amigos probándola. **Al terminar esta fase, el MVP está completo.**
 
 - [x] [Entregar la página y el servidor desde un solo servicio](decisiones/0007-un-solo-servicio.md), con el puerto configurable
 - [x] Compilar el cliente y revisar el servidor en CI, en cada push
-- [ ] Elegir el hosting y crear el servicio
-- [ ] Probar la página publicada con el HTTPS y los WebSocket reales
-- [ ] Probarla con amigos desde sus casas, incluidos cortes de conexión
-- [ ] Corregir lo que aparezca en esa prueba
+- [x] Elegir el hosting (Render, plan gratis) y crear el servicio
+- [x] Probar la página publicada con el HTTPS y los WebSocket reales
+- [x] Probarla con amigos desde sus casas, incluidos cortes de conexión
+- [x] Corregir lo que aparezca en esa prueba
 
 **Terminada cuando:** un amigo abre el link desde su casa, se sienta en mi mesa y estudiamos juntos una sesión completa sin problemas.
 
-## Fase 6: Crecer
+## Fase 6: Crecer (actual)
 
-Cuentas, salas guardadas y estadísticas; animaciones del personaje según su periodo de estudio o descanso; luego, chat de voz. Avatares, moneda, tienda y espacios propios se describen en la [visión del proyecto](VISION.md).
+Cuentas, salas guardadas y estadísticas. Hoy nada sobrevive a un reinicio del servidor, así que lo primero es tener dónde guardar. Entrar con un link y un apodo, sin cuenta, debe seguir funcionando: la cuenta agrega cosas, pero no es un requisito para estudiar con un amigo.
+
+- [x] Conectar el servidor a una base de datos, con la dirección en una variable de entorno
+- [x] [Crear una cuenta local o iniciar sesión con Google](decisiones/0008-cuentas.md), sin quitar la entrada con apodo
+- [x] Crear la base de datos en Neon y probar las cuentas locales contra ella
+- [ ] Probar las cuentas en la página publicada
+- [ ] Recuperar una contraseña olvidada y verificar el correo
+- [x] Guardar las salas de quien tiene cuenta, para que su link siga sirviendo tras un reinicio
+- [ ] Contar en el servidor el tiempo de estudio de cada cuenta
+- [ ] Mostrar las estadísticas de estudio y un resumen al terminar
+- [ ] Mostrar una descripción fija en la tarjeta de cada persona
+
+**Terminada cuando:** inicio sesión desde otro dispositivo, vuelvo a mi sala con su mismo link y veo cuánto he estudiado, aunque el servidor se haya reiniciado.
+
+El inicio de sesión con Google quedó pospuesto: el código está, pero el botón no aparece hasta definir `GOOGLE_CLIENT_ID`. Después vienen las animaciones según el periodo y el chat de voz. Avatares, moneda, tienda y espacios propios se describen en la [visión del proyecto](VISION.md).
 
 ## Cómo trabajamos cada tarea
 
