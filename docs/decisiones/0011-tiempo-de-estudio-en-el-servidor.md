@@ -24,7 +24,7 @@ Las estadísticas, y más adelante las monedas, dependen del tiempo de estudio. 
 
 ## Consecuencias
 
-- Con la pestaña abierta y el temporizador corriendo se suma tiempo aunque no se esté estudiando. Antes de dar monedas por el tiempo, hará falta algo más, como una confirmación ocasional o un límite diario.
+- Con la pestaña abierta y el temporizador corriendo se suma tiempo aunque no se esté estudiando, pero a lo más un periodo: al terminar el descanso el temporizador se detiene hasta que la persona pulse Iniciar. Lo hace la página, así que una página alterada podría saltárselo. Antes de dar monedas por el tiempo, conviene que el servidor también lo exija, o un límite diario.
 - Recargar la página no corta la cuenta: vuelve a contar en cuanto la conexión regresa, dentro del mismo periodo.
 - Si el servidor se reinicia, por ejemplo al publicar una versión nueva, cada persona vuelve a su silla y con su periodo en curso: la tabla `active_sessions` guarda la sala, la silla y lo estudiado del periodo poco después de cada cambio, y al menos cada minuto. Se pierde a lo más ese minuto y el rato en que el servidor estuvo apagado.
 - Un tramo que cruza la medianoche cuenta para el día en que empezó.

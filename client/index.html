@@ -16,9 +16,9 @@
     <div id="app"></div>
 
     <header id="hud" class="sf-hud" hidden>
-      <span class="sf-wordmark">StudyFocus</span>
+      <button class="sf-wordmark room-logo" type="button" title="Volver al menú">StudyFocus</button>
       <div class="sf-hud-group">
-        <span class="sf-hud-label">Sala</span>
+        <span id="hud-room-label" class="sf-hud-label">Sala</span>
         <span id="room-code" class="sf-hud-code"></span>
         <button id="copy-link" class="sf-btn sf-btn--sm" type="button">Copiar link</button>
         <button id="leave-room" class="sf-btn sf-btn--sm" type="button">Salir</button>
@@ -29,10 +29,20 @@
       </div>
     </header>
 
+    <dialog id="leave-confirm" class="leave-confirm sf-card" aria-labelledby="leave-confirm-title">
+      <h2 id="leave-confirm-title">¿Salir de la sesión?</h2>
+      <p>Estás en medio de un periodo de estudio. Si sales ahora, ese tiempo no cuenta.</p>
+      <div class="sf-timer-actions">
+        <button id="leave-confirm-yes" class="sf-btn sf-btn--danger" type="button">Sí, salir</button>
+        <button id="leave-confirm-no" class="sf-btn sf-btn--primary" type="button" autofocus>Seguir estudiando</button>
+      </div>
+    </dialog>
+
     <p id="hint" class="sf-tip" hidden></p>
 
     <section id="study" aria-label="Sesión de estudio" hidden>
       <div id="study-panel" class="sf-timer">
+        <button class="sf-wordmark room-logo study-panel-logo" type="button" title="Volver al menú">StudyFocus</button>
         <div class="sf-timer-head">
           <span id="timer-period" class="sf-badge sf-badge--period"></span>
           <button id="stand-up" class="sf-btn sf-btn--sm" type="button">Levantarte <kbd class="sf-kbd">E</kbd></button>
@@ -88,7 +98,10 @@
     </section>
 
     <div id="player-card" class="sf-player" role="status" hidden>
-      <strong id="player-card-name" class="sf-player-name"></strong>
+      <div class="player-card-head">
+        <img id="player-card-photo" class="character-photo character-photo--card" alt="" />
+        <strong id="player-card-name" class="sf-player-name"></strong>
+      </div>
       <span id="player-card-status" class="sf-presence"></span>
       <span id="player-card-activity" class="sf-row-detail"></span>
       <span id="player-card-studies" class="player-card-about" hidden></span>
@@ -122,6 +135,10 @@
             </span>
           </label>
           <p id="music-error" class="sf-error" role="alert"></p>
+          <div class="music-recommendations">
+            <span class="sf-field-hint">¿No sabes qué escuchar?</span>
+            <ul id="music-recommendations" class="music-recommendation-list"></ul>
+          </div>
         </form>
       </div>
 
@@ -275,11 +292,25 @@
 
       <div id="menu" hidden>
         <nav class="menu-nav" aria-label="Menú principal">
-          <button class="sf-wordmark home-logo" type="button" title="Ver la portada">StudyFocus</button>
+          <div class="menu-nav-top">
+            <button class="sf-wordmark home-logo" type="button" title="Ir a Inicio">StudyFocus</button>
+            <button id="menu-nav-toggle" class="menu-nav-toggle" type="button" aria-expanded="true" aria-label="Achicar el menú" title="Achicar el menú">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
+            </button>
+          </div>
           <div class="sf-nav">
+            <button class="sf-nav-link" data-panel="home" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z" /></svg>
+              <span class="sf-nav-label">Inicio</span>
+              <span id="home-badge" class="sf-badge sf-badge--count" hidden></span>
+            </button>
+            <button class="sf-nav-link" data-panel="calendar" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /></svg>
+              <span class="sf-nav-label">Calendario</span>
+            </button>
             <button class="sf-nav-link" data-panel="rooms" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M14 12h.01" /></svg>
-              <span class="sf-nav-label">Salas</span>
+              <span class="sf-nav-label">Estudiar</span>
             </button>
             <button class="sf-nav-link" data-panel="friends" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -299,14 +330,82 @@
               <span class="sf-nav-label">Perfil</span>
             </button>
           </div>
-          <span id="menu-user-name" class="menu-user"></span>
+          <span class="menu-user">
+            <img id="menu-user-photo" class="character-photo character-photo--nav" alt="" />
+            <span id="menu-user-name"></span>
+          </span>
         </nav>
 
         <div class="menu-content">
+          <section class="menu-panel sf-panel" data-panel="home" aria-labelledby="home-title" hidden>
+            <header class="sf-panel-head home-head">
+              <div>
+                <h2 id="home-title">Hola</h2>
+                <p id="home-date"></p>
+              </div>
+              <dl class="home-stats" aria-label="Tu estudio">
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Hoy</dt>
+                  <dd id="home-today">–</dd>
+                </div>
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Racha</dt>
+                  <dd id="home-streak">–</dd>
+                </div>
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Últimos 7 días</dt>
+                  <dd id="home-week">–</dd>
+                </div>
+              </dl>
+            </header>
+
+            <div class="upcoming sf-card">
+              <div class="upcoming-head">
+                <h3>Próximos 7 días</h3>
+                <div class="upcoming-actions">
+                  <button class="sf-btn sf-btn--sm" type="button" data-open-panel="calendar">Ver calendario</button>
+                  <button id="upcoming-add" class="sf-btn sf-btn--sm sf-btn--primary" type="button">+ Agregar</button>
+                </div>
+              </div>
+              <div id="upcoming-list" class="upcoming-list"></div>
+              <p id="upcoming-empty" class="sf-row-detail" hidden>No tienes nada para los próximos 7 días.</p>
+              <p id="upcoming-error" class="sf-error" role="alert"></p>
+            </div>
+          </section>
+
+          <section class="menu-panel sf-panel" data-panel="calendar" aria-labelledby="calendar-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="calendar-title">Calendario</h2>
+              <p>Tus pruebas, tareas, trabajos, presentaciones y recordatorios.</p>
+            </header>
+
+            <div class="calendar sf-card">
+              <div class="calendar-bar">
+                <div class="calendar-nav">
+                  <button id="calendar-prev" class="sf-btn sf-btn--sm calendar-arrow" type="button" aria-label="Anterior">‹</button>
+                  <button id="calendar-today" class="sf-btn sf-btn--sm" type="button">Hoy</button>
+                  <button id="calendar-next" class="sf-btn sf-btn--sm calendar-arrow" type="button" aria-label="Siguiente">›</button>
+                  <strong id="calendar-label" class="calendar-label" aria-live="polite"></strong>
+                </div>
+                <div class="calendar-tools">
+                  <div class="sf-seg calendar-views">
+                    <button data-calendar-view="week" type="button">Semana</button>
+                    <button data-calendar-view="month" type="button">Mes</button>
+                    <button data-calendar-view="year" type="button">Año</button>
+                  </div>
+                  <button id="agenda-add" class="sf-btn sf-btn--primary" type="button">+ Agregar</button>
+                </div>
+              </div>
+              <div id="calendar-grid" class="calendar-grid"></div>
+              <p id="calendar-error" class="sf-error" role="alert"></p>
+            </div>
+
+          </section>
+
           <section class="menu-panel sf-panel" data-panel="rooms" aria-labelledby="rooms-title">
             <header class="sf-panel-head">
-              <h2 id="rooms-title">Salas</h2>
-              <p>Elige dónde estudiar hoy y comparte el link con tus amigos.</p>
+              <h2 id="rooms-title">Estudiar</h2>
+              <p>Estudia solo o arma una sala y comparte el link con tus amigos.</p>
             </header>
 
             <div id="session-summary" class="session-summary sf-card" role="status" hidden>
@@ -320,6 +419,18 @@
               </div>
             </div>
 
+            <div class="sf-section">
+              <h3 class="sf-section-title">Solo</h3>
+              <div class="study-solo sf-card">
+                <div>
+                  <strong>Pantalla simple</strong>
+                  <p class="sf-row-detail">Tu temporizador y tu música, sin la sala 3D.</p>
+                </div>
+                <button id="study-solo" class="sf-btn sf-btn--primary" type="button">Estudiar solo</button>
+              </div>
+            </div>
+
+            <h3 class="sf-section-title">Con amigos</h3>
             <div id="room-kinds" class="sf-rooms"></div>
             <div class="panel-actions">
               <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>
@@ -427,6 +538,16 @@
               <h2 id="profile-title">Perfil</h2>
             </header>
 
+            <div class="character-card sf-card">
+              <img id="character-photo" class="character-photo character-photo--large" alt="Tu personaje" />
+              <div class="character-choice">
+                <h3 class="sf-section-title">Tu personaje</h3>
+                <p class="sf-row-detail">Tu foto es tu personaje. Más adelante podrás crearlo a tu gusto.</p>
+                <div id="character-colors" class="character-colors" role="group" aria-label="Color"></div>
+                <p id="character-message" class="form-message" role="status"></p>
+              </div>
+            </div>
+
             <div class="sf-code-card">
               <span class="sf-code-card-label">Tu nombre de usuario</span>
               <strong id="profile-username" class="sf-code"></strong>
@@ -477,8 +598,89 @@
             </div>
           </section>
         </div>
+
+        <aside id="friends-drawer" class="friends-drawer" aria-label="Tus amigos" data-open="true">
+          <button id="friends-drawer-toggle" class="friends-drawer-toggle" type="button" aria-expanded="true" aria-controls="friends-drawer-body">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            <span class="friends-drawer-label">Amigos</span>
+            <span id="friends-drawer-count" class="sf-badge friends-drawer-count" hidden></span>
+            <svg class="friends-drawer-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+          </button>
+          <ul id="drawer-online-photos" class="drawer-online-photos" aria-label="Amigos en línea"></ul>
+          <div id="friends-drawer-body" class="friends-drawer-body">
+            <p id="drawer-empty" class="sf-row-detail">Aún no tienes amigos. Agrégalos desde Amigos.</p>
+            <h3 id="drawer-online-title" class="sf-section-title" hidden></h3>
+            <ul id="drawer-online" class="drawer-list"></ul>
+            <h3 id="drawer-offline-title" class="sf-section-title" hidden></h3>
+            <ul id="drawer-offline" class="drawer-list"></ul>
+          </div>
+        </aside>
       </div>
     </main>
+
+    <dialog id="agenda-dialog" class="agenda-dialog sf-card" aria-labelledby="agenda-dialog-title">
+      <form id="agenda-form" class="agenda-form">
+        <h2 id="agenda-dialog-title">Agregar a tu agenda</h2>
+        <label class="sf-field">
+          Tipo
+          <select id="agenda-kind" class="sf-input"></select>
+        </label>
+        <label class="sf-field">
+          Título
+          <input id="agenda-title" class="sf-input" maxlength="100" autocomplete="off" placeholder="Certamen 2 de cálculo" required />
+        </label>
+        <div class="agenda-form-row">
+          <label class="sf-field">
+            Fecha
+            <input id="agenda-date" class="sf-input" type="date" required />
+          </label>
+          <label class="sf-field">
+            Hora (opcional)
+            <input id="agenda-time" class="sf-input" type="time" />
+          </label>
+        </div>
+        <label class="sf-field">
+          Avisarme
+          <select id="agenda-remind" class="sf-input">
+            <option value="">Sin aviso</option>
+            <option value="0">El mismo día</option>
+            <option value="1">1 día antes</option>
+            <option value="2">2 días antes</option>
+            <option value="3">3 días antes</option>
+            <option value="7">1 semana antes</option>
+          </select>
+          <span class="sf-field-hint">Desde ese día se suma al número junto a Inicio, hasta la fecha.</span>
+        </label>
+        <label class="sf-field">
+          Notas (opcional)
+          <textarea id="agenda-notes" class="sf-input" maxlength="500" rows="3" placeholder="Materia, sala, lo que hay que llevar…"></textarea>
+        </label>
+        <p id="agenda-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button id="agenda-save" class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+          <button id="agenda-cancel" class="sf-btn" type="button">Cancelar</button>
+          <span class="agenda-form-spacer"></span>
+          <button id="agenda-done" class="sf-btn" type="button" hidden>Marcar como hecha</button>
+          <button id="agenda-delete" class="sf-btn" type="button" hidden>Borrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="profile-dialog" class="profile-dialog sf-card" aria-labelledby="profile-dialog-name">
+      <button id="profile-dialog-close" class="sf-btn sf-btn--sm sf-btn--quiet profile-dialog-close" type="button" aria-label="Cerrar">✕</button>
+      <div class="profile-dialog-head">
+        <div id="profile-dialog-photo"></div>
+        <div class="profile-dialog-names">
+          <h2 id="profile-dialog-name"></h2>
+          <span id="profile-dialog-username" class="sf-row-detail"></span>
+          <span id="profile-dialog-presence" class="sf-presence" hidden></span>
+        </div>
+      </div>
+      <p id="profile-dialog-studies" class="profile-dialog-studies" hidden></p>
+      <p id="profile-dialog-bio" class="profile-dialog-bio" hidden></p>
+      <p id="profile-dialog-empty" class="sf-row-detail" hidden>Todavía no ha contado nada sobre sí.</p>
+      <button id="profile-dialog-join" class="sf-btn sf-btn--primary" type="button" hidden>Entrar a su sala</button>
+    </dialog>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

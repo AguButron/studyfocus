@@ -2,6 +2,7 @@ import { createHash, randomBytes, scrypt, timingSafeEqual, type ScryptOptions } 
 import { Resolver } from 'node:dns/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { OAuth2Client } from 'google-auth-library'
+import { describeCharacter, parseCharacter } from './character.ts'
 import { hasDatabase, query } from './database.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
@@ -44,8 +45,8 @@ const INVALID_USERNAME = `El nombre de usuario debe tener entre ${MIN_USERNAME_L
 const TAKEN_USERNAME = 'Ese nombre de usuario ya está ocupado.'
 const TOO_MANY_ATTEMPTS = 'Demasiados intentos. Prueba de nuevo en unos minutos.'
 const WRONG_LOGIN = 'El usuario o la contraseña no coinciden.'
-const PROFILE_COLUMNS = 'users.bio, users.studies, users.institution, users.country'
-const ACCOUNT_COLUMNS = `users.id, users.name, users.email, users.username, users.name_changed_at, ${PROFILE_COLUMNS}`
+const PROFILE_COLUMNS = 'users.id, users.bio, users.studies, users.institution, users.country, users.character_look'
+const ACCOUNT_COLUMNS = `users.name, users.email, users.username, users.name_changed_at, ${PROFILE_COLUMNS}`
 
 export interface Account {
   id: string
@@ -57,9 +58,12 @@ export interface Account {
   studies: string | null
   institution: string | null
   country: string | null // código de dos letras, como CL
+  character_look: unknown
 }
 
-function describeProfile(person: Pick<Account, 'name' | 'username' | 'bio' | 'studies' | 'institution' | 'country'>) {
+type PublicPerson = Pick<Account, 'id' | 'name' | 'username' | 'bio' | 'studies' | 'institution' | 'country' | 'character_look'>
+
+function describeProfile(person: PublicPerson) {
   return {
     name: person.name,
     username: person.username,
@@ -67,6 +71,7 @@ function describeProfile(person: Pick<Account, 'name' | 'username' | 'bio' | 'st
     studies: person.studies,
     institution: person.institution,
     country: person.country,
+    character: describeCharacter(person.character_look, person.id),
   }
 }
 
@@ -96,6 +101,7 @@ function describeAccount(account: Account) {
     email: account.email,
     username: account.username,
     profile: describeProfile(account),
+    character: describeCharacter(account.character_look, account.id),
     nextNameChange: nextNameChange && nextNameChange > new Date() ? nextNameChange.toISOString() : null,
   }
 }
@@ -403,13 +409,26 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     return
   }
 
+  // Cómo se ve tu personaje, y con él tu foto
+  if (route === 'POST /api/account/character') {
+    const account = await requireAccount(request)
+    const character = parseCharacter(await readBody(request))
+
+    const { rows } = await query<Account>(
+      `UPDATE users SET character_look = $1 WHERE id = $2 RETURNING ${ACCOUNT_COLUMNS.replaceAll('users.', '')}`,
+      [JSON.stringify(character), account.id],
+    )
+    sendJson(response, 200, describeAccount(rows[0]))
+    return
+  }
+
   // El perfil de otra persona, por ejemplo al hacer clic en ella dentro de una sala
   if (route === 'GET /api/profile') {
     await requireAccount(request)
     const username = parseUsername(new URL(request.url ?? '/', 'http://localhost').searchParams.get('usuario'))
     if (!username) throw new RequestError(404, 'No encontrado.')
 
-    const { rows } = await query<Account>(
+    const { rows } = await query<PublicPerson>(
       `SELECT users.name, users.username, ${PROFILE_COLUMNS} FROM users WHERE users.username = $1`,
       [username],
     )

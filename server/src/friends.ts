@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { requireAccount } from './accounts.ts'
+import { describeCharacter } from './character.ts'
 import { hasDatabase, query } from './database.ts'
 import { getPresence } from './presence.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
@@ -53,25 +54,25 @@ async function getFriendCode(accountId: string): Promise<string> {
 }
 
 async function listPeople(sql: string, accountId: string) {
-  const { rows } = await query<Person>(sql, [accountId])
-  return rows
+  const { rows } = await query<Person & { character_look: unknown }>(sql, [accountId])
+  return rows.map(({ character_look, ...person }) => ({ ...person, character: describeCharacter(character_look, person.id) }))
 }
 
 async function loadFriends(accountId: string) {
   const [code, friends, received, sent] = await Promise.all([
     getFriendCode(accountId),
     listPeople(
-      `SELECT users.id, users.name, users.username FROM friendships JOIN users ON users.id = friendships.friend_id
+      `SELECT users.id, users.name, users.username, users.character_look FROM friendships JOIN users ON users.id = friendships.friend_id
        WHERE friendships.user_id = $1 ORDER BY lower(users.name)`,
       accountId,
     ),
     listPeople(
-      `SELECT users.id, users.name, users.username FROM friend_requests JOIN users ON users.id = friend_requests.from_id
+      `SELECT users.id, users.name, users.username, users.character_look FROM friend_requests JOIN users ON users.id = friend_requests.from_id
        WHERE friend_requests.to_id = $1 ORDER BY friend_requests.created_at`,
       accountId,
     ),
     listPeople(
-      `SELECT users.id, users.name, users.username FROM friend_requests JOIN users ON users.id = friend_requests.to_id
+      `SELECT users.id, users.name, users.username, users.character_look FROM friend_requests JOIN users ON users.id = friend_requests.to_id
        WHERE friend_requests.from_id = $1 ORDER BY friend_requests.created_at`,
       accountId,
     ),

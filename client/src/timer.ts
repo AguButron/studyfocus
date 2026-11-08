@@ -102,10 +102,18 @@ export function updateTimer() {
   const now = Date.now()
   let changed = false
 
-  // Con un while, también se ponen al día los periodos que pasaron con la página cerrada
-  while (now >= state.endsAt) {
-    state.period = state.period === 'study' ? 'break' : 'study'
-    state.endsAt += periodDuration(state.period)
+  // Al terminar el estudio parte solo el descanso. Al terminar el descanso se detiene: el siguiente
+  // periodo hay que iniciarlo a mano, así nadie suma horas dejando la página abierta sin estar.
+  // Con un while también se pone al día lo que pasó con la página cerrada.
+  while (state.isRunning && now >= state.endsAt) {
+    if (state.period === 'study') {
+      state.period = 'break'
+      state.endsAt += periodDuration('break')
+    } else {
+      state.period = 'study'
+      state.isRunning = false
+      state.remainingMs = periodDuration('study')
+    }
     state.periodId = crypto.randomUUID()
     changed = true
   }

@@ -2,9 +2,11 @@
 
 export interface Presence {
   code: string
+  kind: string // 'solo' es estudiar solo: los amigos lo ven, pero sin el código para entrar
   player: { period: string; isRunning: boolean } // el mismo objeto que se actualiza en la sala
 }
 
+const SOLO_KIND = 'solo'
 const presences = new Map<string, Presence>()
 
 export function setPresence(accountId: string, presence: Presence) {
@@ -22,5 +24,11 @@ export function getPresence(accountId: string) {
   const presence = presences.get(accountId)
   if (!presence) return null
 
-  return { code: presence.code, period: presence.player.period, isRunning: presence.player.isRunning }
+  const isSolo = presence.kind === SOLO_KIND
+  return {
+    code: isSolo ? null : presence.code,
+    isSolo,
+    period: presence.player.period,
+    isRunning: presence.player.isRunning,
+  }
 }

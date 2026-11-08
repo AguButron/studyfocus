@@ -14,6 +14,7 @@ Cada persona tiene su propio temporizador, con estas características:
 
 - Elige los minutos de estudio y de descanso, y parte del clásico 25-5.
 - Puede pausarlo y reanudarlo.
+- Al terminar el estudio parte solo el descanso. Al terminar el descanso se detiene, y el siguiente periodo se inicia con un botón, para que nadie sume horas dejando la página abierta sin estar (cambio del 2026-11-08).
 - Corre en su navegador, no en el servidor.
 
 ## Alternativas descartadas

@@ -3,7 +3,7 @@ import type { Seat } from './room'
 import { camera } from './scene'
 
 export type CameraKind = 'desk' | 'table' | 'room'
-export type CameraView = CameraKind | 'behind'
+export type CameraView = CameraKind | 'front'
 
 const STORAGE_KEY = 'studyfocus.camera'
 const CAMERAS: CameraKind[] = ['desk', 'table', 'room']
@@ -23,12 +23,11 @@ const FOCUS_ROOM_LIMIT = 5.5 // metros desde el centro: no pasa más allá de la
 const TABLE_SIDE_DISTANCE = 4 // desde el centro de la mesa; alcanza sin chocar con las mesas del otro lado
 const TABLE_SIDE_HEIGHT = 1.9
 const TABLE_SIDE_LOOK_HEIGHT = 0.9
-const BEHIND_HEIGHT = 2.6
-const BEHIND_DISTANCE = 2.1 // la silla más cercana a una pared está a 2,15 metros de ella
-const BEHIND_LOOK_HEIGHT = 0.9
-const BEHIND_LOOK_DISTANCE = 0.5
-const BEHIND_SIDE_SHIFT = 0.45 // gira la vista para que el panel grande no tape al personaje
-const WIDE_SCREEN = 900 // píxeles
+// Sobre el borde lejano de la mesa: más allá estaría dentro de quien se sienta al frente
+const FRONT_DISTANCE = 1.75
+const FRONT_HEIGHT = 1.5 // por sobre el computador propio
+const FRONT_LOOK_HEIGHT = 0.95
+const WIDE_SCREEN = 900 // píxeles: en pantallas más angostas el panel va abajo
 
 const targetPosition = new THREE.Vector3()
 const targetRotation = new THREE.Quaternion()
@@ -63,15 +62,22 @@ function viewFromTableSide(seat: Seat) {
   )
 }
 
-function viewFromBehind(seat: Seat) {
-  const sideShift = window.innerWidth >= WIDE_SCREEN ? BEHIND_SIDE_SHIFT : 0
+// Desde el otro lado de la mesa, mirando al personaje a la cara
+// Qué parte del ancho tapa el panel del temporizador, que en pantallas anchas va a la izquierda
+function coveredWidth() {
+  if (window.innerWidth < WIDE_SCREEN) return 0
+  const panel = document.querySelector<HTMLElement>('#study-panel')
+  return panel ? panel.getBoundingClientRect().width / window.innerWidth : 0
+}
+
+// Desde el otro lado de la mesa, mirando al personaje a la cara. La vista gira hacia el panel
+// lo justo para que el personaje quede al centro de lo que se ve a su derecha.
+function viewFromFront(seat: Seat) {
+  const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect
+  const sideShift = FRONT_DISTANCE * coveredWidth() * halfWidth
   aimAt(
-    { x: seat.x, y: BEHIND_HEIGHT, z: seat.z - BEHIND_DISTANCE * seat.facingZ },
-    {
-      x: seat.x + (BEHIND_DISTANCE + BEHIND_LOOK_DISTANCE) * sideShift * seat.facingZ,
-      y: BEHIND_LOOK_HEIGHT,
-      z: seat.z + BEHIND_LOOK_DISTANCE * seat.facingZ,
-    },
+    { x: seat.x, y: FRONT_HEIGHT, z: seat.z + FRONT_DISTANCE * seat.facingZ },
+    { x: seat.x - sideShift * seat.facingZ, y: FRONT_LOOK_HEIGHT, z: seat.z },
   )
 }
 
@@ -83,7 +89,7 @@ export function setCameraView(view: CameraView, seat: Seat | null) {
   } else if (view === 'table') {
     viewFromTableSide(seat)
   } else {
-    viewFromBehind(seat)
+    viewFromFront(seat)
   }
 }
 

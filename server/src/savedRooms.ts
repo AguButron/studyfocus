@@ -14,12 +14,12 @@ export async function saveRoom(code: string, ownerId: string, kind: string) {
   return rows.length > 0
 }
 
-// Marca la sala como usada. Falso si no existe: nunca existió o ya quedó vacía.
-export async function touchSavedRoom(code: string) {
-  if (!hasDatabase()) return false
+// Marca la sala como usada y dice de qué tipo es. Nulo si no existe: nunca existió o ya quedó vacía.
+export async function touchSavedRoom(code: string): Promise<string | null> {
+  if (!hasDatabase()) return null
 
-  const { rows } = await query('UPDATE rooms SET last_used_at = now() WHERE code = $1 RETURNING code', [code])
-  return rows.length > 0
+  const { rows } = await query<{ kind: string }>('UPDATE rooms SET last_used_at = now() WHERE code = $1 RETURNING kind', [code])
+  return rows[0]?.kind ?? null
 }
 
 export async function deleteSavedRoom(code: string) {

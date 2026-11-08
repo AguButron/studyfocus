@@ -1,3 +1,5 @@
+import type { Character } from './character'
+
 // Las llamadas al servidor sobre la cuenta. La sesión vive en una cookie que esta página no puede leer.
 
 // Lo que cada persona cuenta de sí misma. Todo es opcional.
@@ -8,6 +10,7 @@ export interface Profile {
   studies: string | null
   institution: string | null
   country: string | null // código de dos letras, como CL
+  character: Character
 }
 
 export interface Account {
@@ -15,6 +18,7 @@ export interface Account {
   email: string | null
   username: string | null // único y fijo; las cuentas de antes lo eligen al entrar
   profile: Profile
+  character: Character // cómo se ve su personaje, y con él su foto
   nextNameChange: string | null // desde cuándo se puede volver a cambiar el apodo
 }
 

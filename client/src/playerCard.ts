@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { loadProfile, type Profile } from './account'
 import type { ActivityKind } from './activity'
+import { getCharacterPhoto } from './character'
 import { releaseCameraFocus } from './cameraView'
 import { onKeyPress } from './input'
 import { findRemotePlayerAt, getRemotePlayerPosition, getRemotePlayerState } from './remotePlayers'
@@ -16,6 +17,7 @@ const ACTIVITY_NAMES: Record<ActivityKind, string> = {
 
 const card = document.querySelector<HTMLDivElement>('#player-card')!
 const nameText = document.querySelector<HTMLElement>('#player-card-name')!
+const photo = document.querySelector<HTMLImageElement>('#player-card-photo')!
 const statusText = document.querySelector<HTMLSpanElement>('#player-card-status')!
 const activityText = document.querySelector<HTMLSpanElement>('#player-card-activity')!
 const studiesText = document.querySelector<HTMLSpanElement>('#player-card-studies')!
@@ -50,6 +52,8 @@ function renderCard() {
   card.dataset.period = state.isRunning ? state.period : 'idle'
   statusText.dataset.presence = state.isRunning ? state.period : 'room'
   nameText.textContent = state.nickname
+  const photoUrl = getCharacterPhoto(state.character)
+  if (photo.getAttribute('src') !== photoUrl) photo.src = photoUrl
   statusText.textContent = !state.isRunning ? 'Temporizador detenido' : state.period === 'study' ? 'Estudiando' : 'En descanso'
   activityText.textContent = state.seatId === null ? 'Caminando por la sala' : ACTIVITY_NAMES[state.activity]
 }

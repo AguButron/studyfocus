@@ -1,4 +1,4 @@
-import * as THREE from 'three'
+import { CHARACTER_COLORS, createCharacterModel, paintCharacterModel, type Character } from './character'
 import { isPressed } from './input'
 import { scene } from './scene'
 import { leaveSeat, onSeatLost, takeSeat, type ResumedPlayer } from './network'
@@ -16,12 +16,13 @@ function randomSpawn() {
   return Math.random() * SPAWN_RANGE * 2 - SPAWN_RANGE
 }
 
-export const player = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 1, 1),
-  new THREE.MeshStandardMaterial({ color: 0x89b4fa }),
-)
+export const player = createCharacterModel({ color: CHARACTER_COLORS[0].color })
 player.position.set(randomSpawn(), STANDING_Y, randomSpawn())
 scene.add(player)
+
+export function setPlayerCharacter(character: Character) {
+  paintCharacterModel(player, character)
+}
 
 let currentSeat: Seat | null = null
 let isRequestingSeat = false

@@ -95,7 +95,7 @@ La página en internet, con CI y amigos probándola. **Al terminar esta fase, el
 
 **Terminada cuando:** un amigo abre el link desde su casa, se sienta en mi mesa y estudiamos juntos una sesión completa sin problemas.
 
-## Fase 6: Crecer (actual)
+## Fase 6: Crecer
 
 Cuentas, salas guardadas, un menú principal y estadísticas. Para entrar a una sala hay que iniciar sesión, porque los amigos, las estadísticas y la tienda necesitan saber quién es cada persona. Ver la [decisión](decisiones/0009-cuenta-obligatoria-y-menu.md).
 
@@ -114,13 +114,37 @@ Cuentas, salas guardadas, un menú principal y estadísticas. Para entrar a una 
 - [x] Mostrar las estadísticas de estudio y un resumen al salir de la sala
 - [x] [Escuchar música propia en la sala](decisiones/0012-musica-personal.md): el lofi de StudyFocus o un video de YouTube
 - [x] [Nombre de usuario fijo, apodo que cambia una vez al mes y perfil](decisiones/0013-usuario-apodo-y-perfil.md), visible en la tarjeta de cada persona
-- [x] Agregar una portada que presenta la app, al llegar sin sesión o al hacer clic en el logo
+- [x] Agregar una portada que presenta la app, para quien no ha iniciado sesión
 - [x] Volver a la misma silla y con el mismo periodo tras un reinicio del servidor
-- [ ] Agregar una foto de perfil
+- [x] [Foto de perfil a partir del personaje](decisiones/0015-foto-desde-el-personaje.md), con un color a elegir por ahora
+- [x] Dormir sobre la mesa durante el descanso, con los brazos cruzados y unas "z", visible para todos
 
 **Terminada cuando:** inicio sesión desde otro dispositivo, vuelvo a mi sala con su mismo link y veo cuánto he estudiado, aunque el servidor se haya reiniciado.
 
-El inicio de sesión con Google quedó pospuesto: el código está, pero el botón no aparece hasta definir `GOOGLE_CLIENT_ID`. Después vienen las animaciones según el periodo y el chat de voz. La tienda y los modelos de los personajes quedan para el final; ellos, la moneda y los espacios propios se describen en la [visión del proyecto](VISION.md).
+El inicio de sesión con Google quedó pospuesto: el código está, pero el botón no aparece hasta definir `GOOGLE_CLIENT_ID`. Después viene el chat de voz. La tienda y los modelos de los personajes quedan para el final; ellos, la moneda y los espacios propios se describen en la [visión del proyecto](VISION.md).
+
+## Fase 7: Plataforma de estudio (actual)
+
+StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma donde se organiza y se hace todo el estudio. Las salas con amigos siguen, como una de sus funciones. Ver la [decisión](decisiones/0016-plataforma-de-estudio.md).
+
+- [x] Estudiar solo en una pantalla simple, sin 3D, con el temporizador y la música
+- [ ] Estudiar solo en tu pieza: una sala 3D con una mesa y una silla, solo tuya
+- [x] Mostrar a los amigos "Estudiando solo"
+- [x] Inicio como menú principal con la sesión iniciada: hoy, racha, últimos 7 días y las opciones. El logo lleva a Inicio, y la portada queda solo para quien no ha entrado
+- [x] Pestaña de amigos a la derecha del menú, con los conectados primero, y el perfil de cada amigo en una ventana, también desde Amigos
+- [x] Achicar el panel de la izquierda a solo íconos
+- [ ] Crear, editar y archivar ramos
+- [ ] Elegir el ramo en el temporizador, también dentro de una sala, y verlo en la tarjeta de cada persona
+- [ ] Estadísticas por ramo, con su meta semanal
+- [x] [Agenda y calendario](decisiones/0017-agenda-y-calendario.md): pruebas, tareas, trabajos, presentaciones y recordatorios, con hora, notas y aviso; marcar como hecho; el calendario por semana, mes o año en su propia sección, e Inicio con lo de los próximos 7 días
+- [ ] Elegir el ramo de cada cosa de la agenda, cuando existan los ramos
+- [ ] Notas con ponderación, escala y exigencia por ramo, y el promedio
+- [ ] Completar Inicio: meta diaria
+- [ ] Reordenar el menú: Inicio, Calendario, Estudiar, Ramos, Estadísticas, Amigos, Tienda y Perfil (falta Ramos)
+
+**Terminada cuando:** creo mis ramos y mis pruebas, estudio solo o con amigos eligiendo el ramo, y en Inicio veo cuánto llevo hoy, mi racha y lo que viene.
+
+Después vienen Repasar, con tarjetas de memoria, y adaptar la página al celular.
 
 ## Cómo trabajamos cada tarea
 

@@ -1,28 +1,42 @@
 import * as THREE from 'three'
 import { scene } from './scene'
-import type { Seat } from './room'
+import { SEATED_Y, type Seat } from './room'
+import type { Period } from './timer'
 
 export type ActivityKind = 'computer' | 'reading' | 'writing'
+// Estudiando mueve las manos; descansando duerme sobre la mesa; detenido se queda quieto
+export type Pose = 'study' | 'rest' | 'idle'
 
 const STORAGE_KEY = 'studyfocus.activity'
 const TABLE_TOP = 0.75
 const ITEM_Z = -0.86 // metros hacia la mesa desde la silla
 const HAND_Z = -0.76
 
-const SLEEVE_COLOR = 0x89b4fa
 const HAND_COLOR = 0xcdd6f4
 const LINE_COLOR = 0x45475a
+const SLEEP_COLOR = '#cdd6f4'
+const LEAN_ANGLE = 0.5 // radianes hacia la mesa al dormir
+const LEAN_DROP = 0.06 // metros que baja el cuerpo al echarse
+const LEAN_SPEED = 3 // cuanto mayor, más rápido se echa y se levanta
+const Z_COUNT = 3
+const Z_CYCLE = 2.4 // segundos que tarda cada "z" en subir y desaparecer
 
 interface Activity {
   group: THREE.Group
+  arms: THREE.Object3D[] // al dormir se esconden: los reemplazan los brazos cruzados
   update: (time: number, isActive: boolean) => void
+}
+
+export function poseFor(period: Period, isRunning: boolean): Pose {
+  if (!isRunning) return 'idle'
+  return period === 'study' ? 'study' : 'rest'
 }
 
 function addBox(
   parent: THREE.Object3D,
   size: [number, number, number],
   position: [number, number, number],
-  color: number,
+  color: THREE.ColorRepresentation,
 ) {
   const box = new THREE.Mesh(new THREE.BoxGeometry(...size), new THREE.MeshStandardMaterial({ color }))
   box.position.set(...position)
@@ -39,7 +53,7 @@ function addTextLine(parent: THREE.Object3D, width: number, x: number, y: number
   return line
 }
 
-function createArm(side: -1 | 1, sleeveColor: number) {
+function createArm(side: -1 | 1, sleeveColor: THREE.ColorRepresentation) {
   const arm = new THREE.Group()
   addBox(arm, [0.08, 0.04, 0.12], [0, 0, 0], HAND_COLOR)
   addBox(arm, [0.09, 0.07, 0.6], [0, -0.005, 0.36], sleeveColor)
@@ -47,7 +61,7 @@ function createArm(side: -1 | 1, sleeveColor: number) {
   return arm
 }
 
-function createComputer(sleeveColor: number): Activity {
+function createComputer(sleeveColor: THREE.ColorRepresentation): Activity {
   const group = new THREE.Group()
   addBox(group, [0.46, 0.02, 0.32], [0, TABLE_TOP + 0.01, ITEM_Z], 0x313244)
 
@@ -77,6 +91,7 @@ function createComputer(sleeveColor: number): Activity {
 
   return {
     group,
+    arms: [leftArm, rightArm],
     update(time, isActive) {
       const progress = (time / 1.2) % lines.length
       lines.forEach((line, index) => {
@@ -89,7 +104,7 @@ function createComputer(sleeveColor: number): Activity {
   }
 }
 
-function createBook(sleeveColor: number): Activity {
+function createBook(sleeveColor: THREE.ColorRepresentation): Activity {
   const group = new THREE.Group()
   addBox(group, [0.5, 0.01, 0.34], [0, TABLE_TOP + 0.005, ITEM_Z], 0x45475a)
 
@@ -118,6 +133,7 @@ function createBook(sleeveColor: number): Activity {
 
   return {
     group,
+    arms: [leftArm, rightArm],
     update(time) {
       const elapsed = time % FLIP_EVERY
       const isFlipping = elapsed < FLIP_TIME
@@ -127,7 +143,7 @@ function createBook(sleeveColor: number): Activity {
   }
 }
 
-function createNotebook(sleeveColor: number): Activity {
+function createNotebook(sleeveColor: THREE.ColorRepresentation): Activity {
   const group = new THREE.Group()
   addBox(group, [0.34, 0.016, 0.44], [0, TABLE_TOP + 0.008, ITEM_Z], 0xfaf8f0)
 
@@ -151,6 +167,7 @@ function createNotebook(sleeveColor: number): Activity {
 
   return {
     group,
+    arms: [leftArm, rightArm],
     update(time, isActive) {
       const progress = (time / 2.5) % lines.length
       const currentLine = Math.floor(progress)
@@ -167,7 +184,7 @@ function createNotebook(sleeveColor: number): Activity {
   }
 }
 
-const activityBuilders: Record<ActivityKind, (sleeveColor: number) => Activity> = {
+const activityBuilders: Record<ActivityKind, (sleeveColor: THREE.ColorRepresentation) => Activity> = {
   computer: createComputer,
   reading: createBook,
   writing: createNotebook,
@@ -177,12 +194,71 @@ export interface ActivityView {
   setKind: (kind: ActivityKind) => void
   showAt: (seat: Seat) => void
   hide: () => void
-  update: (delta: number, isActive: boolean) => void
+  update: (delta: number, pose: Pose) => void
+  getLean: () => number // de 0 (derecho) a 1 (echado sobre la mesa)
   dispose: () => void
 }
 
+// Una sola textura para todas las "z"
+let zTexture: THREE.CanvasTexture | null = null
+
+function getZTexture() {
+  if (zTexture) return zTexture
+
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const context = canvas.getContext('2d')!
+  context.fillStyle = SLEEP_COLOR
+  context.font = 'bold 52px sans-serif'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillText('z', 32, 34)
+  zTexture = new THREE.CanvasTexture(canvas)
+  return zTexture
+}
+
+// Los brazos cruzados sobre el borde de la mesa, donde apoya la cabeza, y las "z" que suben
+function createSleep(sleeveColor: THREE.ColorRepresentation) {
+  const group = new THREE.Group()
+  group.visible = false
+
+  for (const [side, z, y] of [[-1, -0.68, 0.045], [1, -0.76, 0.06]] as const) {
+    const arm = new THREE.Group()
+    arm.position.set(0, TABLE_TOP + y, z)
+    addBox(arm, [0.5, 0.07, 0.09], [0, 0, 0], sleeveColor)
+    addBox(arm, [0.1, 0.04, 0.08], [side * 0.28, 0.005, 0], HAND_COLOR)
+    arm.rotation.y = side * 0.12
+    group.add(arm)
+  }
+
+  const zs = Array.from({ length: Z_COUNT }, () => {
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: getZTexture(), transparent: true, depthWrite: false }))
+    group.add(sprite)
+    return sprite
+  })
+
+  return {
+    group,
+    update(time: number) {
+      zs.forEach((sprite, index) => {
+        const progress = ((time + (index * Z_CYCLE) / Z_COUNT) % Z_CYCLE) / Z_CYCLE
+        sprite.position.set(0.25 + progress * 0.25, 1.25 + progress * 0.6, -0.35 + progress * 0.1)
+        sprite.scale.setScalar(0.1 + progress * 0.12)
+        sprite.material.opacity = Math.min(1, progress * 4, (1 - progress) * 3)
+      })
+    },
+  }
+}
+
+// Echa el cuerpo hacia la mesa según cuánto duerme
+export function poseBody(body: THREE.Object3D, seat: Seat | null, lean: number) {
+  body.rotation.x = seat ? seat.facingZ * LEAN_ANGLE * lean : 0
+  if (seat) body.position.y = SEATED_Y - LEAN_DROP * lean
+}
+
 // Lo que un personaje tiene sobre la mesa y sus manos. Cada modelo se construye al usarlo por primera vez
-export function createActivityView(initialKind: ActivityKind, sleeveColor: number): ActivityView {
+export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE.ColorRepresentation): ActivityView {
   const root = new THREE.Group()
   root.visible = false
   scene.add(root)
@@ -190,6 +266,17 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: numbe
   const models: Partial<Record<ActivityKind, Activity>> = {}
   let kind = initialKind
   let time = 0
+  let sleepTime = 0
+  let lean = 0
+  const sleep = createSleep(sleeveColor)
+  root.add(sleep.group)
+
+  function showSleeping(isSleeping: boolean) {
+    sleep.group.visible = isSleeping
+    for (const arm of getModel(kind).arms) {
+      arm.visible = !isSleeping
+    }
+  }
 
   function getModel(modelKind: ActivityKind) {
     let model = models[modelKind]
@@ -210,6 +297,7 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: numbe
       const model = getModel(kind)
       model.group.visible = true
       model.update(time, false)
+      showSleeping(sleep.group.visible)
     },
     showAt(seat) {
       root.position.set(seat.x, 0, seat.z)
@@ -219,14 +307,30 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: numbe
     },
     hide() {
       root.visible = false
+      lean = 0
+      showSleeping(false)
     },
-    update(delta, isActive) {
+    update(delta, pose) {
       if (!root.visible) return
 
+      const isActive = pose === 'study'
       if (isActive) {
         time += delta / 1000
       }
       getModel(kind).update(time, isActive)
+
+      // Se echa de a poco y las "z" aparecen cuando ya está casi dormido
+      const target = pose === 'rest' ? 1 : 0
+      lean += (target - lean) * (1 - Math.exp(-LEAN_SPEED * (delta / 1000)))
+      if (Math.abs(target - lean) < 0.001) lean = target
+      if (sleep.group.visible !== lean > 0.5) showSleeping(lean > 0.5)
+      if (sleep.group.visible) {
+        sleepTime += delta / 1000
+        sleep.update(sleepTime)
+      }
+    },
+    getLean() {
+      return lean
     },
     dispose() {
       scene.remove(root)
@@ -234,6 +338,8 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: numbe
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose()
           object.material.dispose()
+        } else if (object instanceof THREE.Sprite) {
+          object.material.dispose() // la textura de las "z" se comparte: queda
         }
       })
     },
@@ -254,7 +360,12 @@ function loadActivity(): ActivityKind {
 }
 
 let current = loadActivity()
-const localView = createActivityView(current, SLEEVE_COLOR)
+let localView: ActivityView | null = null
+
+// Las mangas son del color del personaje, que se sabe al entrar a la sala
+export function setUpLocalActivity(sleeveColor: string) {
+  localView = createActivityView(current, sleeveColor)
+}
 
 export function getActivity() {
   return current
@@ -262,7 +373,7 @@ export function getActivity() {
 
 export function setActivity(activity: ActivityKind) {
   current = activity
-  localView.setKind(activity)
+  localView?.setKind(activity)
 
   try {
     localStorage.setItem(STORAGE_KEY, activity)
@@ -272,13 +383,17 @@ export function setActivity(activity: ActivityKind) {
 }
 
 export function showActivityAt(seat: Seat) {
-  localView.showAt(seat)
+  localView?.showAt(seat)
 }
 
 export function hideActivity() {
-  localView.hide()
+  localView?.hide()
 }
 
-export function updateActivity(delta: number, isActive: boolean) {
-  localView.update(delta, isActive)
+export function updateActivity(delta: number, pose: Pose) {
+  localView?.update(delta, pose)
+}
+
+export function getActivityLean() {
+  return localView?.getLean() ?? 0
 }

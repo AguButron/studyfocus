@@ -1,13 +1,17 @@
+import { createCharacterPhoto, type Character } from './character'
+import { openProfile } from './profileDialog'
 // El panel de amigos: tu código, las solicitudes y en qué sala está cada amigo
 
 interface Person {
   id: string
   name: string
   username: string | null
+  character: Character
 }
 
-interface Friend extends Person {
-  presence: { code: string; period: 'study' | 'break'; isRunning: boolean } | null
+export interface Friend extends Person {
+  // Estudiando solo no hay código: se ve que estudia, pero no se puede entrar
+  presence: { code: string | null; isSolo: boolean; period: 'study' | 'break'; isRunning: boolean } | null
 }
 
 interface FriendsState {
@@ -35,6 +39,12 @@ const sentList = document.querySelector<HTMLUListElement>('#sent-list')!
 const badge = document.querySelector<HTMLSpanElement>('#friends-badge')!
 
 let state: FriendsState | null = null
+const friendsListeners: ((friends: Friend[]) => void)[] = []
+
+// Inicio y la pestaña de la derecha muestran a los amigos y qué están haciendo
+export function onFriendsChange(listener: (friends: Friend[]) => void) {
+  friendsListeners.push(listener)
+}
 let pollTimer: number | null = null
 let joinRoom: (code: string) => void = () => {}
 
@@ -78,8 +88,13 @@ async function request(path: string, body?: unknown): Promise<FriendsState | nul
   }
 }
 
-function describePresence({ presence }: Friend) {
+export function describePresence({ presence }: Friend) {
   if (!presence) return { text: 'Sin conectar', kind: 'offline' }
+  if (presence.isSolo) {
+    if (!presence.isRunning) return { text: 'Estudiando solo, en pausa', kind: 'room' }
+    if (presence.period === 'break') return { text: 'Estudiando solo, en descanso', kind: 'break' }
+    return { text: 'Estudiando solo', kind: 'study' }
+  }
   if (!presence.isRunning) return { text: `En la sala ${presence.code}`, kind: 'room' }
   if (presence.period === 'break') return { text: `En descanso en la sala ${presence.code}`, kind: 'break' }
   return { text: `Estudiando en la sala ${presence.code}`, kind: 'study' }
@@ -94,11 +109,27 @@ function createButton(text: string, variant: 'primary' | null, onClick: (button:
   return button
 }
 
-function createPersonItem(person: Person, detail: string, detailKind: string | null, buttons: HTMLButtonElement[]) {
+// La foto y el nombre abren su perfil
+function createPersonItem(
+  person: Person,
+  detail: string,
+  detailKind: string | null,
+  buttons: HTMLButtonElement[],
+  presence: Friend['presence'] = null,
+) {
   const item = document.createElement('li')
   item.className = 'sf-row'
-  const text = document.createElement('div')
-  text.className = 'sf-row-main'
+  const text = document.createElement('button')
+  text.type = 'button'
+  text.className = 'sf-row-main friend-open'
+  text.title = 'Ver su perfil'
+  text.addEventListener('click', () =>
+    openProfile({
+      ...person,
+      presence: presence && detailKind ? { text: detail, kind: detailKind, code: presence.code } : null,
+    }),
+  )
+  item.append(text)
 
   const name = document.createElement('strong')
   name.className = 'sf-row-title'
@@ -123,10 +154,14 @@ function createPersonItem(person: Person, detail: string, detailKind: string | n
     text.append(detailText)
   }
 
+  // El nombre y el estado van uno bajo el otro, a la derecha de la foto
+  const column = document.createElement('span')
+  column.append(...text.childNodes)
+  text.append(createCharacterPhoto(person.character, 'character-photo--row'), column)
   const actions = document.createElement('div')
   actions.className = 'sf-row-actions'
   actions.append(...buttons)
-  item.append(text, actions)
+  item.append(actions)
   return item
 }
 
@@ -150,6 +185,7 @@ function createRemoveButton(friend: Friend) {
 
 function render() {
   if (!state) return
+  for (const listener of friendsListeners) listener(state.friends)
 
   showCode(state.code)
 
@@ -171,11 +207,11 @@ function render() {
     ...state.friends.map((friend) => {
       const presence = describePresence(friend)
       const buttons = [createRemoveButton(friend)]
-      if (friend.presence) {
-        const code = friend.presence.code
+      const code = friend.presence?.code
+      if (code) {
         buttons.unshift(createButton('Entrar', null, () => joinRoom(code)))
       }
-      return createPersonItem(friend, presence.text, presence.kind, buttons)
+      return createPersonItem(friend, presence.text, presence.kind, buttons, friend.presence)
     }),
   )
 

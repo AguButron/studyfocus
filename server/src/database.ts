@@ -43,6 +43,9 @@ const SCHEMA = `
   ALTER TABLE users ADD COLUMN IF NOT EXISTS institution TEXT;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT;
 
+  -- Cómo se ve su personaje, del que sale su foto. Vacío: aún no lo eligió
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS character_look JSONB;
+
   -- El código que se comparte para que te agreguen como amigo
   ALTER TABLE users ADD COLUMN IF NOT EXISTS friend_code TEXT UNIQUE;
 
@@ -87,6 +90,22 @@ const SCHEMA = `
   );
 
   -- Cada amistad se guarda dos veces, una por dirección, y así buscar los amigos de alguien es simple
+  -- La agenda: pruebas, tareas, trabajos, presentaciones y recordatorios de cada persona
+  CREATE TABLE IF NOT EXISTS agenda_items (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    notes TEXT,
+    due_date DATE NOT NULL,
+    due_time TIME,
+    remind_days INTEGER, -- cuántos días antes empieza el aviso; vacío es sin aviso
+    done_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+
+  CREATE INDEX IF NOT EXISTS agenda_items_user_date ON agenda_items (user_id, due_date);
+
   CREATE TABLE IF NOT EXISTS friendships (
     user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     friend_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,

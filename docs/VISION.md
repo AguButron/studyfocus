@@ -4,7 +4,9 @@ Este documento reúne hacia dónde va el proyecto. La [hoja de ruta](ROADMAP.md)
 
 ## La idea central
 
-Estudiar solo cuesta. Ver que tus amigos también están trabajando motiva y mantiene la concentración de todo el grupo. StudyFocus crea esa sensación de estudiar en la misma mesa, aunque cada persona esté en su casa.
+StudyFocus es la plataforma donde un estudiante organiza, hace y mide todo su estudio: sus ramos, sus pruebas y tareas, sus periodos de concentración y su avance ([decisión](decisiones/0016-plataforma-de-estudio.md)).
+
+Una de sus funciones es estudiar con amigos. Estudiar solo cuesta, y ver que tus amigos también están trabajando motiva y mantiene la concentración de todo el grupo. Las salas crean esa sensación de estudiar en la misma mesa, aunque cada persona esté en su casa.
 
 Las recompensas y la personalización existen para que den ganas de volver a estudiar. Durante una sesión, lo principal sigue siendo la concentración.
 

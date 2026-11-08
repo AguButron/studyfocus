@@ -1,6 +1,15 @@
 import type { Object3D } from 'three'
 import './style.css'
-import { getActivity, hideActivity, showActivityAt, updateActivity } from './activity'
+import {
+  getActivity,
+  getActivityLean,
+  hideActivity,
+  poseBody,
+  poseFor,
+  setUpLocalActivity,
+  showActivityAt,
+  updateActivity,
+} from './activity'
 import {
   focusCameraOn,
   getChosenCamera,
@@ -15,13 +24,13 @@ import { onKeyPress } from './input'
 import { createLabel } from './label'
 import { setUpMusic } from './music'
 import { sendPosition, sendStatus } from './network'
-import { isNearFreeSeat, onSeatChange, player, restorePlayer, toggleSit, updatePlayer } from './player'
+import { isNearFreeSeat, onSeatChange, player, restorePlayer, setPlayerCharacter, toggleSit, updatePlayer } from './player'
 import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './playerCard'
 import { updateRemotePlayers } from './remotePlayers'
 import { setTallFrontWallVisible, type Seat } from './room'
 import { camera, renderer, scene } from './scene'
 import { playPeriodSound } from './sound'
-import { getTimer, isStudyRunning, isTimerIdle, onPeriodChange, updateTimer } from './timer'
+import { getTimer, isTimerIdle, onPeriodChange, updateTimer } from './timer'
 import { setStudyPanelCompact, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
 
 const MAX_DELTA = 100 // milisegundos
@@ -57,6 +66,7 @@ function leaveStudyMode() {
   setTallFrontWallVisible(false)
   setStudyPanelCompact(false)
   hideActivity()
+  poseBody(player, null, 0)
   setCameraView('room', null)
   hud.hidden = false
   hint.hidden = false
@@ -67,16 +77,16 @@ function leaveStudyMode() {
 function updateStudyView() {
   if (!studySeat) return
 
-  const view = isTimerIdle() ? 'behind' : getChosenCamera()
+  const view = isTimerIdle() ? 'front' : getChosenCamera()
   if (view === studyView) return
 
   // Elegir otra cámara o comenzar una sesión termina el zoom
   closePlayerCard()
   studyView = view
   player.visible = view !== 'desk'
-  playerLabel!.visible = view !== 'behind' // tan cerca, el apodo tapa la vista
+  playerLabel!.visible = view !== 'front' // tan cerca, el apodo tapa la vista
   setTallFrontWallVisible(view !== 'room')
-  setStudyPanelCompact(view !== 'behind')
+  setStudyPanelCompact(view !== 'front')
   setCameraView(view, studySeat)
 }
 
@@ -115,7 +125,9 @@ function loop(now: number) {
   updateFocus()
   isSceneMoving = updateCameraView(delta) || isAnyoneMoving
 
-  updateActivity(delta, isStudyRunning())
+  const { period, isRunning } = getTimer()
+  updateActivity(delta, poseFor(period, isRunning))
+  poseBody(player, studySeat, getActivityLean())
 
   if (!studySeat) {
     hint.textContent = isNearFreeSeat() ? SIT_HINT : MOVE_HINT
@@ -124,7 +136,24 @@ function loop(now: number) {
   renderer.render(scene, camera)
 }
 
-showHome((nickname, resumed) => {
+// Estudiar solo: solo el temporizador y la música, sin dibujar la sala
+function startSoloStudy() {
+  setUpTimerPanel(() => {})
+  setUpMusic()
+  onPeriodChange(playPeriodSound)
+  setStudyScreenVisible(true)
+  shareStatus()
+  setInterval(shareStatus, STATUS_INTERVAL)
+}
+
+showHome((nickname, character, resumed, isSolo) => {
+  if (isSolo) {
+    startSoloStudy()
+    return
+  }
+
+  setPlayerCharacter(character)
+  setUpLocalActivity(character.color)
   playerLabel = createLabel(nickname)
   player.add(playerLabel)
   onSeatChange((seat) => (seat ? enterStudyMode(seat) : leaveStudyMode()))

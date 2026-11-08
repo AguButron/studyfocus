@@ -4,8 +4,10 @@ import { createServer, type RequestListener } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import sirv from 'sirv'
 import { Server, type Socket } from 'socket.io'
-import { createAccountsHandler, findAccount } from './accounts.ts'
+import { createAccountsHandler, findAccount, type Account } from './accounts.ts'
+import { describeCharacter, type Character } from './character.ts'
 import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from './activeSessions.ts'
+import { createAgendaHandler } from './agenda.ts'
 import { createFriendsHandler } from './friends.ts'
 import { clearPresence, setPresence } from './presence.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
@@ -22,7 +24,8 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // sin letras y números
 const SEAT_COUNT = 16
 const ACTIVITIES = ['computer', 'reading', 'writing']
 const PERIODS = ['study', 'break']
-const ROOM_KINDS = ['study'] // por ahora hay un solo tipo de sala
+const ROOM_KINDS = ['study', 'solo']
+const SOLO_KIND = 'solo' // estudiar solo: una sala privada, que nadie más puede unirse
 const MAX_TOKEN_LENGTH = 64
 const RECONNECT_WAIT = 15_000 // milisegundos que se guarda el lugar de quien se desconecta
 const ROOM_CLEANUP_INTERVAL = 10 * 60_000 // milisegundos
@@ -51,6 +54,7 @@ interface PlayerState extends PlayerStatus {
   id: string
   nickname: string
   username: string | null // para pedir su perfil al hacer clic en la persona
+  character: Character
   seatId: number | null
   x: number
   z: number
@@ -64,6 +68,7 @@ interface Session {
   accountId: string
   player: PlayerState
   code: string
+  kind: string // el tipo de sala
   socket: Socket | null // sin conexión mientras se espera que vuelva
   leaveTimer: NodeJS.Timeout | null
   joinedAt: number
@@ -78,6 +83,16 @@ interface Session {
 }
 
 const rooms = new Map<string, Room>()
+const roomKinds = new Map<string, string>()
+
+function getRoomKind(code: string) {
+  return roomKinds.get(code) ?? ROOM_KINDS[0]
+}
+
+function forgetRoom(code: string) {
+  rooms.delete(code)
+  roomKinds.delete(code)
+}
 const sessions = new Map<string, Session>()
 
 function createRoomCode() {
@@ -105,18 +120,19 @@ async function createFreeRoomCode(accountId: string, kind: string) {
 
 // Una sala con gente puede no estar en la memoria si el servidor se reinició: se abre de nuevo
 async function findRoom(code: string) {
-  let isSaved = false
+  let savedKind: string | null = null
   try {
-    isSaved = await touchSavedRoom(code)
+    savedKind = await touchSavedRoom(code)
   } catch (error) {
     console.error('No se pudo revisar la sala guardada:', error)
   }
 
   const room = rooms.get(code)
-  if (room || !isSaved) return room
+  if (room || !savedKind) return room
 
   const loadedRoom: Room = new Map()
   rooms.set(code, loadedRoom)
+  roomKinds.set(code, savedKind)
   console.log(`Sala abierta de nuevo tras un reinicio: ${code}`)
   return loadedRoom
 }
@@ -125,7 +141,7 @@ async function findRoom(code: string) {
 // desconectó justo al abrirla, y las que nadie retomó después de un reinicio
 setInterval(async () => {
   for (const [code, room] of rooms) {
-    if (room.size === 0) rooms.delete(code)
+    if (room.size === 0) forgetRoom(code)
   }
   try {
     await deleteAbandonedSessions()
@@ -199,6 +215,7 @@ function createPageHandler(): RequestListener {
 const handleAccounts = createAccountsHandler()
 const handleFriends = createFriendsHandler()
 const handleStats = createStatsHandler()
+const handleAgenda = createAgendaHandler()
 const handlePage = createPageHandler()
 
 const httpServer = createServer((request, response) => {
@@ -206,6 +223,8 @@ const httpServer = createServer((request, response) => {
     handleFriends(request, response)
   } else if (request.url?.startsWith('/api/stats')) {
     handleStats(request, response)
+  } else if (request.url?.startsWith('/api/agenda')) {
+    handleAgenda(request, response)
   } else if (request.url?.startsWith('/api/')) {
     handleAccounts(request, response)
   } else {
@@ -340,10 +359,14 @@ function removeFromRoom(leavingSession: Session) {
   room?.delete(player.id)
   // Sin nadie adentro la sala se borra del todo, y su link deja de servir
   if (room?.size === 0) {
-    rooms.delete(code)
+    forgetRoom(code)
     deleteSavedRoom(code).catch((error) => console.error('No se pudo borrar la sala:', error))
     console.log(`Sala borrada: ${code}`)
   }
+}
+
+function describeAccountCharacter(account: Account) {
+  return describeCharacter(account.character_look, account.id)
 }
 
 io.on('connection', (socket) => {
@@ -353,6 +376,7 @@ io.on('connection', (socket) => {
     id: socket.id,
     nickname: '',
     username: null,
+    character: { color: '' },
     seatId: null,
     x: 0,
     z: 0,
@@ -380,6 +404,7 @@ io.on('connection', (socket) => {
       id: socket.id,
       nickname: account.name,
       username: account.username,
+      character: describeAccountCharacter(account),
       seatId: isFreeSeat(room, saved.seatId) ? saved.seatId : null,
       x: saved.x,
       z: saved.z,
@@ -392,6 +417,7 @@ io.on('connection', (socket) => {
       accountId: account.id,
       player: restoredPlayer,
       code: saved.code,
+      kind: getRoomKind(saved.code),
       socket: null,
       leaveTimer: null,
       joinedAt: saved.joinedAt,
@@ -423,6 +449,7 @@ io.on('connection', (socket) => {
       accountId: socket.data.account.id,
       player,
       code,
+      kind: getRoomKind(code),
       socket,
       leaveTimer: null,
       joinedAt: Date.now(),
@@ -458,8 +485,10 @@ io.on('connection', (socket) => {
 
     player.nickname = account.name
     player.username = account.username
+    player.character = describeAccountCharacter(account)
     const room: Room = new Map()
     rooms.set(code, room)
+    roomKinds.set(code, kind)
     enterRoom(code, room, token)
     console.log(`Sala creada: ${code}`)
     reply(code)
@@ -479,18 +508,19 @@ io.on('connection', (socket) => {
     isEntering = false
     if (!socket.connected || !isNewToken(token)) return
 
-    if (!room || room.size >= MAX_PLAYERS_PER_ROOM) {
+    // A una sala de estudio solitario no entra nadie más, ni con su código
+    if (!room || room.size >= MAX_PLAYERS_PER_ROOM || getRoomKind(code) === SOLO_KIND) {
       reply(false)
       return
     }
 
     player.nickname = account.name
     player.username = account.username
+    player.character = describeAccountCharacter(account)
     enterRoom(code, room, token)
     reply(true)
   })
 
-  // Al volver al menú: sale de inmediato, sin esperar a que vuelva como al recargar
   // Al volver al menú: sale de inmediato, y responde cuánto estudió y con quién para el resumen
   socket.on('room:leave', async (reply: unknown) => {
     if (!session) {
@@ -561,7 +591,15 @@ io.on('connection', (socket) => {
     }
     updateStudyClock(existing)
     persist(existing)
-    reply({ code: existing.code, nickname: player.nickname, seatId: player.seatId, x: player.x, z: player.z })
+    reply({
+      code: existing.code,
+      kind: existing.kind,
+      nickname: player.nickname,
+      character: player.character,
+      seatId: player.seatId,
+      x: player.x,
+      z: player.z,
+    })
   })
 
   socket.on('seat:take', (seatId: unknown, reply: unknown) => {

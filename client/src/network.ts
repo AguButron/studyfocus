@@ -1,5 +1,6 @@
 import { io } from 'socket.io-client'
 import type { ActivityKind } from './activity'
+import type { Character } from './character'
 import type { StudySummary } from './stats'
 import type { Period } from './timer'
 
@@ -15,7 +16,9 @@ interface Session {
 
 export interface ResumedPlayer {
   code: string
+  kind: string // 'solo' es estudiar solo, en la pantalla simple
   nickname: string
+  character: Character
   seatId: number | null
   x: number
   z: number

@@ -20,4 +20,4 @@ Dos personas pueden tener el mismo apodo, y con amigos y salas compartidas hace 
 ## Consecuencias
 
 - Revisar el dominio no prueba que el correo sea de quien lo escribe. Para eso falta enviar un correo de verificación.
-- La foto de perfil queda para después: necesita dónde guardar las imágenes.
+- La foto de perfil sale del personaje, sin subir imágenes: ver la [decisión 0015](0015-foto-desde-el-personaje.md).

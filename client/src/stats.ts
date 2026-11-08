@@ -104,7 +104,7 @@ function render(stats: Stats) {
   weekText.textContent = formatDuration(stats.week)
   streakText.textContent = stats.streak === 1 ? '1 día' : `${stats.streak} días`
   totalText.textContent = formatDuration(stats.total)
-  showMessage(stats.total === 0 ? 'Todavía no hay tiempo registrado. Entra a una sala y comienza el temporizador.' : '')
+  showMessage(stats.total === 0 ? 'Todavía no hay tiempo registrado. Ve a Estudiar y comienza el temporizador.' : '')
   renderChart(stats.days)
 
   companionsEmpty.hidden = stats.companions.length > 0
@@ -127,19 +127,26 @@ function render(stats: Stats) {
   )
 }
 
-export async function refreshStats() {
+// Nulo si no se pudieron cargar; el error queda en el panel de estadísticas
+export async function loadStats(): Promise<Stats | null> {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   try {
     const response = await fetch(`/api/stats?tz=${encodeURIComponent(timeZone)}`)
     const result = await response.json()
     if (!response.ok) {
       showMessage(result.error ?? 'No se pudieron cargar las estadísticas.', true)
-      return
+      return null
     }
-    render(result)
+    return result
   } catch {
     showMessage('No se pudo conectar con el servidor.', true)
+    return null
   }
+}
+
+export async function refreshStats() {
+  const stats = await loadStats()
+  if (stats) render(stats)
 }
 
 // La página se recarga al salir de la sala: el resumen se guarda para mostrarlo en el menú
@@ -180,7 +187,7 @@ export function showSavedSummary() {
   const studied =
     summary.seconds >= 60
       ? `Estudiaste ${formatDuration(summary.seconds)}`
-      : 'No alcanzaste a sumar tiempo de estudio en esta sala'
+      : 'No alcanzaste a terminar un periodo de estudio'
   const company = summary.companions.length > 0 ? `, junto a ${listNames(summary.companions)}` : ''
   summaryText.textContent = `${studied}${company}.`
   summaryCard.hidden = false

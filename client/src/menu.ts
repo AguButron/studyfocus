@@ -1,24 +1,35 @@
 import { sendAccount, type Account } from './account'
 import { setUpFriends, startFriends, stopFriends } from './friends'
+import { refreshCalendar } from './calendar'
+import { refreshHomePanel, setUpHomePanel } from './homePanel'
+import { setUpFriendsDrawer } from './friendsDrawer'
+import { setUpProfileDialog } from './profileDialog'
+import { CHARACTER_COLORS, getCharacterPhoto, type Character } from './character'
 import { drawRoomPlan } from './roomPlan'
 import { COUNTRIES, getFlag } from './countries'
 import { ROOM_KINDS } from './roomKinds'
 import { refreshStats, setUpSummary, showSavedSummary } from './stats'
 
-type Panel = 'rooms' | 'friends' | 'stats' | 'shop' | 'profile'
+type Panel = 'home' | 'calendar' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile'
 
 interface MenuActions {
   createRoom(kind: string): void
+  studySolo(): void
   joinRoom(code: string): void
   onAccountChange(account: Account | null): void
 }
 
 const PANEL_KEY = 'studyfocus.panel'
+const NAV_KEY = 'studyfocus.navCollapsed'
 
 const menu = document.querySelector<HTMLDivElement>('#menu')!
 const menuLinks = document.querySelectorAll<HTMLButtonElement>('.sf-nav-link[data-panel]')
 const panels = document.querySelectorAll<HTMLElement>('.menu-panel')
 const userNameText = document.querySelector<HTMLSpanElement>('#menu-user-name')!
+const userPhoto = document.querySelector<HTMLImageElement>('#menu-user-photo')!
+const characterPhoto = document.querySelector<HTMLImageElement>('#character-photo')!
+const characterColors = document.querySelector<HTMLDivElement>('#character-colors')!
+const characterMessage = document.querySelector<HTMLParagraphElement>('#character-message')!
 const roomKindsList = document.querySelector<HTMLDivElement>('#room-kinds')!
 const createRoomButton = document.querySelector<HTMLButtonElement>('#create-room')!
 const roomsError = document.querySelector<HTMLParagraphElement>('#rooms-error')!
@@ -62,6 +73,10 @@ function showPanel(panel: Panel) {
   }
   if (panel === 'stats') {
     refreshStats()
+  } else if (panel === 'home') {
+    refreshHomePanel(userNameText.textContent ?? '')
+  } else if (panel === 'calendar') {
+    refreshCalendar()
   }
 
   try {
@@ -79,9 +94,9 @@ function showSummaryFirst() {
 function loadPanel(): Panel {
   try {
     const saved = sessionStorage.getItem(PANEL_KEY)
-    return isPanel(saved) ? saved : 'rooms'
+    return isPanel(saved) ? saved : 'home'
   } catch {
-    return 'rooms'
+    return 'home'
   }
 }
 
@@ -110,8 +125,45 @@ function showRoomKinds() {
   roomKindsList.append(soon)
 }
 
+function showCharacter(character: Character) {
+  const photo = getCharacterPhoto(character)
+  userPhoto.src = photo
+  characterPhoto.src = photo
+  for (const swatch of characterColors.querySelectorAll<HTMLButtonElement>('button')) {
+    swatch.setAttribute('aria-pressed', String(swatch.dataset.color === character.color))
+  }
+}
+
+function fillCharacterColors() {
+  for (const { color, name } of CHARACTER_COLORS) {
+    const swatch = document.createElement('button')
+    swatch.type = 'button'
+    swatch.className = 'character-swatch'
+    swatch.dataset.color = color
+    swatch.style.setProperty('--swatch', color)
+    swatch.setAttribute('aria-label', name)
+    swatch.title = name
+    swatch.addEventListener('click', () => chooseColor(color))
+    characterColors.append(swatch)
+  }
+}
+
+async function chooseColor(color: string) {
+  characterMessage.textContent = ''
+  characterMessage.classList.remove('sf-error')
+  const { account, error } = await sendAccount('character', { color })
+  if (!account) {
+    characterMessage.textContent = error
+    characterMessage.classList.add('sf-error')
+    return
+  }
+  showAccount(account)
+  actions.onAccountChange(account)
+}
+
 function showAccount(account: Account) {
   userNameText.textContent = account.name
+  showCharacter(account.character)
   profileUsername.textContent = account.username ? `@${account.username}` : ''
   profileNameInput.value = account.name
   profileEmail.textContent = account.email ? `Correo: ${account.email}` : 'Cuenta de Google'
@@ -140,6 +192,37 @@ function fillCountries() {
 
 let actions: MenuActions
 
+// El panel de la izquierda se achica a solo íconos; al pasar el mouse, cada uno dice su nombre
+function setNavCollapsed(isCollapsed: boolean) {
+  const toggle = document.querySelector<HTMLButtonElement>('#menu-nav-toggle')!
+  const label = isCollapsed ? 'Agrandar el menú' : 'Achicar el menú'
+  menu.dataset.navCollapsed = String(isCollapsed)
+  toggle.setAttribute('aria-expanded', String(!isCollapsed))
+  toggle.setAttribute('aria-label', label)
+  toggle.title = label
+  for (const link of menuLinks) {
+    link.title = isCollapsed ? (link.querySelector('.sf-nav-label')?.textContent ?? '') : ''
+  }
+  try {
+    localStorage.setItem(NAV_KEY, String(isCollapsed))
+  } catch {
+    // Sin almacenamiento, el panel vuelve a su tamaño al recargar
+  }
+}
+
+function setUpNavToggle() {
+  let isCollapsed = false
+  try {
+    isCollapsed = localStorage.getItem(NAV_KEY) === 'true'
+  } catch {
+    // Sin almacenamiento, parte abierto
+  }
+  setNavCollapsed(isCollapsed)
+  document
+    .querySelector('#menu-nav-toggle')!
+    .addEventListener('click', () => setNavCollapsed(menu.dataset.navCollapsed !== 'true'))
+}
+
 export function setUpMenu(menuActions: MenuActions) {
   actions = menuActions
 
@@ -148,7 +231,16 @@ export function setUpMenu(menuActions: MenuActions) {
   }
 
   createRoomButton.addEventListener('click', () => actions.createRoom(selectedKind))
+  setUpHomePanel()
+  // Botones dentro de una sección que llevan a otra, como "Ver calendario"
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open-panel]')) {
+    button.addEventListener('click', () => showPanel(button.dataset.openPanel as Panel))
+  }
+  document.querySelector<HTMLButtonElement>('#study-solo')!.addEventListener('click', () => actions.studySolo())
   setUpFriends((code) => actions.joinRoom(code))
+  setUpProfileDialog((code) => actions.joinRoom(code))
+  setUpNavToggle()
+  setUpFriendsDrawer()
   setUpSummary(() => showPanel('stats'))
 
   joinForm.addEventListener('submit', (event) => {
@@ -162,6 +254,7 @@ export function setUpMenu(menuActions: MenuActions) {
   })
 
   fillCountries()
+  fillCharacterColors()
   aboutBio.addEventListener('input', showBioCount)
 
   aboutForm.addEventListener('submit', async (event) => {
@@ -218,6 +311,11 @@ export function showMenu(account: Account) {
   showPanel(showSummaryFirst() ? 'rooms' : loadPanel())
   startFriends()
   menu.hidden = false
+}
+
+// El logo lleva a Inicio
+export function showHomePanel() {
+  showPanel('home')
 }
 
 export function hideMenu() {
