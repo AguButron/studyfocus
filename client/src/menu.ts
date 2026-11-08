@@ -1,6 +1,7 @@
 import { sendAccount, type Account } from './account'
 import { setUpFriends, startFriends, stopFriends } from './friends'
 import { refreshCalendar } from './calendar'
+import { refreshSpacesPanel, setUpSpacesPanel } from './spacesPanel'
 import { refreshHomePanel, setUpHomePanel } from './homePanel'
 import { setUpFriendsDrawer } from './friendsDrawer'
 import { setUpProfileDialog } from './profileDialog'
@@ -10,7 +11,7 @@ import { COUNTRIES, getFlag } from './countries'
 import { ROOM_KINDS } from './roomKinds'
 import { refreshStats, setUpSummary, showSavedSummary } from './stats'
 
-type Panel = 'home' | 'calendar' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile'
+type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile'
 
 interface MenuActions {
   createRoom(kind: string): void
@@ -75,8 +76,11 @@ function showPanel(panel: Panel) {
     refreshStats()
   } else if (panel === 'home') {
     refreshHomePanel(userNameText.textContent ?? '')
+    refreshSpacesPanel() // su último espacio, con las horas al día
   } else if (panel === 'calendar') {
     refreshCalendar()
+  } else if (panel === 'spaces') {
+    refreshSpacesPanel()
   }
 
   try {
@@ -232,6 +236,7 @@ export function setUpMenu(menuActions: MenuActions) {
 
   createRoomButton.addEventListener('click', () => actions.createRoom(selectedKind))
   setUpHomePanel()
+  setUpSpacesPanel(() => showPanel('spaces'))
   // Botones dentro de una sección que llevan a otra, como "Ver calendario"
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open-panel]')) {
     button.addEventListener('click', () => showPanel(button.dataset.openPanel as Panel))

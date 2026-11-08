@@ -31,7 +31,7 @@ import { setTallFrontWallVisible, type Seat } from './room'
 import { camera, renderer, scene } from './scene'
 import { playPeriodSound } from './sound'
 import { getTimer, isTimerIdle, onPeriodChange, updateTimer } from './timer'
-import { setStudyPanelCompact, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
+import { getStudySection, setStudyPanelCompact, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
 
 const MAX_DELTA = 100 // milisegundos
 const SEATED_FRAME_TIME = 1000 / 12 // milisegundos: alcanza para que las manos se vean moverse
@@ -104,7 +104,7 @@ function updateFocus() {
 function shareStatus() {
   updateTimer()
   const { period, isRunning, periodId } = getTimer()
-  sendStatus({ activity: getActivity(), period, isRunning, periodId })
+  sendStatus({ activity: getActivity(), period, isRunning, periodId, sectionId: getStudySection() })
 }
 
 function loop(now: number) {

@@ -8,6 +8,7 @@ import { createAccountsHandler, findAccount, type Account } from './accounts.ts'
 import { describeCharacter, type Character } from './character.ts'
 import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from './activeSessions.ts'
 import { createAgendaHandler } from './agenda.ts'
+import { createSpacesHandler } from './spaces.ts'
 import { createFriendsHandler } from './friends.ts'
 import { clearPresence, setPresence } from './presence.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
@@ -43,6 +44,7 @@ interface PlayerStatus {
 // El estado que manda la página: además dice qué periodo es, para saber si terminó o se abandonó
 interface StatusMessage extends PlayerStatus {
   periodId: string
+  sectionId?: string | null // el apartado que se está estudiando, si se eligió
 }
 
 interface StudySegment {
@@ -73,6 +75,7 @@ interface Session {
   leaveTimer: NodeJS.Timeout | null
   joinedAt: number
   periodId: string | null // el periodo del temporizador en curso
+  sectionId: string | null // el apartado que se estudia en este periodo
   studySince: number | null // desde cuándo se está estudiando sin anotarlo
   pendingSegments: StudySegment[] // lo estudiado en este periodo: se guarda solo si termina
   pendingMs: number
@@ -171,7 +174,7 @@ function isValidPosition(value: unknown): value is { x: number; z: number } {
 function isValidStatus(value: unknown): value is StatusMessage {
   if (typeof value !== 'object' || value === null) return false
 
-  const { activity, period, isRunning, periodId } = value as Record<string, unknown>
+  const { activity, period, isRunning, periodId, sectionId } = value as Record<string, unknown>
   return (
     typeof activity === 'string' &&
     ACTIVITIES.includes(activity) &&
@@ -180,7 +183,8 @@ function isValidStatus(value: unknown): value is StatusMessage {
     typeof isRunning === 'boolean' &&
     typeof periodId === 'string' &&
     periodId.length > 0 &&
-    periodId.length <= MAX_PERIOD_ID_LENGTH
+    periodId.length <= MAX_PERIOD_ID_LENGTH &&
+    (sectionId === undefined || sectionId === null || (typeof sectionId === 'string' && /^\d{1,19}$/.test(sectionId)))
   )
 }
 
@@ -216,6 +220,7 @@ const handleAccounts = createAccountsHandler()
 const handleFriends = createFriendsHandler()
 const handleStats = createStatsHandler()
 const handleAgenda = createAgendaHandler()
+const handleSpaces = createSpacesHandler()
 const handlePage = createPageHandler()
 
 const httpServer = createServer((request, response) => {
@@ -225,6 +230,8 @@ const httpServer = createServer((request, response) => {
     handleStats(request, response)
   } else if (request.url?.startsWith('/api/agenda')) {
     handleAgenda(request, response)
+  } else if (request.url?.startsWith('/api/espacios') || request.url?.startsWith('/api/apartados')) {
+    handleSpaces(request, response)
   } else if (request.url?.startsWith('/api/')) {
     handleAccounts(request, response)
   } else {
@@ -280,7 +287,9 @@ function finishPeriod(session: Session, isCompleted: boolean) {
     session.studiedMs += session.pendingMs
     const segments = session.pendingSegments
     session.lastSave = Promise.all(
-      segments.map((segment) => recordStudy(session.accountId, session.code, segment.start, segment.end)),
+      segments.map((segment) =>
+        recordStudy(session.accountId, session.code, segment.start, segment.end, session.sectionId),
+      ),
     ).catch((error) => {
       console.error('No se pudo guardar el tiempo de estudio:', error)
     })
@@ -422,6 +431,7 @@ io.on('connection', (socket) => {
       leaveTimer: null,
       joinedAt: saved.joinedAt,
       periodId: saved.periodId,
+      sectionId: null,
       studySince: null,
       pendingSegments: saved.pendingSegments,
       pendingMs: saved.pendingMs,
@@ -454,6 +464,7 @@ io.on('connection', (socket) => {
       leaveTimer: null,
       joinedAt: Date.now(),
       periodId: lastPeriodId,
+      sectionId: lastStatus?.sectionId ?? null,
       studySince: null,
       pendingSegments: [],
       pendingMs: 0,
@@ -647,6 +658,8 @@ socket.on('seat:leave', () => {
       finishPeriod(session, player.period === 'study' && status.period === 'break')
       session.periodId = status.periodId
     }
+    // El periodo se anota con el apartado que tenía mientras se estudiaba, así que se actualiza después
+    if (session) session.sectionId = status.sectionId ?? null
     lastPeriodId = status.periodId
 
     player.activity = status.activity

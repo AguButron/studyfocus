@@ -28,6 +28,8 @@ Para universitarios y escolares. Por eso las partes propias de la universidad, c
 
 ### Ramos
 
+Cambiado por la [decisión 0018](0018-espacios-y-apartados.md): los ramos son apartados dentro de carpetas (semestres, proyectos, cursos), que en el código se llaman espacios.
+
 - Solo el nombre y el color son obligatorios. Además se puede anotar la sigla, una meta semanal de horas, el semestre o año, el profesor y la sala.
 - Elegir un ramo antes de un periodo es opcional. Sin elegir, el tiempo queda como "Sin ramo".
 - En una sala con amigos, cada persona elige su propio ramo, y los demás lo ven en su tarjeta.

@@ -168,7 +168,13 @@ export function sendPosition(x: number, z: number) {
   socket.emit('player:move', { x, z })
 }
 
-export function sendStatus(status: { activity: ActivityKind; period: Period; isRunning: boolean; periodId: string }) {
+export function sendStatus(status: {
+  activity: ActivityKind
+  period: Period
+  isRunning: boolean
+  periodId: string
+  sectionId: string | null
+}) {
   const serialized = JSON.stringify(status)
   if (serialized === lastStatus) return
 

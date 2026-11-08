@@ -12,6 +12,7 @@ import {
   type AgendaItem,
 } from './agenda'
 import { openAgendaDialog } from './agendaDialog'
+import { describeItemSection, ensureSpaces } from './spaces'
 
 const DAYS = 7
 
@@ -43,6 +44,8 @@ function createRow(item: AgendaItem, isLate: boolean) {
   row.className = 'agenda-row'
   row.dataset.kind = item.kind
   row.toggleAttribute('data-done', item.done)
+  const section = describeItemSection(item.sectionId)
+  if (section) row.style.setProperty('--kind', section.color)
   row.toggleAttribute('data-late', isLate)
 
   if (canBeDone(item.kind)) {
@@ -78,7 +81,7 @@ function createRow(item: AgendaItem, isLate: boolean) {
   const detail = document.createElement('span')
   detail.className = 'sf-row-detail'
   const late = isLate ? ` · atrasada, hace ${daysFrom(item.date, todayText())} días` : ''
-  detail.textContent = `${kindName(item.kind)}${item.time ? ` · ${item.time}` : ''}${late}`
+  detail.textContent = `${[kindName(item.kind), section?.label, item.time].filter(Boolean).join(' · ')}${late}`
   open.append(title, detail)
   open.addEventListener('click', () => openAgendaDialog(item, item.date))
   row.append(open)
@@ -106,7 +109,11 @@ export function setUpUpcoming(changed: () => void) {
 export async function refreshUpcoming() {
   const today = todayText()
   const current = ++request
-  const [range, reminders] = await Promise.all([loadRange(today, addDays(today, DAYS - 1)), loadReminders(today)])
+  const [range, reminders] = await Promise.all([
+    loadRange(today, addDays(today, DAYS - 1)),
+    loadReminders(today),
+    ensureSpaces(),
+  ])
   if (current !== request) return
 
   errorText.textContent = range.error ?? reminders.error ?? ''

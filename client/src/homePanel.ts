@@ -1,5 +1,5 @@
 // Inicio: lo primero que se ve con la sesión iniciada. El saludo, tu estudio y lo que viene esta semana.
-import { setUpAgendaDialog } from './agendaDialog'
+import { onAgendaChange, setUpAgendaDialog } from './agendaDialog'
 import { describeToday, refreshCalendar, setUpCalendar } from './calendar'
 import { formatDuration, loadStats } from './stats'
 import { refreshUpcoming, setUpUpcoming } from './upcoming'
@@ -19,7 +19,8 @@ function refreshAgenda() {
 }
 
 export function setUpHomePanel() {
-  setUpAgendaDialog(refreshAgenda)
+  setUpAgendaDialog()
+  onAgendaChange(refreshAgenda)
   setUpUpcoming(refreshAgenda)
   setUpCalendar()
 }

@@ -12,6 +12,7 @@ import {
   type AgendaItem,
 } from './agenda'
 import { openAgendaDialog } from './agendaDialog'
+import { describeItemSection, ensureSpaces } from './spaces'
 
 type View = 'week' | 'month' | 'year'
 
@@ -84,12 +85,16 @@ function createChip(item: AgendaItem, isCompact: boolean) {
   chip.className = isCompact ? 'agenda-chip agenda-chip--compact' : 'agenda-chip'
   chip.dataset.kind = item.kind
   chip.toggleAttribute('data-done', item.done)
-  chip.title = `${kindName(item.kind)}: ${item.title}${item.time ? ` a las ${item.time}` : ''}`
+  // Con apartado, se ve de su color y con su nombre; sin apartado, del color de su tipo
+  const section = describeItemSection(item.sectionId)
+  if (section) chip.style.setProperty('--kind', section.color)
+  const label = [kindName(item.kind), section?.label, item.time].filter(Boolean).join(' · ')
+  chip.title = `${label}: ${item.title}`
 
   if (!isCompact) {
     const kind = document.createElement('span')
     kind.className = 'agenda-chip-kind'
-    kind.textContent = item.time ? `${kindName(item.kind)} · ${item.time}` : kindName(item.kind)
+    kind.textContent = label
     chip.append(kind)
   }
   const title = document.createElement('span')
@@ -203,6 +208,8 @@ function renderYear(items: AgendaItem[]) {
         day.toggleAttribute('data-today', date === today)
         if (dayItems.length > 0) {
           day.dataset.kind = dayItems[0].kind
+          const section = describeItemSection(dayItems[0].sectionId)
+          if (section) day.style.setProperty('--kind', section.color)
           day.title = dayItems.map((item) => `${kindName(item.kind)}: ${item.title}`).join('\n')
         }
         day.addEventListener('click', () => {
@@ -274,7 +281,7 @@ export async function refreshCalendar() {
   errorText.textContent = ''
 
   const current = ++request
-  const range = await loadRange(from, to)
+  const [range] = await Promise.all([loadRange(from, to), ensureSpaces()])
   if (current !== request) return
   if (!range.value) {
     errorText.textContent = range.error

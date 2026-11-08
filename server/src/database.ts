@@ -90,6 +90,38 @@ const SCHEMA = `
   );
 
   -- Cada amistad se guarda dos veces, una por dirección, y así buscar los amigos de alguien es simple
+  -- Los espacios (un semestre, un proyecto) y sus apartados (ramos, partes)
+  CREATE TABLE IF NOT EXISTS spaces (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    archived_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+
+  CREATE INDEX IF NOT EXISTS spaces_user ON spaces (user_id);
+
+  CREATE TABLE IF NOT EXISTS sections (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    space_id BIGINT NOT NULL REFERENCES spaces (id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    code TEXT,
+    teacher TEXT,
+    place TEXT,
+    weekly_goal_minutes INTEGER,
+    -- La escala de notas: la mínima, la máxima, la de aprobación y el porcentaje de exigencia
+    grade_min NUMERIC(7, 2) NOT NULL,
+    grade_max NUMERIC(7, 2) NOT NULL,
+    grade_pass NUMERIC(7, 2) NOT NULL,
+    exigencia INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+
+  CREATE INDEX IF NOT EXISTS sections_user ON sections (user_id);
+
   -- La agenda: pruebas, tareas, trabajos, presentaciones y recordatorios de cada persona
   CREATE TABLE IF NOT EXISTS agenda_items (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -105,6 +137,15 @@ const SCHEMA = `
   );
 
   CREATE INDEX IF NOT EXISTS agenda_items_user_date ON agenda_items (user_id, due_date);
+
+  -- Cada cosa de la agenda puede ser de un apartado, y llevar su porcentaje y su nota
+  ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS section_id BIGINT REFERENCES sections (id) ON DELETE SET NULL;
+  ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS weight NUMERIC(5, 2);
+  ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS grade NUMERIC(7, 2);
+  CREATE INDEX IF NOT EXISTS agenda_items_section ON agenda_items (section_id);
+
+  -- El tiempo de estudio también puede ser de un apartado
+  ALTER TABLE study_segments ADD COLUMN IF NOT EXISTS section_id BIGINT REFERENCES sections (id) ON DELETE SET NULL;
 
   CREATE TABLE IF NOT EXISTS friendships (
     user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,

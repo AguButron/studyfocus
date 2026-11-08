@@ -12,6 +12,9 @@ export interface AgendaItem {
   time: string | null // como '10:30'
   remindDays: number | null // cuántos días antes avisar; nulo es sin aviso
   done: boolean
+  sectionId: string | null // el apartado (ramo, parte) al que pertenece
+  weight: number | null // el porcentaje de la nota del apartado
+  grade: number | null
 }
 
 export type AgendaDraft = Omit<AgendaItem, 'id' | 'done'>
@@ -68,6 +71,12 @@ export async function loadRange(from: string, to: string) {
 
 export async function loadReminders(today: string) {
   const result = await call<{ items: AgendaItem[] }>(`/avisos?hoy=${today}`)
+  return result.value ? { value: result.value.items, error: null } : result
+}
+
+// Todo lo de un apartado, sin importar la fecha
+export async function loadSectionItems(sectionId: string) {
+  const result = await call<{ items: AgendaItem[] }>(`?apartado=${sectionId}`)
   return result.value ? { value: result.value.items, error: null } : result
 }
 

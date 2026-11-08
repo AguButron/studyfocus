@@ -1,6 +1,7 @@
 import { getActivity, setActivity, type ActivityKind } from './activity'
 import { chooseCamera, chooseNextCamera, getChosenCamera, type CameraKind } from './cameraView'
 import { onKeyPress } from './input'
+import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import {
   BREAK_MINUTES,
   getTimer,
@@ -40,6 +41,9 @@ const cameraPanel = document.querySelector<HTMLElement>('#camera-panel')!
 const cameraButtons = document.querySelectorAll<HTMLButtonElement>('[data-camera]')
 const miniPeriod = document.querySelector<HTMLSpanElement>('#mini-period')!
 const miniTime = document.querySelector<HTMLSpanElement>('#mini-time')!
+const sectionField = document.querySelector<HTMLDivElement>('#study-section-field')!
+const sectionSelect = document.querySelector<HTMLSelectElement>('#study-section')!
+const SECTION_KEY = 'studyfocus.section'
 
 let isConfirmingAbandon = false
 
@@ -107,6 +111,8 @@ function render() {
   toggleButton.textContent = timer.isRunning ? 'Pausar' : isIdle ? 'Iniciar' : 'Reanudar'
 
   const isLocked = isStudyRunning()
+  // Mientras corre el estudio no se cambia: el periodo se anota completo con un solo apartado
+  sectionSelect.disabled = isLocked
   standUpButton.disabled = isLocked
   standUpHint.hidden = !isLocked
   cameraPanel.hidden = isIdle
@@ -123,6 +129,33 @@ function render() {
   paintSlider(breakInput)
   studyValue.textContent = `${timer.studyMinutes} min`
   breakValue.textContent = `${timer.breakMinutes} min`
+}
+
+// Lo que se estudia en este periodo: un ramo, una parte de un proyecto… Se recuerda para la próxima vez.
+export function getStudySection() {
+  return findSection(sectionSelect.value || null)?.section.id ?? null
+}
+
+async function fillStudySections() {
+  await ensureSpaces()
+  let saved: string | null = null
+  try {
+    saved = localStorage.getItem(SECTION_KEY)
+  } catch {
+    // Sin almacenamiento parte sin apartado
+  }
+
+  const groups = getSpaces()
+    .filter((space) => !space.archived && space.sections.length > 0)
+    .map((space) => {
+      const group = document.createElement('optgroup')
+      group.label = `${space.name} · ${describeKind(space.kind).sections}`
+      group.append(...space.sections.map((section) => new Option(section.name, section.id)))
+      return group
+    })
+  sectionSelect.replaceChildren(new Option('Nada en particular', ''), ...groups)
+  sectionSelect.value = findSection(saved) ? saved! : ''
+  sectionField.hidden = groups.length === 0
 }
 
 function applyMinutes() {
@@ -147,6 +180,15 @@ export function setUpTimerPanel(onStandUp: () => void) {
   const timer = getTimer()
   setUpSlider(studyInput, STUDY_MINUTES, timer.studyMinutes)
   setUpSlider(breakInput, BREAK_MINUTES, timer.breakMinutes)
+
+  fillStudySections()
+  sectionSelect.addEventListener('change', () => {
+    try {
+      localStorage.setItem(SECTION_KEY, sectionSelect.value)
+    } catch {
+      // Sin almacenamiento, el apartado elegido dura hasta recargar
+    }
+  })
 
   studyInput.addEventListener('input', applyMinutes)
   breakInput.addEventListener('input', applyMinutes)

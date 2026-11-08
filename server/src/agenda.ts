@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { requireAccount } from './accounts.ts'
 import { query } from './database.ts'
+import { findSection, parseId as parseSectionId } from './spaces.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
 // La agenda de cada persona: pruebas, tareas, trabajos, presentaciones y recordatorios, con su fecha.
@@ -20,7 +21,8 @@ const DAY = 24 * 60 * 60 * 1000 // milisegundos
 const NOT_FOUND = 'No se encontró. Puede que ya se haya borrado.'
 
 const ITEM_COLUMNS = `id, kind, title, notes, to_char(due_date, 'YYYY-MM-DD') AS date,
-  to_char(due_time, 'HH24:MI') AS time, remind_days AS "remindDays", done_at IS NOT NULL AS done`
+  to_char(due_time, 'HH24:MI') AS time, remind_days AS "remindDays", done_at IS NOT NULL AS done,
+  section_id::text AS "sectionId", weight::float8 AS weight, grade::float8 AS grade`
 
 interface Item {
   id: string
@@ -31,6 +33,9 @@ interface Item {
   time: string | null
   remindDays: number | null
   done: boolean
+  sectionId: string | null
+  weight: number | null // el porcentaje de la nota del apartado
+  grade: number | null
 }
 
 function parseDate(value: unknown) {
@@ -53,6 +58,31 @@ function requireDate(value: unknown) {
 
 function daysBetween(from: string, to: string) {
   return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY
+}
+
+// El apartado debe ser de la misma cuenta. La nota, dentro de su escala, y el porcentaje, de 0 a 100.
+async function parseGrading(accountId: string, body: Record<string, unknown>) {
+  if (body.sectionId === null || body.sectionId === undefined || body.sectionId === '') {
+    if (body.grade !== null && body.grade !== undefined) throw new RequestError(400, 'Para anotar una nota, elige su apartado.')
+    return { sectionId: null, weight: null, grade: null }
+  }
+
+  const section = await findSection(accountId, parseSectionId(body.sectionId))
+  if (!section) throw new RequestError(400, 'Ese apartado ya no existe.')
+
+  const weight = body.weight === null || body.weight === undefined ? null : body.weight
+  if (weight !== null && (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0 || weight > 100)) {
+    throw new RequestError(400, 'El porcentaje debe estar entre 0 y 100.')
+  }
+  const grade = body.grade === null || body.grade === undefined ? null : body.grade
+  if (grade !== null && (typeof grade !== 'number' || !Number.isFinite(grade) || grade < section.gradeMin || grade > section.gradeMax)) {
+    throw new RequestError(400, `La nota debe estar entre ${section.gradeMin} y ${section.gradeMax}.`)
+  }
+  return {
+    sectionId: section.id,
+    weight: weight === null ? null : Math.round(weight * 100) / 100,
+    grade: grade === null ? null : Math.round(grade * 100) / 100,
+  }
 }
 
 function parseItem(body: Record<string, unknown>) {
@@ -112,6 +142,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   const account = await requireAccount(request)
   const route = `${request.method} ${request.url?.split('?')[0]}`
 
+  // Todo lo de un apartado, sin importar la fecha: sus pruebas con notas y sus tareas
+  if (route === 'GET /api/agenda' && readParams(request).has('apartado')) {
+    const sectionId = parseSectionId(readParams(request).get('apartado'))
+    const { rows } = await query<Item>(
+      `SELECT ${ITEM_COLUMNS} FROM agenda_items WHERE user_id = $1 AND section_id = $2
+       ORDER BY due_date, due_time NULLS LAST, id`,
+      [account.id, sectionId],
+    )
+    sendJson(response, 200, { items: rows })
+    return
+  }
+
   if (route === 'GET /api/agenda') {
     const params = readParams(request)
     const from = requireDate(params.get('desde'))
@@ -136,12 +178,14 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
   if (route === 'POST /api/agenda') {
     const item = parseItem(body)
+    const grading = await parseGrading(account.id, body)
     const { rows } = await query<Item>(
-      `INSERT INTO agenda_items (user_id, kind, title, notes, due_date, due_time, remind_days)
-       SELECT $1, $2, $3, $4, $5, $6, $7
+      `INSERT INTO agenda_items (user_id, kind, title, notes, due_date, due_time, remind_days, section_id, weight, grade)
+       SELECT $1, $2, $3, $4, $5, $6, $7, $9, $10, $11
        WHERE (SELECT count(*) FROM agenda_items WHERE user_id = $1) < $8
        RETURNING ${ITEM_COLUMNS}`,
-      [account.id, item.kind, item.title, item.notes, item.date, item.time, item.remindDays, MAX_ITEMS],
+      [account.id, item.kind, item.title, item.notes, item.date, item.time, item.remindDays, MAX_ITEMS,
+        grading.sectionId, grading.weight, grading.grade],
     )
     if (!rows[0]) throw new RequestError(409, `Llegaste al máximo de ${MAX_ITEMS} cosas en tu agenda. Borra algunas antiguas.`)
     sendJson(response, 200, rows[0])
@@ -153,10 +197,13 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
   if (route === 'POST /api/agenda/editar') {
     const item = parseItem(body)
+    const grading = await parseGrading(account.id, body)
     ;({ rows } = await query<Item>(
-      `UPDATE agenda_items SET kind = $3, title = $4, notes = $5, due_date = $6, due_time = $7, remind_days = $8
+      `UPDATE agenda_items SET kind = $3, title = $4, notes = $5, due_date = $6, due_time = $7, remind_days = $8,
+         section_id = $9, weight = $10, grade = $11
        WHERE id = $1 AND user_id = $2 RETURNING ${ITEM_COLUMNS}`,
-      [id, account.id, item.kind, item.title, item.notes, item.date, item.time, item.remindDays],
+      [id, account.id, item.kind, item.title, item.notes, item.date, item.time, item.remindDays,
+        grading.sectionId, grading.weight, grading.grade],
     ))
   } else if (route === 'POST /api/agenda/hecha') {
     if (typeof body.done !== 'boolean') throw new RequestError(400, 'Formato no válido.')

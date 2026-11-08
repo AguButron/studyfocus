@@ -133,14 +133,17 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] Inicio como menú principal con la sesión iniciada: hoy, racha, últimos 7 días y las opciones. El logo lleva a Inicio, y la portada queda solo para quien no ha entrado
 - [x] Pestaña de amigos a la derecha del menú, con los conectados primero, y el perfil de cada amigo en una ventana, también desde Amigos
 - [x] Achicar el panel de la izquierda a solo íconos
-- [ ] Crear, editar y archivar ramos
-- [ ] Elegir el ramo en el temporizador, también dentro de una sala, y verlo en la tarjeta de cada persona
-- [ ] Estadísticas por ramo, con su meta semanal
+- [x] [Carpetas y apartados](decisiones/0018-espacios-y-apartados.md): semestres, proyectos y cursos, con sus ramos, partes o módulos; crear, editar, archivar y borrar
+- [x] Elegir el apartado en el temporizador, también dentro de una sala
+- [ ] Ver el apartado de cada persona en su tarjeta dentro de la sala
+- [x] Horas por apartado en Estadísticas, y el avance hacia su meta semanal
 - [x] [Agenda y calendario](decisiones/0017-agenda-y-calendario.md): pruebas, tareas, trabajos, presentaciones y recordatorios, con hora, notas y aviso; marcar como hecho; el calendario por semana, mes o año en su propia sección, e Inicio con lo de los próximos 7 días
-- [ ] Elegir el ramo de cada cosa de la agenda, cuando existan los ramos
-- [ ] Notas con ponderación, escala y exigencia por ramo, y el promedio
+- [x] Vincular la agenda a un apartado, con su color en el calendario
+- [x] Notas con porcentaje, escala y exigencia por apartado, el promedio y la nota que falta para aprobar
 - [ ] Completar Inicio: meta diaria
-- [ ] Reordenar el menú: Inicio, Calendario, Estudiar, Ramos, Estadísticas, Amigos, Tienda y Perfil (falta Ramos)
+- [x] Reordenar el menú: Inicio, Calendario, Estudiar, Amigos, Estadísticas, Tienda, Carpetas y Perfil
+- [x] Carpetas en tres pasos: la lista de carpetas, una carpeta con sus ramos, y el detalle de un ramo
+- [x] Inicio en dos columnas: ¿Estudiamos? y tu carpeta más reciente con el punteo de sus ramos a la izquierda, y los próximos 7 días en una columna a la derecha
 
 **Terminada cuando:** creo mis ramos y mis pruebas, estudio solo o con amigos eligiendo el ramo, y en Inicio veo cuánto llevo hoy, mi racha y lo que viene.
 

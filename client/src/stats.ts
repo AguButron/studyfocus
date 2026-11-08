@@ -1,4 +1,5 @@
 // El panel de estadísticas y el resumen que aparece al volver de una sala
+import { getSpaces, loadSpaces } from './spaces'
 
 interface Companion {
   name: string
@@ -29,6 +30,8 @@ const messageText = document.querySelector<HTMLParagraphElement>('#stats-message
 const chart = document.querySelector<HTMLDivElement>('#stat-chart')!
 const companionsEmpty = document.querySelector<HTMLParagraphElement>('#companions-empty')!
 const companionsList = document.querySelector<HTMLUListElement>('#companions-list')!
+const sectionTimeBox = document.querySelector<HTMLDivElement>('#section-time-box')!
+const sectionTimeList = document.querySelector<HTMLUListElement>('#section-time-list')!
 const summaryCard = document.querySelector<HTMLDivElement>('#session-summary')!
 const summaryText = document.querySelector<HTMLParagraphElement>('#session-summary-text')!
 const summaryStatsButton = document.querySelector<HTMLButtonElement>('#session-summary-stats')!
@@ -144,7 +147,41 @@ export async function loadStats(): Promise<Stats | null> {
   }
 }
 
+// Las horas de cada apartado en los últimos 7 días, de mayor a menor
+async function renderSectionTime() {
+  await loadSpaces()
+  const sections = getSpaces()
+    .flatMap((space) => space.sections.map((section) => ({ section, space })))
+    .filter(({ section }) => section.weekSeconds > 0)
+    .sort((a, b) => b.section.weekSeconds - a.section.weekSeconds)
+  const max = Math.max(1, ...sections.map(({ section }) => section.weekSeconds))
+
+  sectionTimeBox.hidden = sections.length === 0
+  sectionTimeList.replaceChildren(
+    ...sections.map(({ section, space }) => {
+      const row = document.createElement('li')
+      row.className = 'section-time'
+      row.style.setProperty('--section', section.color)
+      const name = document.createElement('span')
+      name.className = 'section-time-name'
+      name.textContent = section.name
+      name.title = `${section.name} · ${space.name}`
+      const bar = document.createElement('span')
+      bar.className = 'section-time-bar'
+      const fill = document.createElement('span')
+      fill.style.width = `${(section.weekSeconds / max) * 100}%`
+      bar.append(fill)
+      const value = document.createElement('span')
+      value.className = 'section-time-value'
+      value.textContent = formatDuration(section.weekSeconds)
+      row.append(name, bar, value)
+      return row
+    }),
+  )
+}
+
 export async function refreshStats() {
+  renderSectionTime()
   const stats = await loadStats()
   if (stats) render(stats)
 }

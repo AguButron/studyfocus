@@ -65,6 +65,11 @@
         </div>
         <p id="stand-up-hint" class="muted" hidden>Pausa el temporizador para levantarte.</p>
 
+        <div id="study-section-field" class="sf-section" hidden>
+          <h2 class="sf-section-title">¿Qué estás estudiando?</h2>
+          <select id="study-section" class="sf-input"></select>
+        </div>
+
         <div id="duration-section" class="sf-section">
           <h2 class="sf-section-title">Duración</h2>
           <label class="sf-slider" data-period="study">
@@ -325,6 +330,10 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0" /></svg>
               <span class="sf-nav-label">Tienda</span>
             </button>
+            <button class="sf-nav-link" data-panel="spaces" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></svg>
+              <span class="sf-nav-label">Carpetas</span>
+            </button>
             <button class="sf-nav-link" data-panel="profile" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>
               <span class="sf-nav-label">Perfil</span>
@@ -359,6 +368,30 @@
               </dl>
             </header>
 
+            <div class="home-layout">
+            <div class="home-columns">
+            <div class="home-main">
+              <button class="home-study sf-card" type="button" data-open-panel="rooms">
+                <span class="home-study-text">
+                  <strong>¿Estudiamos?</strong>
+                  <span class="sf-row-detail">Solo o con tus amigos, en una sala.</span>
+                </span>
+                <span class="sf-btn sf-btn--primary" aria-hidden="true">Ir a estudiar</span>
+              </button>
+
+              <div class="home-space">
+                <div class="home-space-head">
+                  <h3 id="home-space-title" class="sf-section-title">Tu carpeta</h3>
+                  <button class="sf-btn sf-btn--sm sf-btn--quiet" type="button" data-open-panel="spaces">Ver todos</button>
+                </div>
+                <div id="home-space-card"></div>
+                <div id="home-space-empty" class="home-space-empty sf-card" hidden>
+                  <p class="sf-row-detail">Organiza tu semestre, un proyecto o un curso con sus ramos o partes.</p>
+                  <button class="sf-btn sf-btn--sm" type="button" data-open-panel="spaces">Crear una carpeta</button>
+                </div>
+              </div>
+            </div>
+
             <div class="upcoming sf-card">
               <div class="upcoming-head">
                 <h3>Próximos 7 días</h3>
@@ -370,6 +403,8 @@
               <div id="upcoming-list" class="upcoming-list"></div>
               <p id="upcoming-empty" class="sf-row-detail" hidden>No tienes nada para los próximos 7 días.</p>
               <p id="upcoming-error" class="sf-error" role="alert"></p>
+            </div>
+            </div>
             </div>
           </section>
 
@@ -400,6 +435,77 @@
               <p id="calendar-error" class="sf-error" role="alert"></p>
             </div>
 
+          </section>
+
+          <section class="menu-panel sf-panel" data-panel="spaces" aria-labelledby="spaces-title" hidden>
+            <div id="spaces-home" class="spaces-view">
+              <header class="sf-panel-head spaces-head">
+                <div>
+                  <h2 id="spaces-title">Carpetas</h2>
+                  <p>Tus semestres, proyectos y cursos, cada uno con sus ramos o partes.</p>
+                </div>
+                <button id="space-add" class="sf-btn sf-btn--primary" type="button">+ Nueva carpeta</button>
+              </header>
+              <p id="spaces-error" class="sf-error" role="alert"></p>
+              <p id="spaces-empty" class="sf-row-detail" hidden>Crea tu primera carpeta, por ejemplo tu semestre actual (2026-1) o un proyecto personal.</p>
+              <div id="spaces-list" class="spaces-list"></div>
+              <details id="spaces-archived" class="spaces-archived" hidden>
+                <summary>Archivadas</summary>
+                <div id="spaces-archived-list" class="spaces-list"></div>
+              </details>
+            </div>
+
+            <div id="folder-view" class="spaces-view" hidden>
+              <button id="folder-back" class="sf-btn sf-btn--sm sf-btn--quiet section-back" type="button">‹ Carpetas</button>
+              <header class="spaces-head">
+                <div>
+                  <h2 id="folder-name"></h2>
+                  <p id="folder-meta"></p>
+                </div>
+                <div class="folder-actions">
+                  <button id="folder-edit" class="sf-btn" type="button">Editar carpeta</button>
+                  <button id="folder-add" class="sf-btn sf-btn--primary" type="button">+ Agregar ramo</button>
+                </div>
+              </header>
+              <p id="folder-empty" class="sf-row-detail" hidden></p>
+              <div id="folder-sections" class="folder-sections"></div>
+            </div>
+
+            <div id="section-view" class="spaces-view" hidden>
+              <button id="section-back" class="sf-btn sf-btn--sm sf-btn--quiet section-back" type="button">‹ Carpetas</button>
+              <header class="section-head">
+                <span id="section-swatch" class="section-swatch" aria-hidden="true"></span>
+                <div class="section-head-text">
+                  <h2 id="section-name"></h2>
+                  <p id="section-meta" class="sf-row-detail"></p>
+                </div>
+                <button id="section-edit" class="sf-btn sf-btn--sm" type="button">Editar</button>
+              </header>
+              <dl class="home-stats section-stats">
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Promedio</dt>
+                  <dd id="section-average">–</dd>
+                </div>
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Evaluado</dt>
+                  <dd id="section-evaluated">–</dd>
+                </div>
+                <div class="home-stat home-stat--wide sf-card">
+                  <dt class="stat-label">Estudio</dt>
+                  <dd id="section-week">–</dd>
+                </div>
+              </dl>
+              <p id="section-needed" class="sf-row-detail"></p>
+              <div class="sf-section">
+                <div class="section-items-head">
+                  <h3 id="section-items-title" class="sf-section-title">Evaluaciones y tareas</h3>
+                  <button id="section-add-item" class="sf-btn sf-btn--sm sf-btn--primary" type="button">+ Agregar</button>
+                </div>
+                <div class="section-items-columns sf-row-detail" aria-hidden="true"><span></span><span>%</span><span>Nota</span></div>
+                <ul id="section-items" class="section-items"></ul>
+                <p id="section-items-empty" class="sf-row-detail" hidden>Aún no hay nada. Agrega sus pruebas, tareas o entregas: aparecen también en el calendario.</p>
+              </div>
+            </div>
           </section>
 
           <section class="menu-panel sf-panel" data-panel="rooms" aria-labelledby="rooms-title">
@@ -515,6 +621,11 @@
               <div id="stat-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
             </div>
 
+            <div id="section-time-box" class="sf-section" hidden>
+              <h3 class="sf-section-title">Por apartado · últimos 7 días</h3>
+              <ul id="section-time-list" class="section-time-list"></ul>
+            </div>
+
             <div class="sf-section">
               <h3 class="sf-section-title">Con quién estudiaste</h3>
               <p id="companions-empty" class="sf-row-detail">Aún nadie.</p>
@@ -618,6 +729,78 @@
       </div>
     </main>
 
+    <dialog id="space-dialog" class="agenda-dialog sf-card" aria-labelledby="space-dialog-title">
+      <form id="space-form" class="agenda-form">
+        <h2 id="space-dialog-title">Nueva carpeta</h2>
+        <label class="sf-field">
+          Tipo
+          <select id="space-kind" class="sf-input"></select>
+        </label>
+        <label class="sf-field">
+          Nombre
+          <input id="space-name" class="sf-input" maxlength="60" autocomplete="off" required />
+          <span class="sf-field-hint">Como lo llames tú: 2026-1, Spring 2026, Mi app…</span>
+        </label>
+        <p id="space-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+          <button id="space-cancel" class="sf-btn" type="button">Cancelar</button>
+          <span class="agenda-form-spacer"></span>
+          <button id="space-archive" class="sf-btn" type="button" hidden>Archivar</button>
+          <button id="space-delete" class="sf-btn" type="button" hidden>Borrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="section-dialog" class="agenda-dialog sf-card" aria-labelledby="section-dialog-title">
+      <form id="section-form" class="agenda-form">
+        <h2 id="section-dialog-title">Nuevo ramo</h2>
+        <label class="sf-field">
+          Nombre
+          <input id="section-name-input" class="sf-input" maxlength="60" autocomplete="off" placeholder="Cálculo II" required />
+        </label>
+        <div class="sf-field">
+          Color
+          <div id="section-colors" class="character-colors" role="group" aria-label="Color"></div>
+        </div>
+        <div class="agenda-form-row">
+          <label class="sf-field">
+            Sigla (opcional)
+            <input id="section-code" class="sf-input" maxlength="20" autocomplete="off" placeholder="MAT1620" />
+          </label>
+          <label class="sf-field">
+            Meta semanal (horas)
+            <input id="section-goal" class="sf-input" type="number" min="0" max="100" step="0.5" placeholder="5" />
+          </label>
+        </div>
+        <div class="agenda-form-row">
+          <label class="sf-field">
+            Profesor (opcional)
+            <input id="section-teacher" class="sf-input" maxlength="80" autocomplete="off" />
+          </label>
+          <label class="sf-field">
+            Sala (opcional)
+            <input id="section-place" class="sf-input" maxlength="80" autocomplete="off" />
+          </label>
+        </div>
+        <fieldset class="section-scale">
+          <legend>Escala de notas</legend>
+          <label class="sf-field">Mínima <input id="section-grade-min" class="sf-input" type="number" step="any" required /></label>
+          <label class="sf-field">Máxima <input id="section-grade-max" class="sf-input" type="number" step="any" required /></label>
+          <label class="sf-field">Para aprobar <input id="section-grade-pass" class="sf-input" type="number" step="any" required /></label>
+          <label class="sf-field">Exigencia (%) <input id="section-exigencia" class="sf-input" type="number" min="1" max="99" step="1" required /></label>
+          <span class="sf-field-hint">La exigencia es el porcentaje del puntaje que da la nota para aprobar: con 60 %, el 60 % del puntaje es un 4,0.</span>
+        </fieldset>
+        <p id="section-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+          <button id="section-cancel" class="sf-btn" type="button">Cancelar</button>
+          <span class="agenda-form-spacer"></span>
+          <button id="section-delete" class="sf-btn" type="button" hidden>Borrar</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="agenda-dialog" class="agenda-dialog sf-card" aria-labelledby="agenda-dialog-title">
       <form id="agenda-form" class="agenda-form">
         <h2 id="agenda-dialog-title">Agregar a tu agenda</h2>
@@ -625,6 +808,31 @@
           Tipo
           <select id="agenda-kind" class="sf-input"></select>
         </label>
+        <label class="sf-field">
+          Apartado
+          <select id="agenda-section" class="sf-input"></select>
+        </label>
+        <div id="agenda-grading" class="agenda-grading" hidden>
+          <div class="agenda-form-row">
+            <label class="sf-field">
+              Porcentaje de la nota
+              <input id="agenda-weight" class="sf-input" type="number" min="0" max="100" step="any" placeholder="30" />
+            </label>
+            <label class="sf-field">
+              Nota
+              <input id="agenda-grade" class="sf-input" type="number" step="any" />
+            </label>
+          </div>
+          <span id="agenda-grade-hint" class="sf-field-hint"></span>
+          <details id="agenda-points-box" class="agenda-points">
+            <summary>Calcular la nota desde el puntaje</summary>
+            <div class="agenda-points-row">
+              <label class="sf-field">Puntaje obtenido <input id="agenda-points" class="sf-input" type="number" min="0" step="any" /></label>
+              <label class="sf-field">Puntaje total <input id="agenda-total" class="sf-input" type="number" min="0" step="any" /></label>
+              <button id="agenda-calculate" class="sf-btn" type="button">Calcular</button>
+            </div>
+          </details>
+        </div>
         <label class="sf-field">
           Título
           <input id="agenda-title" class="sf-input" maxlength="100" autocomplete="off" placeholder="Certamen 2 de cálculo" required />

@@ -11,13 +11,21 @@ const DAY = 24 * 60 * 60 * 1000 // milisegundos
 const TIME_ZONES = new Set([...Intl.supportedValuesOf('timeZone'), 'UTC'])
 
 // Un tramo estudiado: el servidor lo mide con su propio reloj, no con lo que diga la página
-export async function recordStudy(accountId: string, roomCode: string, startedAt: number, endedAt: number) {
+// El apartado solo se anota si es de la misma cuenta
+export async function recordStudy(
+  accountId: string,
+  roomCode: string,
+  startedAt: number,
+  endedAt: number,
+  sectionId: string | null = null,
+) {
   if (endedAt - startedAt < MIN_SEGMENT) return
 
   await query(
-    `INSERT INTO study_segments (user_id, room_code, started_at, ended_at)
-     VALUES ($1, $2, to_timestamp($3 / 1000.0), to_timestamp($4 / 1000.0))`,
-    [accountId, roomCode, startedAt, endedAt],
+    `INSERT INTO study_segments (user_id, room_code, started_at, ended_at, section_id)
+     VALUES ($1, $2, to_timestamp($3 / 1000.0), to_timestamp($4 / 1000.0),
+       (SELECT id FROM sections WHERE id = $5::bigint AND user_id = $1))`,
+    [accountId, roomCode, startedAt, endedAt, sectionId],
   )
 }
 
