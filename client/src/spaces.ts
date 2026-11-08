@@ -16,6 +16,9 @@ export interface Section {
   gradeMax: number
   gradePass: number
   exigencia: number // el porcentaje del puntaje que da la nota para aprobar
+  schedule: string | null // el horario de clases, como "Lun y Mié 10:00–11:20"
+  requirements: string | null // lo que se necesita para aprobar, en palabras
+  rules: Rule[]
   weekSeconds: number // estudiado en los últimos 7 días
   totalSeconds: number
 }
@@ -28,7 +31,18 @@ export interface Space {
   sections: Section[]
 }
 
-export type SectionDraft = Pick<Section, 'name' | 'color' | 'code' | 'teacher' | 'place' | 'weeklyGoalMinutes'> & {
+// Un requisito para aprobar. Sin evaluaciones (itemIds nulo), se refiere al promedio final.
+// average: el promedio de esas evaluaciones llega a min. each: cada una llega a min. exempt: con ese promedio se exime.
+export type RuleKind = 'average' | 'each' | 'exempt'
+export interface Rule {
+  id: string
+  kind: RuleKind
+  label: string
+  min: number
+  itemIds: string[] | null
+}
+
+export type SectionDraft = Pick<Section, 'name' | 'color' | 'code' | 'teacher' | 'place' | 'schedule' | 'requirements' | 'weeklyGoalMinutes'> & {
   scale: Pick<Section, 'gradeMin' | 'gradeMax' | 'gradePass' | 'exigencia'>
 }
 
@@ -138,6 +152,12 @@ export const deleteSpace = (id: string) => change('/api/espacios/borrar', { id }
 export const createSection = (spaceId: string, draft: SectionDraft) => change('/api/apartados', { spaceId, ...draft })
 export const updateSection = (id: string, draft: SectionDraft) => change('/api/apartados/editar', { id, ...draft })
 export const deleteSection = (id: string) => change('/api/apartados/borrar', { id })
+export const updateRules = (id: string, rules: Rule[]) => change('/api/apartados/reglas', { id, rules })
+
+// Lo que trae la creación desde los programas: las carpetas al día y cuánto se creó
+export async function storeSpaces(result: SpacesResponse) {
+  store(result)
+}
 
 // ── Notas ──────────────────────────────────────────────────────────────
 
@@ -167,6 +187,42 @@ export interface Average {
   evaluated: number // porcentaje con nota
   remaining: number // porcentaje sin nota todavía
   needed: number | null // la nota que hace falta en lo que queda para aprobar
+}
+
+// ── Requisitos ─────────────────────────────────────────────────────────
+
+export type RuleState = 'met' | 'failed' | 'pending'
+export interface RuleStatus {
+  state: RuleState
+  detail: string // "Llevas 4,5", "Te falta la nota del examen"
+}
+
+type GradedItem = { id: string; weight: number | null; grade: number | null; title: string }
+
+// Cómo va cada requisito según las notas que ya hay
+export function describeRule(section: Section, rule: Rule, items: GradedItem[]): RuleStatus {
+  const group = rule.itemIds ? items.filter((item) => rule.itemIds!.includes(item.id)) : items.filter((item) => item.weight)
+  if (group.length === 0) return { state: 'pending', detail: 'Sus evaluaciones ya no están.' }
+  const graded = group.filter((item) => item.grade !== null)
+  const missing = group.length - graded.length
+
+  if (rule.kind === 'each') {
+    const low = graded.filter((item) => item.grade! < rule.min)
+    if (low.length > 0) return { state: 'failed', detail: `${low.map((item) => item.title).join(', ')} bajo ${formatGrade(section, rule.min)}.` }
+    if (missing > 0) return { state: 'pending', detail: missing === 1 ? 'Falta 1 nota.' : `Faltan ${missing} notas.` }
+    return { state: 'met', detail: 'Lo cumples.' }
+  }
+
+  // El promedio del grupo: ponderado si tienen porcentaje, si no, simple
+  const weighted = graded.every((item) => item.weight)
+  const total = graded.reduce((sum, item) => sum + (weighted ? item.weight! : 1), 0)
+  const average = total > 0 ? graded.reduce((sum, item) => sum + item.grade! * (weighted ? item.weight! : 1), 0) / total : null
+  const current = average === null ? 'Aún sin notas.' : `Llevas ${formatGrade(section, average)}.`
+  if (missing > 0 || average === null) return { state: 'pending', detail: current }
+  const reached = average >= rule.min - 1e-9
+  // No eximirse no es reprobar: solo se rinde el examen
+  if (rule.kind === 'exempt') return { state: reached ? 'met' : 'pending', detail: reached ? `Te eximes: tienes ${formatGrade(section, average)}.` : `No te eximes: tienes ${formatGrade(section, average)}. Rindes el examen.` }
+  return { state: reached ? 'met' : 'failed', detail: `Tienes ${formatGrade(section, average)}.` }
 }
 
 export function computeAverage(section: Section, items: { weight: number | null; grade: number | null }[]): Average {

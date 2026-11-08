@@ -144,6 +144,25 @@ const SCHEMA = `
   ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS grade NUMERIC(7, 2);
   CREATE INDEX IF NOT EXISTS agenda_items_section ON agenda_items (section_id);
 
+  -- Lo que se lee de su programa: el horario, los requisitos de aprobación en palabras, y sus reglas
+  ALTER TABLE sections ADD COLUMN IF NOT EXISTS schedule TEXT;
+  ALTER TABLE sections ADD COLUMN IF NOT EXISTS requirements TEXT;
+  ALTER TABLE sections ADD COLUMN IF NOT EXISTS rules JSONB NOT NULL DEFAULT '[]';
+
+  -- El orden que cada persona les da a las cosas de un apartado, arrastrándolas; vacío es por fecha
+  ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS position INTEGER;
+
+  -- Una evaluación puede no tener fecha todavía: queda en su apartado, fuera del calendario
+  ALTER TABLE agenda_items ALTER COLUMN due_date DROP NOT NULL;
+
+  -- Cada programa leído con IA, para el límite diario de cada persona
+  CREATE TABLE IF NOT EXISTS syllabus_reads (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS syllabus_reads_user ON syllabus_reads (user_id, created_at);
+
   -- El tiempo de estudio también puede ser de un apartado
   ALTER TABLE study_segments ADD COLUMN IF NOT EXISTS section_id BIGINT REFERENCES sections (id) ON DELETE SET NULL;
 
@@ -169,6 +188,23 @@ let tablesReady: Promise<unknown> | null = null
 
 export function hasDatabase() {
   return pool !== null
+}
+
+// Varias consultas que se guardan todas o ninguna
+export async function withTransaction<T>(work: (run: typeof query) => Promise<T>) {
+  await query('SELECT 1') // deja las tablas listas
+  const client = await pool!.connect()
+  try {
+    await client.query('BEGIN')
+    const result = await work(<Row extends pg.QueryResultRow>(text: string, values: unknown[] = []) => client.query<Row>(text, values))
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export async function query<Row extends pg.QueryResultRow>(text: string, values: unknown[] = []) {

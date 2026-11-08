@@ -9,6 +9,7 @@ import { describeCharacter, type Character } from './character.ts'
 import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from './activeSessions.ts'
 import { createAgendaHandler } from './agenda.ts'
 import { createSpacesHandler } from './spaces.ts'
+import { createSyllabusHandler } from './syllabus.ts'
 import { createFriendsHandler } from './friends.ts'
 import { clearPresence, setPresence } from './presence.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
@@ -221,6 +222,7 @@ const handleFriends = createFriendsHandler()
 const handleStats = createStatsHandler()
 const handleAgenda = createAgendaHandler()
 const handleSpaces = createSpacesHandler()
+const handleSyllabus = createSyllabusHandler()
 const handlePage = createPageHandler()
 
 const httpServer = createServer((request, response) => {
@@ -232,6 +234,8 @@ const httpServer = createServer((request, response) => {
     handleAgenda(request, response)
   } else if (request.url?.startsWith('/api/espacios') || request.url?.startsWith('/api/apartados')) {
     handleSpaces(request, response)
+  } else if (request.url?.startsWith('/api/programas')) {
+    handleSyllabus(request, response)
   } else if (request.url?.startsWith('/api/')) {
     handleAccounts(request, response)
   } else {

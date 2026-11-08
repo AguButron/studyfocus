@@ -1529,31 +1529,76 @@ body {
 .section-items-columns,
 .section-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px 64px;
+  grid-template-columns: minmax(0, 1fr) 64px;
   align-items: center;
   gap: var(--cell-1-5);
 }
-.section-items-columns { padding: 0 var(--cell-1-5); font-size: 12px; }
-.section-items-columns span:not(:first-child) { text-align: right; }
-.section-items { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.section-item {
-  width: 100%;
-  padding: var(--cell-1) var(--cell-1-5);
-  border: 0;
+/* Encabezado: el mismo ancho que la fila (manilla, nombre, %) más la nota, que va fuera del botón */
+.section-items-columns { grid-template-columns: minmax(0, 1fr) 64px 64px; padding: 0 var(--cell-1) 0 calc(var(--cell-half) + 31px); font-size: 12px; }
+
+/* Cada fila se puede arrastrar desde su manilla para ordenarla */
+.section-item-row {
+  display: flex;
+  align-items: stretch;
   border-left: 3px solid var(--kind);
   border-radius: var(--radius-0);
   background: var(--card);
+}
+.section-item-row:hover { background: var(--card-sunken); }
+.section-item-row[data-dragging] { position: relative; z-index: 1; box-shadow: var(--lift-3); background: var(--card); }
+.section-item-row[data-dragging] .section-item-handle { cursor: grabbing; }
+.section-item-handle {
+  flex: none;
+  width: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  cursor: grab;
+  touch-action: none;
+  opacity: 0.5;
+}
+.section-item-row:hover .section-item-handle,
+.section-item-handle:focus-visible { opacity: 1; }
+.section-item-handle:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.section-item-handle svg { width: 16px; height: 16px; fill: currentColor; }
+.section-items-columns span:not(:first-child) { text-align: right; }
+.section-items { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.section-item {
+  flex: 1;
+  min-width: 0;
+  padding: var(--cell-1) 0 var(--cell-1) var(--cell-half);
+  border: 0;
+  border-radius: var(--radius-0);
+  background: none;
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.section-item:hover { background: var(--card-sunken); }
+
 .section-item[data-done] strong { color: var(--ink-soft); text-decoration: line-through; }
 .section-item-main { display: flex; flex-direction: column; min-width: 0; }
 .section-item-weight,
 .section-item-grade { text-align: right; font-variant-numeric: tabular-nums; }
 .section-item-grade { font-size: 16px; font-weight: 700; }
+/* La nota es un campo: se ve como texto y al apuntarlo o escribir se nota que se puede editar */
+input.section-item-grade {
+  flex: none;
+  align-self: center;
+  width: 64px;
+  margin: 0 var(--cell-1) 0 var(--cell-1-5);
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-0);
+  background: none;
+  color: var(--ink);
+  font-family: inherit;
+}
+input.section-item-grade::placeholder { color: var(--ink-soft); font-weight: 400; }
+input.section-item-grade:hover { border-color: var(--line); background: var(--card); }
+input.section-item-grade:focus { border-color: var(--ink); background: var(--card); outline: none; }
+input.section-item-grade:invalid { border-color: var(--danger); }
 .section-item-grade[data-failing] { color: var(--kind-prueba); }
 
 .section-scale {
@@ -1596,6 +1641,241 @@ body {
   color: var(--ink);
 }
 .agenda-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+.agenda-section-name { display: flex; align-items: center; gap: var(--cell-1); margin: calc(-1 * var(--cell-1)) 0 0; color: var(--ink-soft); font-size: 14px; }
+.agenda-section-name::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--section); }
+
+/* Revisión de los programas leídos con IA */
+.syllabus-dialog { width: min(980px, calc(100% - 32px)); }
+.syllabus-dialog header { display: flex; flex-direction: column; gap: var(--cell-half); }
+.syllabus-dialog header p { margin: 0; }
+/* La zona para arrastrar o elegir los PDF */
+.syllabus-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cell-1-5);
+  min-height: 240px;
+  padding: var(--cell-3);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-1);
+  background: var(--card-sunken);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.syllabus-drop > svg { width: 44px; height: 44px; fill: none; stroke: var(--ink-soft); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.syllabus-drop-text { display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.syllabus-drop-text strong { font-size: 17px; line-height: 24px; }
+.syllabus-drop:hover { border-color: var(--edge); }
+.syllabus-drop[data-dragging] { border-color: var(--ink); background: color-mix(in srgb, var(--marker) 22%, var(--card)); }
+.syllabus-drop[data-compact] { flex-direction: row; min-height: 0; padding: var(--cell-1-5) var(--cell-2); text-align: left; }
+.syllabus-drop[data-compact] > svg { width: 28px; height: 28px; }
+.syllabus-drop[data-compact] .syllabus-drop-text { flex: 1; }
+.syllabus-drop[data-compact] .syllabus-drop-text strong { font-size: 15px; line-height: 20px; }
+@media (prefers-reduced-motion: reduce) { .syllabus-drop { transition: none; } }
+
+/* La cola: cada programa con su número y en qué va; el que se revisa queda marcado */
+.syllabus-queue { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.syllabus-queue:empty { display: none; }
+.syllabus-queue-item button {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--cell-1);
+  width: 100%;
+  padding: 6px var(--cell-1-5) 6px var(--cell-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-1);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.syllabus-queue-item button:disabled { cursor: default; }
+.syllabus-queue-item button:not(:disabled):hover { border-color: var(--edge); }
+.syllabus-queue-item[data-current] button { border-color: var(--ink); box-shadow: inset 3px 0 0 var(--ink); }
+.syllabus-queue-number {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--card-sunken);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.syllabus-queue-name { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.syllabus-queue-status { color: var(--ink-soft); font-size: 13px; }
+.syllabus-queue-item[data-state="waiting"] { opacity: 0.7; }
+.syllabus-queue-item[data-state="reading"] .syllabus-queue-status::after { content: ""; display: inline-block; width: 10px; height: 10px; margin-left: 6px; border: 2px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: syllabus-spin 0.8s linear infinite; vertical-align: -1px; }
+.syllabus-queue-item[data-state="ready"] .syllabus-queue-status { color: var(--ink); font-weight: 600; }
+.syllabus-queue-item[data-state="created"] .syllabus-queue-number { background: color-mix(in srgb, #30a46c 20%, var(--card)); color: #1f7a4f; }
+.syllabus-queue-item[data-state="created"] .syllabus-queue-status { color: #1f7a4f; }
+.syllabus-queue-item[data-state="skipped"] { opacity: 0.55; }
+.syllabus-queue-item[data-state="skipped"] .syllabus-queue-name { text-decoration: line-through; }
+.syllabus-queue-item[data-state="error"] .syllabus-queue-status { color: var(--danger); }
+/* Pestañas: la de subida y una por programa leído */
+.syllabus-tabs { display: flex; gap: 4px; margin-bottom: calc(-1 * var(--cell-2)); overflow-x: auto; border-bottom: 1px solid var(--line); }
+.syllabus-tab {
+  position: relative;
+  flex: none;
+  max-width: 220px;
+  padding: var(--cell-1) var(--cell-1-5);
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-1) var(--radius-1) 0 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.syllabus-tab span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.syllabus-tab:hover { color: var(--ink); }
+.syllabus-tab[aria-selected="true"] { margin-bottom: -1px; border-color: var(--line); background: var(--card); color: var(--ink); }
+.syllabus-tab[data-new]::after { content: ""; position: absolute; top: 6px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--marker); }
+.syllabus-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.syllabus-upload { display: flex; flex-direction: column; gap: var(--cell-1-5); }
+.syllabus-upload .sf-field-hint:empty { display: none; }
+.syllabus-waiting { padding: var(--cell-3); border: 1px dashed var(--line); border-radius: var(--radius-1); color: var(--ink-soft); text-align: center; }
+.syllabus-course-head h3 { margin: 0; font-size: 17px; line-height: 24px; }
+@media (prefers-reduced-motion: reduce) { .syllabus-queue-item .syllabus-queue-status::after { animation: none; } }
+.syllabus-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--cell-1);
+  padding: var(--cell-half) var(--cell-1-5);
+  border-left: 3px solid var(--line);
+  font-size: 14px;
+}
+.syllabus-file[data-state="reading"] { border-color: var(--marker); }
+.syllabus-file[data-state="reading"] .sf-row-detail::after { content: ""; display: inline-block; width: 10px; height: 10px; margin-left: 6px; border: 2px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: syllabus-spin 0.8s linear infinite; vertical-align: -1px; }
+.syllabus-file[data-state="done"] { border-color: #30a46c; }
+.syllabus-file[data-state="error"] { border-color: var(--danger); }
+.syllabus-file[data-state="error"] .sf-row-detail { color: var(--danger); }
+@keyframes syllabus-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .syllabus-file .sf-row-detail::after { animation: none; } }
+
+.syllabus-courses { display: flex; flex-direction: column; gap: var(--cell-2); }
+.syllabus-course { display: flex; flex-direction: column; gap: var(--cell-1-5); padding: var(--cell-2); }
+.syllabus-course[data-excluded] { opacity: 0.6; }
+.syllabus-course h4 { margin: var(--cell-1) 0 0; font-size: 15px; line-height: 20px; }
+.syllabus-course-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cell-1-5); }
+.syllabus-include { display: flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
+.syllabus-include input { width: 18px; height: 18px; margin: 0; accent-color: var(--ink); }
+.syllabus-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--cell-1-5); }
+.syllabus-wide { grid-column: span 2; }
+.syllabus-scale { margin: 0; }
+.syllabus-section-field { max-width: 420px; }
+.syllabus-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cell-1); }
+.syllabus-total { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+.syllabus-total[data-warning] { color: var(--danger); font-weight: 600; }
+.syllabus-evaluations, .syllabus-rules { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.syllabus-evaluation {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) 150px 120px 76px 32px;
+  align-items: center;
+  gap: var(--cell-1);
+}
+.syllabus-evaluation .sf-input { min-width: 0; }
+.syllabus-evaluation[data-undated] input[type="date"] { border-style: dashed; }
+.syllabus-columns { font-size: 12px; }
+.syllabus-add { align-self: flex-start; }
+.syllabus-requirements { resize: vertical; min-height: 64px; font: inherit; }
+.syllabus-rule { display: grid; grid-template-columns: minmax(0, 1fr) 80px 32px; align-items: center; gap: var(--cell-1); }
+.syllabus-rule-text { display: flex; align-items: center; gap: var(--cell-1); min-width: 0; }
+.syllabus-rule-text .sf-input { flex: 1; min-width: 0; }
+.syllabus-remove { width: 32px; padding: 0; font-size: 18px; }
+.syllabus-actions { position: sticky; bottom: calc(-1 * var(--cell-3)); margin: 0 calc(-1 * var(--cell-3)) calc(-1 * var(--cell-3)); padding: var(--cell-2) var(--cell-3); border-top: 1px solid var(--line); background: var(--card); }
+@media (max-width: 760px) {
+  .syllabus-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .syllabus-evaluation { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px; }
+  .syllabus-columns { display: none; }
+}
+
+.folder-actions .sf-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.folder-message { padding: var(--cell-1) var(--cell-1-5); border-left: 3px solid var(--study, #30a46c); background: var(--card); font-size: 14px; }
+
+/* El ícono de requisitos: al pasar el mouse o con el teclado muestra qué se necesita para aprobar */
+.info-tip { position: relative; display: inline-flex; vertical-align: -3px; margin-left: 2px; color: var(--ink-soft); cursor: help; }
+.info-tip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.info-tip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 50%; }
+.info-tip-box {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -8px;
+  z-index: 20;
+  display: none;
+  width: max-content;
+  max-width: min(340px, 80vw);
+  padding: var(--cell-1-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-1);
+  background: var(--card);
+  box-shadow: var(--lift-3);
+  color: var(--ink);
+  font: 13px/19px var(--font-sans);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: pre-line;
+}
+.info-tip--end .info-tip-box { left: auto; right: -8px; }
+.section-rule-label { display: inline-flex; align-items: center; gap: 6px; }
+.section-rule-label .info-tip { vertical-align: 0; margin-left: 0; font-weight: 400; }
+.info-tip:hover .info-tip-box,
+.info-tip:focus .info-tip-box { display: block; }
+
+/* El aviso para deshacer, abajo al centro */
+.undo-toast {
+  position: fixed;
+  bottom: var(--cell-3);
+  left: 50%;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--cell-1-5);
+  max-width: calc(100% - 32px);
+  padding: var(--cell-1) var(--cell-1) var(--cell-1) var(--cell-2);
+  box-shadow: var(--lift-3);
+  transform: translateX(-50%);
+  font-size: 14px;
+}
+.undo-toast[hidden] { display: none; }
+
+/* Editar los requisitos en la ventana del ramo */
+.rules-edit { display: flex; flex-direction: column; gap: var(--cell-1); margin: 0; padding: 0; list-style: none; }
+.rules-edit:empty { display: none; }
+.rule-edit { display: flex; flex-direction: column; gap: var(--cell-1); padding: var(--cell-1-5); border: 1px solid var(--line); border-radius: var(--radius-1); }
+.rule-edit-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 32px; align-items: center; gap: var(--cell-1); }
+.rule-edit-row .sf-input { min-width: 0; }
+.rule-edit details summary { cursor: pointer; color: var(--ink-soft); font-size: 13px; }
+.rule-edit-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 4px var(--cell-1-5); margin-top: var(--cell-1); font-size: 14px; }
+.rule-edit-items label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.rule-edit-items input { margin: 0; accent-color: var(--ink); }
+.rules-edit-add { align-self: flex-start; }
+
+/* Los requisitos de un ramo y cómo va cada uno */
+.section-rules { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.section-rule {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--cell-1);
+  padding: var(--cell-1) var(--cell-1-5);
+  border-radius: var(--radius-0);
+  background: var(--card);
+}
+.section-rule-icon { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 13px; font-weight: 700; background: var(--card-sunken); color: var(--ink-soft); }
+.section-rule[data-state="met"] .section-rule-icon { background: color-mix(in srgb, #30a46c 18%, var(--card)); color: #1f7a4f; }
+.section-rule[data-state="failed"] .section-rule-icon { background: color-mix(in srgb, var(--danger) 16%, var(--card)); color: var(--danger); }
+.section-rule-text { display: flex; flex-direction: column; min-width: 0; }
+.section-item[data-undated] .sf-row-detail { font-style: italic; }
 .agenda-form { display: flex; flex-direction: column; gap: var(--cell-2); }
 .agenda-form h2 { margin: 0; font-size: 20px; line-height: 26px; }
 .agenda-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cell-1-5); }

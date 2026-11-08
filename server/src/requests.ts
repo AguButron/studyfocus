@@ -30,7 +30,7 @@ export function allowAttempt(key: string, max: number) {
 }
 
 // Solo acepta JSON: otro sitio no puede enviarlo con la cookie de la persona sin que el navegador lo bloquee
-export async function readBody(request: IncomingMessage) {
+export async function readBody(request: IncomingMessage, maxSize = MAX_BODY_SIZE) {
   if (!request.headers['content-type']?.startsWith('application/json')) {
     throw new RequestError(415, 'Formato no válido.')
   }
@@ -38,7 +38,7 @@ export async function readBody(request: IncomingMessage) {
   let body = ''
   for await (const chunk of request) {
     body += chunk
-    if (body.length > MAX_BODY_SIZE) throw new RequestError(413, 'Mensaje demasiado grande.')
+    if (body.length > maxSize) throw new RequestError(413, 'Mensaje demasiado grande.')
   }
 
   try {

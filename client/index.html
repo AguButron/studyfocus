@@ -464,9 +464,14 @@
                 </div>
                 <div class="folder-actions">
                   <button id="folder-edit" class="sf-btn" type="button">Editar carpeta</button>
+                  <button id="folder-upload" class="sf-btn" type="button" title="Una IA lee los programas en PDF y crea los ramos con sus evaluaciones">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 21h14" /></svg>
+                    Subir programas (PDF)
+                  </button>
                   <button id="folder-add" class="sf-btn sf-btn--primary" type="button">+ Agregar ramo</button>
                 </div>
               </header>
+              <p id="folder-message" class="folder-message" role="status" hidden></p>
               <p id="folder-empty" class="sf-row-detail" hidden></p>
               <div id="folder-sections" class="folder-sections"></div>
             </div>
@@ -483,7 +488,15 @@
               </header>
               <dl class="home-stats section-stats">
                 <div class="home-stat sf-card">
-                  <dt class="stat-label">Promedio</dt>
+                  <dt class="stat-label">
+                    Promedio
+                    <span class="info-tip" tabindex="0" aria-label="Cómo se calcula el promedio" aria-describedby="section-tip">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg>
+                      <span id="section-tip" class="info-tip-box" role="tooltip">Promedio calculado con las notas introducidas hasta el momento.
+
+Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</span>
+                    </span>
+                  </dt>
                   <dd id="section-average">–</dd>
                 </div>
                 <div class="home-stat sf-card">
@@ -496,6 +509,10 @@
                 </div>
               </dl>
               <p id="section-needed" class="sf-row-detail"></p>
+              <div id="section-rules-box" class="sf-section" hidden>
+                <h3 class="sf-section-title">Requisitos para aprobar</h3>
+                <ul id="section-rules" class="section-rules"></ul>
+              </div>
               <div class="sf-section">
                 <div class="section-items-head">
                   <h3 id="section-items-title" class="sf-section-title">Evaluaciones y tareas</h3>
@@ -783,6 +800,16 @@
             <input id="section-place" class="sf-input" maxlength="80" autocomplete="off" />
           </label>
         </div>
+        <label class="sf-field">
+          Horario (opcional)
+          <input id="section-schedule" class="sf-input" maxlength="200" autocomplete="off" placeholder="Lun y Mié 10:00–11:20" />
+        </label>
+        <div id="section-rules-field" class="sf-field rules-edit-field">
+          Requisitos que se revisan con tus notas
+          <ul id="section-rules-edit" class="rules-edit"></ul>
+          <button id="section-rule-add" class="sf-btn sf-btn--sm rules-edit-add" type="button">+ Agregar requisito</button>
+          <span class="sf-field-hint">Sin evaluaciones marcadas, un promedio se refiere al promedio final del ramo.</span>
+        </div>
         <fieldset class="section-scale">
           <legend>Escala de notas</legend>
           <label class="sf-field">Mínima <input id="section-grade-min" class="sf-input" type="number" step="any" required /></label>
@@ -801,6 +828,38 @@
       </form>
     </dialog>
 
+    <input id="syllabus-input" type="file" accept="application/pdf,.pdf" multiple hidden />
+    <dialog id="syllabus-dialog" class="agenda-dialog syllabus-dialog sf-card" aria-labelledby="syllabus-title">
+      <form id="syllabus-form" class="agenda-form" novalidate>
+        <header>
+          <h2 id="syllabus-title">Programas de los cursos</h2>
+          <p class="sf-row-detail">Una IA lee cada programa y lo abre en su propia pestaña para que lo revises y lo corrijas. Nada se guarda hasta que aprietes Añadir. Los PDF no se guardan.</p>
+          <p id="syllabus-quota" class="sf-field-hint"></p>
+        </header>
+        <div id="syllabus-tabs" class="syllabus-tabs" role="tablist" aria-label="Programas" hidden></div>
+        <div id="syllabus-upload" class="syllabus-upload">
+        <div id="syllabus-drop" class="syllabus-drop">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" /><path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3" /></svg>
+          <div class="syllabus-drop-text">
+            <strong>Arrastra aquí los programas en PDF</strong>
+            <span class="sf-row-detail">Puedes subir varios a la vez, de hasta 10 MB cada uno.</span>
+          </div>
+          <button id="syllabus-pick" class="sf-btn" type="button">Elegir archivos</button>
+        </div>
+        <ol id="syllabus-files" class="syllabus-queue" aria-label="Cola de programas"></ol>
+        <p id="syllabus-upload-status" class="sf-field-hint"></p>
+        </div>
+        <div id="syllabus-courses" class="syllabus-courses"></div>
+        <p id="syllabus-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions syllabus-actions">
+          <button id="syllabus-create" class="sf-btn sf-btn--primary" type="submit" disabled>Añadir ramo</button>
+          <button id="syllabus-skip" class="sf-btn" type="button" hidden>Descartar</button>
+          <span class="agenda-form-spacer"></span>
+          <button id="syllabus-cancel" class="sf-btn" type="button">Cerrar</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="agenda-dialog" class="agenda-dialog sf-card" aria-labelledby="agenda-dialog-title">
       <form id="agenda-form" class="agenda-form">
         <h2 id="agenda-dialog-title">Agregar a tu agenda</h2>
@@ -808,10 +867,9 @@
           Tipo
           <select id="agenda-kind" class="sf-input"></select>
         </label>
-        <label class="sf-field">
-          Apartado
-          <select id="agenda-section" class="sf-input"></select>
-        </label>
+        <!-- El ramo no se elige: es aquel desde donde se agrega, o el que ya tenía. El selector queda oculto y guarda ese valor -->
+        <select id="agenda-section" class="sf-input" hidden aria-hidden="true" tabindex="-1"></select>
+        <p id="agenda-section-name" class="agenda-section-name" hidden></p>
         <div id="agenda-grading" class="agenda-grading" hidden>
           <div class="agenda-form-row">
             <label class="sf-field">
@@ -840,7 +898,8 @@
         <div class="agenda-form-row">
           <label class="sf-field">
             Fecha
-            <input id="agenda-date" class="sf-input" type="date" required />
+            <input id="agenda-date" class="sf-input" type="date" />
+            <span class="sf-field-hint">Déjala vacía si aún no se sabe: no aparecerá en el calendario.</span>
           </label>
           <label class="sf-field">
             Hora (opcional)
@@ -891,5 +950,10 @@
     </dialog>
 
     <script type="module" src="/src/main.ts"></script>
+    <div id="undo-toast" class="undo-toast sf-card" role="status" hidden>
+      <span id="undo-toast-text"></span>
+      <button id="undo-toast-button" class="sf-btn sf-btn--sm" type="button">Deshacer</button>
+      <button id="undo-toast-close" class="sf-btn sf-btn--sm sf-btn--quiet" type="button" aria-label="Cerrar">×</button>
+    </div>
   </body>
 </html>

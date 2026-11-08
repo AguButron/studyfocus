@@ -16,11 +16,12 @@ Los ramos se pensaban por semestre, pero el semestre se llama distinto en cada p
 - **Un apartado** es una parte de un espacio. Según el tipo del espacio se llama ramo (semestre), parte (proyecto), módulo (curso) o sección (otro).
 - Cada apartado tiene nombre y color, que son obligatorios. Además puede tener sigla, profesor, sala y una meta semanal de horas.
 - Cada apartado tiene su escala de notas: la mínima, la máxima, la de aprobación y el porcentaje de exigencia. Se propone la chilena (1,0 a 7,0, se aprueba con 4,0, con 60 % de exigencia), y cada uno la cambia si estudia en otro sistema.
-- **La agenda se vincula a un apartado**, si se quiere. Lo vinculado se ve del color del apartado en el calendario y en Inicio, con su sigla o su nombre.
+- **La agenda se vincula a un apartado** cuando se agrega desde ese apartado (o desde un programa). La ventana de la evaluación no deja elegirlo ni cambiarlo: solo muestra de qué ramo es. Lo que se agrega desde el calendario o Inicio queda sin apartado. Lo vinculado se ve del color del apartado en el calendario y en Inicio, con su sigla o su nombre.
 - **Las notas:** una cosa de la agenda con apartado puede llevar el porcentaje que vale y su nota. La nota se escribe, o se calcula desde el puntaje con la exigencia del apartado. El apartado muestra el promedio ponderado de lo evaluado, cuánto falta por evaluar y qué nota hace falta en lo que queda para aprobar.
 - **El tiempo de estudio por apartado:** el temporizador pregunta qué se está estudiando. No se puede cambiar mientras corre el estudio, así cada periodo se anota completo con un solo apartado. Estadísticas muestra las horas de cada apartado en los últimos 7 días, y cada apartado muestra su avance hacia la meta semanal.
 - **Cómo se recorre:** la sección Carpetas muestra solo las carpetas, con su nombre, su tipo y la lista de sus ramos, cada uno con un punto de su color. Al abrir una se ven sus ramos, y ahí se agregan y se edita la carpeta. Al abrir un ramo se ve su detalle, y de ahí se vuelve a su carpeta.
 - **En Inicio** aparece la carpeta más reciente (la última que se abrió) con un punteo de lo que tiene; cada punto abre su detalle.
+- **Orden dentro de un ramo:** sus evaluaciones y tareas se ordenan arrastrándolas desde su manilla, o con las flechas del teclado. El orden se guarda (`agenda_items.position`); lo creado desde un programa sigue el orden del programa, y lo nuevo queda al final. Sin orden propio, van por fecha.
 - Un espacio terminado se archiva: deja de aparecer al elegir apartado, pero sus horas y sus notas quedan.
 - Borrar un espacio borra sus apartados. La agenda y el tiempo de estudio quedan, sin apartado.
 

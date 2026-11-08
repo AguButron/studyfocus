@@ -19,3 +19,6 @@ Thumbs.db
 .idea/
 .claude/
 .neon
+
+# Programas de cursos para probar la lectura con IA
+programas-prueba/

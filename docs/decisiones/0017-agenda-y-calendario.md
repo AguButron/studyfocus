@@ -20,6 +20,8 @@ La primera versión de Inicio repetía las opciones del panel de la izquierda. S
 - Borrar pide un segundo clic.
 - Las fechas son días del calendario, sin zona horaria. La página dice cuál es "hoy" para la persona.
 
+**Deshacer:** al borrar algo de la agenda aparece un aviso con "Deshacer" durante 10 segundos. El servidor guarda lo borrado en memoria por 5 minutos y lo devuelve tal cual estaba, con el mismo id, así los requisitos de su ramo siguen apuntando a él. Tras un reinicio del servidor ya no se puede deshacer.
+
 ## Alternativas descartadas
 
 - **Avisos por correo o notificaciones del navegador:** necesitan un servicio de correo, o que el servidor envíe notificaciones aunque la página esté cerrada. Por ahora el aviso se ve al abrir StudyFocus.

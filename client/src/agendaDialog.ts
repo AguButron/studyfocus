@@ -4,6 +4,7 @@ import {
   createItem,
   DEFAULT_REMIND_DAYS,
   deleteItem,
+  restoreItem,
   KINDS,
   setItemDone,
   updateItem,
@@ -11,6 +12,7 @@ import {
   type AgendaItem,
   type AgendaKind,
 } from './agenda'
+import { showUndo, setUpUndoToast } from './undoToast'
 import { describeKind, findSection, gradeFromPoints, getSpaces, loadSpaces, roundGrade } from './spaces'
 
 const CONFIRM_TIME = 4000 // milisegundos que espera la confirmación de borrar
@@ -20,6 +22,7 @@ const form = document.querySelector<HTMLFormElement>('#agenda-form')!
 const titleText = document.querySelector<HTMLHeadingElement>('#agenda-dialog-title')!
 const kindSelect = document.querySelector<HTMLSelectElement>('#agenda-kind')!
 const sectionSelect = document.querySelector<HTMLSelectElement>('#agenda-section')!
+const sectionName = document.querySelector<HTMLParagraphElement>('#agenda-section-name')!
 const gradingFields = document.querySelector<HTMLDivElement>('#agenda-grading')!
 const weightInput = document.querySelector<HTMLInputElement>('#agenda-weight')!
 const gradeInput = document.querySelector<HTMLInputElement>('#agenda-grade')!
@@ -46,6 +49,10 @@ const listeners: (() => void)[] = []
 // Inicio, el calendario y el detalle de un apartado se actualizan cuando algo cambia
 export function onAgendaChange(listener: () => void) {
   listeners.push(listener)
+}
+
+export function notifyAgendaChange() {
+  notifyChange()
 }
 
 function notifyChange() {
@@ -75,6 +82,15 @@ function fillSections(selectedId: string | null) {
     })
   sectionSelect.replaceChildren(new Option('Sin apartado', ''), ...groups)
   sectionSelect.value = selectedId ?? ''
+
+  // Solo se muestra de qué ramo es, sin poder cambiarlo
+  const found = findSection(sectionSelect.value || null)
+  sectionName.hidden = !found
+  if (found) {
+    const label = describeKind(found.space.kind).section
+    sectionName.textContent = `${label}: ${found.section.name}${found.section.code ? ` (${found.section.code})` : ''}`
+    sectionName.style.setProperty('--section', found.section.color)
+  }
 }
 
 function readNumber(input: HTMLInputElement) {
@@ -117,7 +133,7 @@ function readDraft(): AgendaDraft {
   return {
     kind,
     title: titleInput.value,
-    date: dateInput.value,
+    date: dateInput.value || null, // vacía cuando aún no se sabe
     time: timeInput.value || null,
     remindDays: remindSelect.value === '' ? null : Number(remindSelect.value),
     notes: notesInput.value,
@@ -137,6 +153,7 @@ async function finish(result: { error: string | null }) {
 }
 
 export function setUpAgendaDialog() {
+  setUpUndoToast()
   kindSelect.replaceChildren(...KINDS.map(({ id, name }) => new Option(name, id)))
   kindSelect.addEventListener('change', () => chooseKind(kindSelect.value as AgendaKind))
   sectionSelect.addEventListener('change', showGrading)
@@ -168,12 +185,21 @@ export function setUpAgendaDialog() {
       confirmTimer = window.setTimeout(resetDelete, CONFIRM_TIME)
       return
     }
-    await finish(await deleteItem(editing.id))
+    const deleted = editing
+    const result = await deleteItem(deleted.id)
+    await finish(result)
+    if (!result.error) {
+      showUndo(`Se borró «${deleted.title}».`, async () => {
+        const restored = await restoreItem(deleted.id)
+        if (!restored.error) notifyChange()
+        return restored.error
+      })
+    }
   })
 }
 
 // Sin algo que editar, abre la ventana para agregar en ese día, y si se indica, en ese apartado
-export async function openAgendaDialog(item: AgendaItem | null, date: string, sectionId: string | null = null) {
+export async function openAgendaDialog(item: AgendaItem | null, date: string | null, sectionId: string | null = null) {
   editing = item
   isRemindTouched = false
   errorText.textContent = ''
@@ -182,7 +208,7 @@ export async function openAgendaDialog(item: AgendaItem | null, date: string, se
   titleText.textContent = item ? 'Editar' : 'Agregar a tu agenda'
   kind = item?.kind ?? (sectionId ? 'prueba' : 'tarea')
   titleInput.value = item?.title ?? ''
-  dateInput.value = item?.date ?? date
+  dateInput.value = (item ? item.date : date) ?? ''
   timeInput.value = item?.time ?? ''
   remindSelect.value = item ? (item.remindDays === null ? '' : String(item.remindDays)) : String(DEFAULT_REMIND_DAYS[kind])
   notesInput.value = item?.notes ?? ''

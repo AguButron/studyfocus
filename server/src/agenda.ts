@@ -7,11 +7,11 @@ import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } fro
 // La agenda de cada persona: pruebas, tareas, trabajos, presentaciones y recordatorios, con su fecha.
 // Las fechas son días del calendario, sin zona horaria: el 14 de noviembre es el mismo en todas partes.
 
-const KINDS = ['prueba', 'tarea', 'trabajo', 'presentacion', 'recordatorio']
+export const KINDS = ['prueba', 'tarea', 'trabajo', 'presentacion', 'recordatorio']
 const REMIND_DAYS = [0, 1, 2, 3, 7] // días antes en que empieza el aviso
 const MAX_TITLE_LENGTH = 100
 const MAX_NOTES_LENGTH = 500
-const MAX_ITEMS = 2000 // por cuenta
+export const MAX_ITEMS = 2000 // por cuenta
 const MAX_RANGE_DAYS = 371 // lo que se pide de una vez: alcanza para un año completo
 const MAX_CHANGES = 300 // por cuenta cada 15 minutos
 const OVERDUE_DAYS = 30 // las tareas atrasadas se siguen avisando hasta un mes
@@ -19,6 +19,17 @@ const DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/
 const DAY = 24 * 60 * 60 * 1000 // milisegundos
 const NOT_FOUND = 'No se encontró. Puede que ya se haya borrado.'
+const UNDO_TIME = 5 * 60 * 1000 // milisegundos en que se puede deshacer un borrado
+
+// Lo borrado hace poco, tal cual estaba, para poder deshacerlo. Vive en memoria: tras un reinicio ya no se puede.
+const recentlyDeleted = new Map<string, { accountId: string; row: Record<string, unknown>; expires: number }>()
+
+function forgetOldDeletions() {
+  const now = Date.now()
+  for (const [id, deletion] of recentlyDeleted) {
+    if (deletion.expires <= now) recentlyDeleted.delete(id)
+  }
+}
 
 const ITEM_COLUMNS = `id, kind, title, notes, to_char(due_date, 'YYYY-MM-DD') AS date,
   to_char(due_time, 'HH24:MI') AS time, remind_days AS "remindDays", done_at IS NOT NULL AS done,
@@ -29,7 +40,7 @@ interface Item {
   kind: string
   title: string
   notes: string | null
-  date: string
+  date: string | null // sin fecha todavía: queda en su apartado, fuera del calendario
   time: string | null
   remindDays: number | null
   done: boolean
@@ -85,7 +96,7 @@ async function parseGrading(accountId: string, body: Record<string, unknown>) {
   }
 }
 
-function parseItem(body: Record<string, unknown>) {
+export function parseItem(body: Record<string, unknown>) {
   const kind = typeof body.kind === 'string' && KINDS.includes(body.kind) ? body.kind : null
   if (!kind) throw new RequestError(400, 'Elige qué es: prueba, tarea, trabajo, presentación o recordatorio.')
 
@@ -101,7 +112,9 @@ function parseItem(body: Record<string, unknown>) {
   const remindDays = body.remindDays === null || body.remindDays === undefined ? null : body.remindDays
   if (remindDays !== null && !REMIND_DAYS.includes(remindDays as number)) throw new RequestError(400, 'Elige cuándo avisarte.')
 
-  return { kind, title, notes: notesText || null, date: requireDate(body.date), time, remindDays: remindDays as number | null }
+  // La fecha puede quedar vacía cuando aún no se sabe, por ejemplo una prueba "por definir"
+  const date = body.date === null || body.date === undefined || body.date === '' ? null : requireDate(body.date)
+  return { kind, title, notes: notesText || null, date, time, remindDays: remindDays as number | null }
 }
 
 function parseId(value: unknown) {
@@ -147,7 +160,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const sectionId = parseSectionId(readParams(request).get('apartado'))
     const { rows } = await query<Item>(
       `SELECT ${ITEM_COLUMNS} FROM agenda_items WHERE user_id = $1 AND section_id = $2
-       ORDER BY due_date, due_time NULLS LAST, id`,
+       ORDER BY position NULLS LAST, due_date NULLS LAST, due_time NULLS LAST, id`,
       [account.id, sectionId],
     )
     sendJson(response, 200, { items: rows })
@@ -180,8 +193,10 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const item = parseItem(body)
     const grading = await parseGrading(account.id, body)
     const { rows } = await query<Item>(
-      `INSERT INTO agenda_items (user_id, kind, title, notes, due_date, due_time, remind_days, section_id, weight, grade)
-       SELECT $1, $2, $3, $4, $5, $6, $7, $9, $10, $11
+      // Si el apartado ya tiene un orden propio, lo nuevo queda al final
+      `INSERT INTO agenda_items (user_id, kind, title, notes, due_date, due_time, remind_days, section_id, weight, grade, position)
+       SELECT $1, $2, $3, $4, $5, $6, $7, $9, $10, $11,
+         (SELECT max(position) + 1 FROM agenda_items WHERE section_id = $9 AND user_id = $1)
        WHERE (SELECT count(*) FROM agenda_items WHERE user_id = $1) < $8
        RETURNING ${ITEM_COLUMNS}`,
       [account.id, item.kind, item.title, item.notes, item.date, item.time, item.remindDays, MAX_ITEMS,
@@ -189,6 +204,23 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     )
     if (!rows[0]) throw new RequestError(409, `Llegaste al máximo de ${MAX_ITEMS} cosas en tu agenda. Borra algunas antiguas.`)
     sendJson(response, 200, rows[0])
+    return
+  }
+
+  // El orden de las cosas de un apartado, como quedaron al arrastrarlas
+  if (route === 'POST /api/agenda/ordenar') {
+    const sectionId = parseSectionId(body.sectionId)
+    const ids = Array.isArray(body.ids) ? body.ids : null
+    if (!ids || ids.length > MAX_ITEMS || !ids.every((value) => typeof value === 'string' && /^\d{1,19}$/.test(value))) {
+      throw new RequestError(400, 'Formato no válido.')
+    }
+    await query(
+      `UPDATE agenda_items SET position = ordered.position - 1
+       FROM unnest($3::bigint[]) WITH ORDINALITY AS ordered (id, position)
+       WHERE agenda_items.id = ordered.id AND agenda_items.section_id = $2 AND agenda_items.user_id = $1`,
+      [account.id, sectionId, ids],
+    )
+    sendJson(response, 200, { ok: true })
     return
   }
 
@@ -200,6 +232,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const grading = await parseGrading(account.id, body)
     ;({ rows } = await query<Item>(
       `UPDATE agenda_items SET kind = $3, title = $4, notes = $5, due_date = $6, due_time = $7, remind_days = $8,
+         position = CASE WHEN section_id IS NOT DISTINCT FROM $9::bigint THEN position END,
          section_id = $9, weight = $10, grade = $11
        WHERE id = $1 AND user_id = $2 RETURNING ${ITEM_COLUMNS}`,
       [id, account.id, item.kind, item.title, item.notes, item.date, item.time, item.remindDays,
@@ -213,10 +246,34 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       [id, account.id, body.done],
     ))
   } else if (route === 'POST /api/agenda/borrar') {
-    ;({ rows } = await query<Item>(`DELETE FROM agenda_items WHERE id = $1 AND user_id = $2 RETURNING ${ITEM_COLUMNS}`, [
-      id,
-      account.id,
-    ]))
+    // Se guarda la fila completa (con sus fechas como texto) para poder deshacerlo
+    const deleted = await query<Item & { saved: Record<string, unknown> }>(
+      `DELETE FROM agenda_items WHERE id = $1 AND user_id = $2 RETURNING ${ITEM_COLUMNS}, row_to_json(agenda_items.*) AS saved`,
+      [id, account.id],
+    )
+    forgetOldDeletions()
+    rows = deleted.rows.map(({ saved, ...item }) => {
+      recentlyDeleted.set(item.id, { accountId: account.id, row: saved, expires: Date.now() + UNDO_TIME })
+      return item
+    })
+  } else if (route === 'POST /api/agenda/restaurar') {
+    forgetOldDeletions()
+    const deletion = recentlyDeleted.get(id)
+    if (!deletion || deletion.accountId !== account.id) throw new RequestError(410, 'Ya no se puede deshacer.')
+    recentlyDeleted.delete(id)
+    const restore = (row: Record<string, unknown>) =>
+      query<Item>(
+        `INSERT INTO agenda_items OVERRIDING SYSTEM VALUE
+         SELECT * FROM json_populate_record(NULL::agenda_items, $1::json) RETURNING ${ITEM_COLUMNS}`,
+        [JSON.stringify(row)],
+      )
+    try {
+      ;({ rows } = await restore(deletion.row))
+    } catch (error) {
+      // Si su apartado se borró entretanto, vuelve sin apartado
+      if ((error as { code?: string }).code !== '23503') throw error
+      ;({ rows } = await restore({ ...deletion.row, section_id: null, weight: null, grade: null }))
+    }
   } else {
     throw new RequestError(404, 'No encontrado.')
   }

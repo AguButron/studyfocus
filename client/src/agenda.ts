@@ -8,7 +8,7 @@ export interface AgendaItem {
   kind: AgendaKind
   title: string
   notes: string | null
-  date: string
+  date: string | null // sin fecha todavía: queda en su apartado, fuera del calendario
   time: string | null // como '10:30'
   remindDays: number | null // cuántos días antes avisar; nulo es sin aviso
   done: boolean
@@ -94,6 +94,16 @@ export function setItemDone(id: string, done: boolean) {
 
 export function deleteItem(id: string) {
   return call<AgendaItem>('/borrar', { id })
+}
+
+// El orden propio de las cosas de un apartado, como quedaron al arrastrarlas
+export function reorderSectionItems(sectionId: string, ids: string[]) {
+  return call<{ ok: true }>('/ordenar', { sectionId, ids })
+}
+
+// Deshace un borrado reciente: vuelve tal cual estaba, con su nota y su apartado
+export function restoreItem(id: string) {
+  return call<AgendaItem>('/restaurar', { id })
 }
 
 // ── Fechas ─────────────────────────────────────────────────────────────

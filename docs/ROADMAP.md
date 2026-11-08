@@ -143,6 +143,13 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [ ] Completar Inicio: meta diaria
 - [x] Reordenar el menú: Inicio, Calendario, Estudiar, Amigos, Estadísticas, Tienda, Carpetas y Perfil
 - [x] Carpetas en tres pasos: la lista de carpetas, una carpeta con sus ramos, y el detalle de un ramo
+- [x] [Leer los programas con IA](decisiones/0019-programas-con-ia.md): subir varios PDF, revisar lo que sacó y crear los ramos con sus evaluaciones, fechas, porcentajes y requisitos
+- [x] Evaluaciones sin fecha, que quedan en su ramo fuera del calendario
+- [x] Requisitos para aprobar que se revisan solos con las notas, y un ícono que los explica
+- [x] Editar, agregar y quitar requisitos en la ventana del ramo
+- [x] Deshacer el borrado de una evaluación o tarea (durante 5 minutos)
+- [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)
+- [ ] Agregar `GEMINI_API_KEY` en Render para la versión publicada
 - [x] Inicio en dos columnas: ¿Estudiamos? y tu carpeta más reciente con el punteo de sus ramos a la izquierda, y los próximos 7 días en una columna a la derecha
 
 **Terminada cuando:** creo mis ramos y mis pruebas, estudio solo o con amigos eligiendo el ramo, y en Inicio veo cuánto llevo hoy, mi racha y lo que viene.

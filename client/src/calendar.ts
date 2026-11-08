@@ -125,7 +125,7 @@ function createAddButton(date: string) {
 function groupByDate(items: AgendaItem[]) {
   const byDate = new Map<string, AgendaItem[]>()
   for (const item of items) {
-    byDate.set(item.date, [...(byDate.get(item.date) ?? []), item])
+    if (item.date) byDate.set(item.date, [...(byDate.get(item.date) ?? []), item])
   }
   return byDate
 }

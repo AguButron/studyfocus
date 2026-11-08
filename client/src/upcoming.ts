@@ -80,7 +80,7 @@ function createRow(item: AgendaItem, isLate: boolean) {
   title.textContent = item.title
   const detail = document.createElement('span')
   detail.className = 'sf-row-detail'
-  const late = isLate ? ` · atrasada, hace ${daysFrom(item.date, todayText())} días` : ''
+  const late = isLate && item.date ? ` · atrasada, hace ${daysFrom(item.date, todayText())} días` : ''
   detail.textContent = `${[kindName(item.kind), section?.label, item.time].filter(Boolean).join(' · ')}${late}`
   open.append(title, detail)
   open.addEventListener('click', () => openAgendaDialog(item, item.date))
@@ -123,7 +123,7 @@ export async function refreshUpcoming() {
   }
   if (!range.value) return
 
-  const late = reminders.value?.filter((item) => item.date < today) ?? []
+  const late = reminders.value?.filter((item) => item.date !== null && item.date < today) ?? []
   const groups: HTMLElement[] = []
   if (late.length > 0) groups.push(createGroup('Atrasadas', late, true))
   for (let index = 0; index < DAYS; index++) {

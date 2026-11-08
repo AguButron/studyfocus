@@ -1,10 +1,13 @@
 // La sección Carpetas (en el código, "espacios"): los semestres, proyectos y cursos, sus apartados, y el detalle de cada apartado
 // con sus notas, su promedio y lo estudiado
-import { kindName, loadSectionItems, todayText, type AgendaItem } from './agenda'
-import { onAgendaChange, openAgendaDialog } from './agendaDialog'
+import { kindName, loadSectionItems, reorderSectionItems, todayText, updateItem, type AgendaItem } from './agenda'
+import { notifyAgendaChange, onAgendaChange, openAgendaDialog } from './agendaDialog'
 import {
   archiveSpace,
   computeAverage,
+  describeRule,
+  updateRules,
+  type Rule,
   createSection,
   createSpace,
   DEFAULT_SCALE,
@@ -13,6 +16,7 @@ import {
   describeKind,
   findSection,
   formatGrade,
+  roundGrade,
   getColors,
   getSpaces,
   loadSpaces,
@@ -25,6 +29,8 @@ import {
   type SpaceKind,
 } from './spaces'
 import { formatDuration } from './stats'
+import { createInfoTip, describeRuleScope } from './infoTip'
+import { openSyllabusUpload, refreshSyllabusSpace, setUpSyllabusImport } from './syllabusImport'
 
 const CONFIRM_TIME = 4000 // milisegundos que espera la confirmación de borrar
 
@@ -36,6 +42,108 @@ const folderSections = document.querySelector<HTMLDivElement>('#folder-sections'
 const folderEmpty = document.querySelector<HTMLParagraphElement>('#folder-empty')!
 const folderAdd = document.querySelector<HTMLButtonElement>('#folder-add')!
 const sectionBack = document.querySelector<HTMLButtonElement>('#section-back')!
+const folderMessage = document.querySelector<HTMLParagraphElement>('#folder-message')!
+const rulesBox = document.querySelector<HTMLDivElement>('#section-rules-box')!
+const rulesList = document.querySelector<HTMLUListElement>('#section-rules')!
+const sectionSchedule = document.querySelector<HTMLInputElement>('#section-schedule')!
+const rulesField = document.querySelector<HTMLDivElement>('#section-rules-field')!
+const rulesEditList = document.querySelector<HTMLUListElement>('#section-rules-edit')!
+
+// Los requisitos mientras se editan en la ventana del ramo, y sus evaluaciones para elegir
+let editingRules: Rule[] = []
+let rulesItems: AgendaItem[] = []
+const RULE_KINDS: { id: Rule['kind']; name: string }[] = [
+  { id: 'average', name: 'Promedio de… al menos' },
+  { id: 'each', name: 'Cada una de… al menos' },
+  { id: 'exempt', name: 'Te eximes con promedio de…' },
+]
+
+// Si no se escribe una descripción, se arma sola: "Promedio de Prueba 1, Prueba 2 ≥ 4,0"
+function describeNewRule(section: Section | null, rule: Rule) {
+  const names = (rule.itemIds ?? []).map((id) => rulesItems.find((item) => item.id === id)?.title).filter(Boolean).join(', ')
+  const min = section ? formatGrade(section, rule.min) : String(rule.min).replace('.', ',')
+  if (rule.kind === 'each') return `Cada una de ${names || 'las evaluaciones'} ≥ ${min}`
+  if (rule.kind === 'exempt') return `Te eximes con promedio de ${names || 'las evaluaciones'} ≥ ${min}`
+  return names ? `Promedio de ${names} ≥ ${min}` : `Promedio final ≥ ${min}`
+}
+
+function createRuleEditor(rule: Rule) {
+  const row = document.createElement('li')
+  row.className = 'rule-edit'
+
+  const top = document.createElement('div')
+  top.className = 'rule-edit-row'
+  const kind = document.createElement('select')
+  kind.className = 'sf-input'
+  kind.setAttribute('aria-label', 'Tipo de requisito')
+  kind.append(...RULE_KINDS.map(({ id, name }) => new Option(name, id)))
+  kind.value = rule.kind
+  kind.addEventListener('change', () => (rule.kind = kind.value as Rule['kind']))
+  const min = document.createElement('input')
+  min.className = 'sf-input'
+  min.type = 'number'
+  min.step = 'any'
+  min.required = true
+  min.value = String(rule.min)
+  min.setAttribute('aria-label', 'Nota')
+  min.title = 'Nota'
+  min.addEventListener('input', () => (rule.min = readNumber(min)))
+  const remove = document.createElement('button')
+  remove.type = 'button'
+  remove.className = 'sf-btn sf-btn--sm sf-btn--quiet syllabus-remove'
+  remove.textContent = '×'
+  remove.setAttribute('aria-label', 'Quitar este requisito')
+  remove.title = 'Quitar este requisito'
+  remove.addEventListener('click', () => {
+    editingRules = editingRules.filter((other) => other !== rule)
+    renderRuleEditors()
+  })
+  top.append(kind, min, remove)
+
+  const label = document.createElement('input')
+  label.className = 'sf-input'
+  label.maxLength = 120
+  label.value = rule.label
+  label.placeholder = 'Descripción (si la dejas vacía, se escribe sola)'
+  label.setAttribute('aria-label', 'Descripción')
+  label.addEventListener('input', () => (rule.label = label.value))
+
+  const items = document.createElement('details')
+  const summary = document.createElement('summary')
+  const showCount = () => {
+    const count = rule.itemIds?.length ?? 0
+    summary.textContent = count === 0 ? 'Evaluaciones: ninguna marcada (promedio final)' : `Evaluaciones: ${count} marcadas`
+  }
+  showCount()
+  const checks = document.createElement('div')
+  checks.className = 'rule-edit-items'
+  checks.append(
+    ...rulesItems.map((item) => {
+      const option = document.createElement('label')
+      const check = document.createElement('input')
+      check.type = 'checkbox'
+      check.checked = rule.itemIds?.includes(item.id) ?? false
+      check.addEventListener('change', () => {
+        const ids = new Set(rule.itemIds ?? [])
+        if (check.checked) ids.add(item.id)
+        else ids.delete(item.id)
+        rule.itemIds = ids.size > 0 ? [...ids] : null
+        showCount()
+      })
+      option.append(check, item.title)
+      return option
+    }),
+  )
+  items.append(summary, checks)
+  items.open = (rule.itemIds?.length ?? 0) === 0 && rule.label === ''
+
+  row.append(top, label, items)
+  return row
+}
+
+function renderRuleEditors() {
+  rulesEditList.replaceChildren(...editingRules.map(createRuleEditor))
+}
 const sectionView = document.querySelector<HTMLDivElement>('#section-view')!
 const spacesList = document.querySelector<HTMLDivElement>('#spaces-list')!
 const archivedBox = document.querySelector<HTMLDetailsElement>('#spaces-archived')!
@@ -321,6 +429,7 @@ function openFolder(id: string) {
 }
 
 function closeFolder() {
+  folderMessage.hidden = true
   openSpaceId = null
   openSectionId = null
   showView(homeView)
@@ -335,14 +444,151 @@ function renderSpaces() {
   archivedBox.hidden = archived.length === 0
   emptyText.hidden = spaces.length > 0
   renderRecentSpace()
+  refreshSyllabusSpace()
   if (openSectionId) renderSection()
   else if (openSpaceId) renderFolder()
 }
 
 // ── Detalle de un apartado ─────────────────────────────────────────────
 
+// ── Ordenar arrastrando ────────────────────────────────────────────────
+
+function readOrder() {
+  return [...detailItems.children].map((row) => (row as HTMLElement).dataset.id!)
+}
+
+async function saveOrder(before: string[]) {
+  const ids = readOrder()
+  if (!openSectionId || ids.join() === before.join()) return
+  const { error } = await reorderSectionItems(openSectionId, ids)
+  if (error) {
+    errorText.textContent = error
+    renderSection() // vuelve al orden guardado
+  }
+}
+
+// Se toma de la manilla: con el mouse o el dedo se arrastra, y con el teclado se mueve con las flechas
+function makeDraggable(row: HTMLLIElement, handle: HTMLButtonElement) {
+  handle.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return
+    event.preventDefault()
+    const before = readOrder()
+    row.setAttribute('data-dragging', '')
+
+    const move = (moveEvent: PointerEvent) => {
+      const target = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)?.closest<HTMLLIElement>('#section-items > li')
+      if (!target || target === row) return
+      const box = target.getBoundingClientRect()
+      const isAfter = moveEvent.clientY > box.top + box.height / 2
+      detailItems.insertBefore(row, isAfter ? target.nextSibling : target)
+    }
+    // En toda la ventana: el puntero sale de la manilla apenas se empieza a mover
+    const end = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      row.removeAttribute('data-dragging')
+      saveOrder(before)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  })
+
+  handle.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    event.preventDefault()
+    const before = readOrder()
+    if (event.key === 'ArrowUp' && row.previousElementSibling) detailItems.insertBefore(row, row.previousElementSibling)
+    if (event.key === 'ArrowDown' && row.nextElementSibling) detailItems.insertBefore(row.nextElementSibling, row)
+    handle.focus()
+    saveOrder(before)
+  })
+}
+
+// ── Notas directo en la fila ───────────────────────────────────────────
+
+let focusAfterRender: string | null = null // la nota que se sigue escribiendo tras guardar la anterior
+
+function readGrade(value: string) {
+  const text = value.trim().replace(',', '.')
+  if (text === '') return null
+  const grade = Number(text)
+  return Number.isFinite(grade) ? grade : NaN
+}
+
+// Guarda solo la nota, con el resto de la evaluación tal cual. Vacía la borra.
+async function saveGrade(item: AgendaItem, section: Section, input: HTMLInputElement) {
+  if (input.disabled) return false // ya se está guardando (Enter y el cambio llegan juntos)
+  const grade = readGrade(input.value)
+  if (grade === item.grade) return true
+  if (Number.isNaN(grade) || (grade !== null && (grade < section.gradeMin || grade > section.gradeMax))) {
+    input.setCustomValidity(`Escribe una nota entre ${formatGrade(section, section.gradeMin)} y ${formatGrade(section, section.gradeMax)}.`)
+    input.reportValidity()
+    return false
+  }
+  input.setCustomValidity('')
+  input.disabled = true
+  const { id, done: _done, ...draft } = item
+  const { error } = await updateItem(id, { ...draft, grade: grade === null ? null : roundGrade(section, grade) })
+  input.disabled = false
+  if (error) {
+    errorText.textContent = error
+    return false
+  }
+  item.grade = grade === null ? null : roundGrade(section, grade)
+  notifyAgendaChange() // recalcula el promedio, los requisitos y el calendario
+  return true
+}
+
+function createGradeInput(item: AgendaItem, section: Section) {
+  const input = document.createElement('input')
+  input.className = 'section-item-grade'
+  input.inputMode = 'decimal'
+  input.autocomplete = 'off'
+  input.placeholder = '–'
+  input.value = item.grade === null ? '' : formatGrade(section, item.grade)
+  input.toggleAttribute('data-failing', item.grade !== null && item.grade < section.gradePass)
+  input.setAttribute('aria-label', `Nota de ${item.title}`)
+  input.title = 'Escribe la nota y aprieta Enter'
+  input.dataset.itemId = item.id
+
+  const restore = () => (input.value = item.grade === null ? '' : formatGrade(section, item.grade))
+  input.addEventListener('focus', () => input.select())
+  input.addEventListener('input', () => input.setCustomValidity(''))
+  input.addEventListener('keydown', async (event) => {
+    if (event.key === 'Escape') {
+      restore()
+      input.blur()
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      // Enter guarda y pasa a la nota de la evaluación siguiente
+      const rows = [...detailItems.children] as HTMLElement[]
+      const next = rows[rows.findIndex((row) => row.dataset.id === item.id) + 1]
+      if (await saveGrade(item, section, input)) {
+        focusAfterRender = next?.dataset.id ?? null
+        if (readGrade(input.value) === item.grade) next?.querySelector<HTMLInputElement>('.section-item-grade')?.focus()
+      }
+    }
+  })
+  input.addEventListener('change', () => saveGrade(item, section, input))
+  return input
+}
+
 function createItemRow(item: AgendaItem, section: Section) {
   const row = document.createElement('li')
+  row.className = 'section-item-row'
+  row.dataset.id = item.id
+  row.dataset.kind = item.kind
+
+  const handle = document.createElement('button')
+  handle.type = 'button'
+  handle.className = 'section-item-handle'
+  handle.setAttribute('aria-label', `Mover ${item.title}. Usa las flechas arriba y abajo.`)
+  handle.title = 'Arrastra para ordenar'
+  handle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg>'
+  makeDraggable(row, handle)
+
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'section-item'
@@ -355,25 +601,18 @@ function createItemRow(item: AgendaItem, section: Section) {
   title.textContent = item.title
   const detail = document.createElement('span')
   detail.className = 'sf-row-detail'
-  detail.textContent = `${kindName(item.kind)} · ${dateFormat.format(new Date(`${item.date}T12:00:00`))}${item.done ? ' · hecha' : ''}`
+  const when = item.date ? dateFormat.format(new Date(`${item.date}T12:00:00`)) : 'Sin fecha'
+  button.toggleAttribute('data-undated', !item.date)
+  detail.textContent = `${kindName(item.kind)} · ${when}${item.done ? ' · hecha' : ''}`
   main.append(title, detail)
 
   const weight = document.createElement('span')
   weight.className = 'section-item-weight'
   weight.textContent = item.weight !== null ? `${String(item.weight).replace('.', ',')} %` : ''
 
-  const grade = document.createElement('span')
-  grade.className = 'section-item-grade'
-  if (item.grade !== null) {
-    grade.textContent = formatGrade(section, item.grade)
-    grade.toggleAttribute('data-failing', item.grade < section.gradePass)
-  } else {
-    grade.textContent = item.weight !== null ? '–' : ''
-  }
-
-  button.append(main, weight, grade)
+  button.append(main, weight)
   button.addEventListener('click', () => openAgendaDialog(item, item.date))
-  row.append(button)
+  row.append(handle, button, createGradeInput(item, section))
   return row
 }
 
@@ -389,7 +628,7 @@ async function renderSection() {
 
   detailSwatch.style.background = section.color
   detailName.textContent = section.name
-  detailMeta.textContent = [space.name, section.code, section.teacher, section.place].filter(Boolean).join(' · ')
+  detailMeta.textContent = [space.name, section.code, section.teacher, section.place, section.schedule].filter(Boolean).join(' · ')
   detailWeek.textContent = describeWeek(section)
   itemsTitle.textContent = labels.id === 'semestre' ? 'Evaluaciones y tareas' : 'Tareas y entregas'
 
@@ -420,7 +659,52 @@ async function renderSection() {
   }
 
   detailItems.replaceChildren(...items.map((item) => createItemRow(item, section)))
+  if (focusAfterRender) {
+    detailItems.querySelector<HTMLInputElement>(`.section-item-grade[data-item-id="${focusAfterRender}"]`)?.focus()
+    focusAfterRender = null
+  }
   detailEmpty.hidden = items.length > 0
+  renderRules(section, items)
+}
+
+// Los requisitos: cómo va cada uno, y el resumen que aparece al pasar el mouse por el ícono
+function renderRules(section: Section, items: AgendaItem[]) {
+  const statuses = section.rules.map((rule) => ({ rule, status: describeRule(section, rule, items) }))
+  const icons = { met: '✓', failed: '✕', pending: '…' }
+
+  rulesBox.hidden = statuses.length === 0
+  // Llegar a la nota no basta si un requisito no se cumple, como un examen bajo el mínimo
+  const failed = statuses.filter(({ status }) => status.state === 'failed')
+  if (failed.length > 0) {
+    detailNeeded.textContent += ` Pero no cumples ${failed.length === 1 ? 'un requisito' : 'algunos requisitos'}: ${failed.map(({ rule }) => rule.label).join('; ')}.`
+  }
+  rulesList.replaceChildren(
+    ...statuses.map(({ rule, status }) => {
+      const row = document.createElement('li')
+      row.className = 'section-rule'
+      row.dataset.state = status.state
+      const icon = document.createElement('span')
+      icon.className = 'section-rule-icon'
+      icon.textContent = icons[status.state]
+      icon.setAttribute('aria-label', { met: 'Cumples', failed: 'No cumples', pending: 'Aún no se sabe' }[status.state])
+      const text = document.createElement('span')
+      text.className = 'section-rule-text'
+      const label = document.createElement('strong')
+      label.className = 'section-rule-label'
+      label.textContent = rule.label
+      // Qué cuenta para el requisito: aparece al pasar el mouse por el (i)
+      const counted = rule.itemIds
+        ? rule.itemIds.flatMap((id) => items.filter((item) => item.id === id).map(({ title, weight }) => ({ title, weight })))
+        : null
+      label.append(createInfoTip('Qué cuenta para este requisito', describeRuleScope(counted)))
+      const detail = document.createElement('span')
+      detail.className = 'sf-row-detail'
+      detail.textContent = status.detail
+      text.append(label, detail)
+      row.append(icon, text)
+      return row
+    }),
+  )
 }
 
 function openSection(id: string) {
@@ -510,6 +794,19 @@ function openSectionDialog(section: Section | null, spaceId: string) {
   sectionCode.value = section?.code ?? ''
   sectionTeacher.value = section?.teacher ?? ''
   sectionPlace.value = section?.place ?? ''
+  sectionSchedule.value = section?.schedule ?? ''
+  // Los requisitos se editan sobre una copia; se guardan con el resto del ramo
+  editingRules = (section?.rules ?? []).map((rule) => ({ ...rule, itemIds: rule.itemIds ? [...rule.itemIds] : null }))
+  rulesItems = []
+  rulesField.hidden = !section // uno nuevo aún no tiene evaluaciones a las que apuntar
+  renderRuleEditors()
+  if (section) {
+    loadSectionItems(section.id).then(({ value }) => {
+      if (editingSection !== section || !value) return
+      rulesItems = value
+      renderRuleEditors()
+    })
+  }
   sectionGoal.value = section?.weeklyGoalMinutes ? String(section.weeklyGoalMinutes / 60) : ''
   const scale = section ?? DEFAULT_SCALE
   gradeMinInput.value = String(scale.gradeMin)
@@ -541,6 +838,15 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
   })
   folderAdd.addEventListener('click', () => {
     if (openSpaceId) openSectionDialog(null, openSpaceId)
+  })
+  document.querySelector('#folder-upload')!.addEventListener('click', () => {
+    const space = getSpaces().find((item) => item.id === openSpaceId)
+    folderMessage.hidden = true
+    if (space) openSyllabusUpload(space)
+  })
+  setUpSyllabusImport((message) => {
+    folderMessage.textContent = message
+    folderMessage.hidden = false
   })
   document.querySelector('#section-edit')!.addEventListener('click', () => {
     const found = findSection(openSectionId)
@@ -592,6 +898,8 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
       code: sectionCode.value,
       teacher: sectionTeacher.value,
       place: sectionPlace.value,
+      schedule: sectionSchedule.value,
+      requirements: editingSection?.requirements ?? null, // el texto que trajo el programa se conserva, aunque ya no se edita
       weeklyGoalMinutes: sectionGoal.value && hours > 0 ? Math.round(hours * 60) : null,
       scale: {
         gradeMin: readNumber(gradeMinInput),
@@ -600,14 +908,35 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
         exigencia: readNumber(exigenciaInput),
       },
     }
-    const error = editingSection
+    // Cada uno o la eximición necesitan evaluaciones a las que apuntar
+    if (editingRules.some((rule) => rule.kind !== 'average' && !rule.itemIds?.length)) {
+      sectionError.textContent = 'Marca las evaluaciones de cada requisito de "cada una" o de eximición.'
+      return
+    }
+    if (editingRules.some((rule) => !Number.isFinite(rule.min))) {
+      sectionError.textContent = 'Escribe la nota de cada requisito.'
+      return
+    }
+    let error = editingSection
       ? await updateSection(editingSection.id, draft)
       : await createSection(sectionSpaceId!, draft)
+    if (!error && editingSection) {
+      const found = findSection(editingSection.id)
+      const rules = editingRules.map((rule) => ({ ...rule, label: rule.label.trim() || describeNewRule(found?.section ?? null, rule) }))
+      error = await updateRules(editingSection.id, rules)
+    }
     if (error) {
       sectionError.textContent = error
       return
     }
     sectionDialog.close()
+  })
+
+  document.querySelector('#section-rule-add')!.addEventListener('click', () => {
+    const pass = readNumber(gradePassInput)
+    editingRules.push({ id: '', kind: 'average', label: '', min: Number.isFinite(pass) ? pass : 4, itemIds: null })
+    renderRuleEditors()
+    rulesEditList.lastElementChild?.querySelector('select')?.focus()
   })
 
   sectionDelete.addEventListener('click', () =>
