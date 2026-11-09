@@ -729,6 +729,42 @@ body {
   justify-content: center;
 }
 
+/* Las cuentas de prueba: solo mientras se desarrolla */
+.test-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cell-1);
+  padding-top: var(--cell-2);
+  border-top: 1px dashed var(--ink-soft);
+}
+
+.test-accounts-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.test-accounts-hint {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.test-accounts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cell-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.test-accounts-list .character-photo {
+  width: 22px;
+  height: 22px;
+}
+
 /* Menú */
 
 /* El menú crece con su contenido: así el panel de cada lado sigue pegado arriba al bajar */
@@ -1860,7 +1896,94 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .rule-edit-items input { margin: 0; accent-color: var(--ink); }
 .rules-edit-add { align-self: flex-start; }
 
+/* La ventana para poner un ramo en el horario: un día y sus horas por cada vez a la semana */
+.class-times { display: flex; flex-direction: column; gap: var(--cell-1); margin: 0; padding: 0; list-style: none; }
+.class-time { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: var(--cell-1); }
+.class-time .sf-input { min-width: 0; }
+.class-time-dash { color: var(--ink-soft); font-size: 13px; }
+
+/* El título del horario con su botón para agregar */
+.schedule-head { display: flex; align-items: center; justify-content: space-between; gap: var(--cell-1); margin-bottom: var(--cell-1); }
+.schedule-head .sf-section-title { margin: 0; }
+
+/* El horario de la semana de una carpeta */
+.folder-schedule { margin-top: var(--cell-3); }
+.week-scroll { overflow-x: auto; padding-bottom: var(--cell-half); }
+.week-grid {
+  --hour-height: 48px;
+  display: grid;
+  grid-template-columns: 44px repeat(var(--days), minmax(72px, 1fr));
+  grid-template-rows: auto calc(var(--hours) * var(--hour-height));
+  min-width: calc(44px + var(--days) * 72px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-1);
+  background: var(--card);
+}
+.week-day-name {
+  padding: var(--cell-1) 0;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+.week-day-name[data-today] { color: var(--ink); background: var(--marker-wash); }
+.week-hours { position: relative; }
+.week-hours span {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.week-hours span:first-child { transform: none; }
+.week-day {
+  position: relative;
+  border-left: 1px solid var(--line);
+  /* Una línea por hora */
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hour-height) - 1px), var(--line) calc(var(--hour-height) - 1px), var(--line) var(--hour-height));
+}
+.week-day[data-today] { background-color: color-mix(in srgb, var(--marker-wash) 45%, transparent); }
+.week-class {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  padding: 3px 5px;
+  border: 0;
+  border-left: 3px solid var(--section);
+  border-radius: var(--radius-0);
+  background: color-mix(in srgb, var(--section) 20%, var(--card));
+  box-shadow: inset 0 0 0 1px var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.week-class:hover { background: color-mix(in srgb, var(--section) 32%, var(--card)); }
+.week-class:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; z-index: 2; }
+.week-class strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.week-class span { overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.week-class[data-clash] { outline: 1px dashed var(--danger); outline-offset: -1px; }
+.week-class[data-now] { box-shadow: inset 0 0 0 1px var(--card), 0 0 0 2px var(--section); z-index: 1; }
+.week-now { position: absolute; right: 0; left: 0; z-index: 3; height: 2px; background: var(--danger); pointer-events: none; }
+
 /* Los requisitos de un ramo y cómo va cada uno */
+/* La nota que avisa que el promedio supone que te eximes */
+.section-exemption {
+  margin: 0;
+  padding: var(--cell-1) var(--cell-1-5);
+  border-radius: var(--radius-1);
+  background: var(--marker-wash);
+  font-size: 13px;
+  line-height: 18px;
+}
+
 .section-rules { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .section-rule {
   display: grid;

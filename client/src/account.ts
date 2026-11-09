@@ -22,10 +22,18 @@ export interface Account {
   nextNameChange: string | null // desde cuándo se puede volver a cambiar el apodo
 }
 
+// Solo mientras se desarrolla: se entra a ellas sin contraseña
+export interface TestAccount {
+  username: string
+  name: string
+  character: Character
+}
+
 export interface AccountInfo {
   isAvailable: boolean
   googleClientId: string | null
   account: Account | null
+  testAccounts: TestAccount[] | null // nulo en el sitio publicado
 }
 
 type AccountResult = { account: Account; error: null } | { account: null; error: string }

@@ -196,7 +196,7 @@ export async function showHome(
     return
   }
 
-  setUpAuth(info.googleClientId, (nextAccount) => {
+  setUpAuth(info.googleClientId, info.testAccounts, (nextAccount) => {
     reconnect()
     signedIn(nextAccount)
   })

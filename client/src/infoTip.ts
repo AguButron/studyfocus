@@ -20,10 +20,16 @@ export function createInfoTip(label: string, text: string, alignEnd = false) {
   return tip
 }
 
-// Qué cuenta para un requisito: sus evaluaciones con su porcentaje, o el promedio final
-export function describeRuleScope(names: { title: string; weight: number | null }[] | null) {
-  if (names === null) return 'Cuenta el promedio final del ramo, con todas sus evaluaciones.'
+// Qué cuenta para un requisito: sus evaluaciones con su porcentaje, o el promedio final.
+// exempted: en una eximición, de qué te eximes (eso no cuenta para eximirte)
+export function describeRuleScope(names: { title: string; weight: number | null }[] | null, exempted: string[] = []) {
+  const exemptLine = exempted.length > 0 ? `\nTe eximes de: ${exempted.join(', ')}.` : ''
+  if (names === null) {
+    return exempted.length > 0
+      ? `Cuenta el promedio de todas las demás evaluaciones del ramo.${exemptLine}`
+      : 'Cuenta el promedio final del ramo, con todas sus evaluaciones.'
+  }
   if (names.length === 0) return 'Sus evaluaciones ya no están en el ramo.'
   const lines = names.map(({ title, weight }) => `• ${title}${weight !== null ? ` (${String(weight).replace('.', ',')} %)` : ''}`)
-  return `Cuenta para este requisito:\n${lines.join('\n')}`
+  return `Cuenta para este requisito:\n${lines.join('\n')}${exemptLine}`
 }

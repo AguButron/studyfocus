@@ -5,6 +5,7 @@ import { notifyAgendaChange, onAgendaChange, openAgendaDialog } from './agendaDi
 import {
   archiveSpace,
   computeAverage,
+  findExemption,
   describeRule,
   updateRules,
   type Rule,
@@ -31,6 +32,9 @@ import {
 import { formatDuration } from './stats'
 import { createInfoTip, describeRuleScope } from './infoTip'
 import { openSyllabusUpload, refreshSyllabusSpace, setUpSyllabusImport } from './syllabusImport'
+import { describeClasses } from './classes'
+import { openClassDialog, setUpClassDialog } from './classDialog'
+import { createWeekSchedule } from './weekSchedule'
 
 const CONFIRM_TIME = 4000 // milisegundos que espera la confirmación de borrar
 
@@ -46,6 +50,9 @@ const folderMessage = document.querySelector<HTMLParagraphElement>('#folder-mess
 const rulesBox = document.querySelector<HTMLDivElement>('#section-rules-box')!
 const rulesList = document.querySelector<HTMLUListElement>('#section-rules')!
 const sectionSchedule = document.querySelector<HTMLInputElement>('#section-schedule')!
+const folderSchedule = document.querySelector<HTMLDivElement>('#folder-schedule')!
+const folderScheduleGrid = document.querySelector<HTMLDivElement>('#folder-schedule-grid')!
+const folderScheduleEmpty = document.querySelector<HTMLParagraphElement>('#folder-schedule-empty')!
 const rulesField = document.querySelector<HTMLDivElement>('#section-rules-field')!
 const rulesEditList = document.querySelector<HTMLUListElement>('#section-rules-edit')!
 
@@ -58,12 +65,21 @@ const RULE_KINDS: { id: Rule['kind']; name: string }[] = [
   { id: 'exempt', name: 'Te eximes con promedio de…' },
 ]
 
+// "Examen", "Examen y Prueba 3", "Examen, Prueba 3 y Tarea 2"
+function joinNames(names: string[]) {
+  return names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`
+}
+
 // Si no se escribe una descripción, se arma sola: "Promedio de Prueba 1, Prueba 2 ≥ 4,0"
 function describeNewRule(section: Section | null, rule: Rule) {
-  const names = (rule.itemIds ?? []).map((id) => rulesItems.find((item) => item.id === id)?.title).filter(Boolean).join(', ')
+  const titleOf = (id: string) => rulesItems.find((item) => item.id === id)?.title
+  const names = (rule.itemIds ?? []).map(titleOf).filter(Boolean).join(', ')
   const min = section ? formatGrade(section, rule.min) : String(rule.min).replace('.', ',')
   if (rule.kind === 'each') return `Cada una de ${names || 'las evaluaciones'} ≥ ${min}`
-  if (rule.kind === 'exempt') return `Te eximes con promedio de ${names || 'las evaluaciones'} ≥ ${min}`
+  if (rule.kind === 'exempt') {
+    const exempted = joinNames((rule.exemptIds ?? []).map(titleOf).filter((title): title is string => !!title))
+    return `Te eximes${exempted ? ` de ${exempted}` : ''} con promedio de ${names || 'las demás evaluaciones'} ≥ ${min}`
+  }
   return names ? `Promedio de ${names} ≥ ${min}` : `Promedio final ≥ ${min}`
 }
 
@@ -78,7 +94,11 @@ function createRuleEditor(rule: Rule) {
   kind.setAttribute('aria-label', 'Tipo de requisito')
   kind.append(...RULE_KINDS.map(({ id, name }) => new Option(name, id)))
   kind.value = rule.kind
-  kind.addEventListener('change', () => (rule.kind = kind.value as Rule['kind']))
+  kind.addEventListener('change', () => {
+    rule.kind = kind.value as Rule['kind']
+    exempts.hidden = rule.kind !== 'exempt'
+    showCount()
+  })
   const min = document.createElement('input')
   min.className = 'sf-input'
   min.type = 'number'
@@ -112,7 +132,9 @@ function createRuleEditor(rule: Rule) {
   const summary = document.createElement('summary')
   const showCount = () => {
     const count = rule.itemIds?.length ?? 0
-    summary.textContent = count === 0 ? 'Evaluaciones: ninguna marcada (promedio final)' : `Evaluaciones: ${count} marcadas`
+    // Para eximirse, sin marcar ninguna se promedian todas menos aquellas de las que te eximes
+    const unmarked = rule.kind === 'exempt' ? 'todas las demás' : 'promedio final'
+    summary.textContent = count === 0 ? `Evaluaciones: ninguna marcada (${unmarked})` : `Evaluaciones: ${count} marcadas`
   }
   showCount()
   const checks = document.createElement('div')
@@ -137,7 +159,38 @@ function createRuleEditor(rule: Rule) {
   items.append(summary, checks)
   items.open = (rule.itemIds?.length ?? 0) === 0 && rule.label === ''
 
-  row.append(top, label, items)
+  // Solo en "Te eximes": de qué evaluaciones te eximes, como el examen
+  const exempts = document.createElement('details')
+  exempts.hidden = rule.kind !== 'exempt'
+  const exemptsSummary = document.createElement('summary')
+  const showExemptCount = () => {
+    const count = rule.exemptIds?.length ?? 0
+    exemptsSummary.textContent = count === 0 ? 'Te eximes de: ninguna marcada' : `Te eximes de: ${count} marcadas`
+  }
+  showExemptCount()
+  const exemptChecks = document.createElement('div')
+  exemptChecks.className = 'rule-edit-items'
+  exemptChecks.append(
+    ...rulesItems.map((item) => {
+      const option = document.createElement('label')
+      const check = document.createElement('input')
+      check.type = 'checkbox'
+      check.checked = rule.exemptIds?.includes(item.id) ?? false
+      check.addEventListener('change', () => {
+        const ids = new Set(rule.exemptIds ?? [])
+        if (check.checked) ids.add(item.id)
+        else ids.delete(item.id)
+        rule.exemptIds = ids.size > 0 ? [...ids] : null
+        showExemptCount()
+      })
+      option.append(check, item.title)
+      return option
+    }),
+  )
+  exempts.append(exemptsSummary, exemptChecks)
+  exempts.open = rule.kind === 'exempt' && !rule.exemptIds?.length
+
+  row.append(top, label, items, exempts)
   return row
 }
 
@@ -183,6 +236,7 @@ const detailAverage = document.querySelector<HTMLElement>('#section-average')!
 const detailEvaluated = document.querySelector<HTMLElement>('#section-evaluated')!
 const detailWeek = document.querySelector<HTMLElement>('#section-week')!
 const detailNeeded = document.querySelector<HTMLParagraphElement>('#section-needed')!
+const detailExemption = document.querySelector<HTMLParagraphElement>('#section-exemption')!
 const detailItems = document.querySelector<HTMLUListElement>('#section-items')!
 const detailEmpty = document.querySelector<HTMLParagraphElement>('#section-items-empty')!
 const itemsTitle = document.querySelector<HTMLHeadingElement>('#section-items-title')!
@@ -223,6 +277,9 @@ const RECENT_KEY = 'studyfocus.recentSpace'
 const homeSpaceCard = document.querySelector<HTMLDivElement>('#home-space-card')!
 const homeSpaceEmpty = document.querySelector<HTMLDivElement>('#home-space-empty')!
 const homeSpaceTitle = document.querySelector<HTMLHeadingElement>('#home-space-title')!
+const homeSchedule = document.querySelector<HTMLDivElement>('#home-schedule')!
+const homeScheduleGrid = document.querySelector<HTMLDivElement>('#home-schedule-grid')!
+const homeScheduleEmpty = document.querySelector<HTMLParagraphElement>('#home-schedule-empty')!
 let showSpacesPanel = () => {}
 
 // El último espacio que se abrió, para mostrarlo en Inicio
@@ -256,6 +313,16 @@ function renderRecentSpace() {
   homeSpaceEmpty.hidden = space !== null
   homeSpaceTitle.textContent = space ? 'Tu carpeta más reciente' : 'Tu carpeta'
   homeSpaceCard.replaceChildren(...(space ? [createRecentCard(space)] : []))
+  // El horario de clases de esa carpeta, si tiene ramos que poner en él
+  homeSchedule.hidden = !space || space.archived || space.sections.length === 0
+  if (space) renderSchedule(space, homeScheduleGrid, homeScheduleEmpty)
+}
+
+// El horario con las clases que se pusieron a mano; al apretar una se cambia o se borra
+function renderSchedule(space: Space, gridBox: HTMLElement, empty: HTMLElement) {
+  const grid = createWeekSchedule(space.sections, (section, item) => openClassDialog(space.sections, { section, kind: item.kind }))
+  gridBox.replaceChildren(...(grid ? [grid] : []))
+  empty.hidden = !!grid
 }
 
 function createRecentCard(space: Space) {
@@ -417,6 +484,14 @@ function renderFolder() {
   folderSections.replaceChildren(...space.sections.map(createSectionRow))
   folderEmpty.hidden = space.sections.length > 0
   folderEmpty.textContent = `Esta carpeta aún está vacía. Usa «${folderAdd.textContent}» para empezar.`
+  renderFolderSchedule(space)
+}
+
+// El horario de la semana con las clases de todos sus ramos
+function renderFolderSchedule(space: Space) {
+  folderSchedule.hidden = space.sections.length === 0
+  document.querySelector<HTMLButtonElement>('#folder-schedule-add')!.hidden = space.archived
+  renderSchedule(space, folderScheduleGrid, folderScheduleEmpty)
 }
 
 function openFolder(id: string) {
@@ -628,7 +703,8 @@ async function renderSection() {
 
   detailSwatch.style.background = section.color
   detailName.textContent = section.name
-  detailMeta.textContent = [space.name, section.code, section.teacher, section.place, section.schedule].filter(Boolean).join(' · ')
+  const schedule = section.classes.length > 0 ? describeClasses(section.classes) : section.schedule
+  detailMeta.textContent = [space.name, section.code, section.teacher, section.place, schedule].filter(Boolean).join(' · ')
   detailWeek.textContent = describeWeek(section)
   itemsTitle.textContent = labels.id === 'semestre' ? 'Evaluaciones y tareas' : 'Tareas y entregas'
 
@@ -640,7 +716,14 @@ async function renderSection() {
     return
   }
 
-  const result = computeAverage(section, items)
+  // Mientras te puedas eximir, la nota se calcula como si te fueras a eximir
+  const exemption = findExemption(section, items)
+  const result = computeAverage(section, items, exemption)
+  detailExemption.hidden = !exemption
+  detailExemption.textContent = exemption
+    ? `Calculado suponiendo que te eximes de ${joinNames(exemption.titles)}. ` +
+      `Si no te eximes, ${exemption.titles.length === 1 ? 'cuenta' : 'cuentan'} ${Math.round(exemption.weight)} % de la nota.`
+    : ''
   detailAverage.textContent = result.average === null ? '–' : formatGrade(section, result.average)
   detailAverage.toggleAttribute('data-failing', result.average !== null && result.average < section.gradePass)
   detailEvaluated.textContent = `${Math.round(result.evaluated)} %`
@@ -696,7 +779,8 @@ function renderRules(section: Section, items: AgendaItem[]) {
       const counted = rule.itemIds
         ? rule.itemIds.flatMap((id) => items.filter((item) => item.id === id).map(({ title, weight }) => ({ title, weight })))
         : null
-      label.append(createInfoTip('Qué cuenta para este requisito', describeRuleScope(counted)))
+      const exempted = (rule.exemptIds ?? []).flatMap((id) => items.filter((item) => item.id === id).map(({ title }) => title))
+      label.append(createInfoTip('Qué cuenta para este requisito', describeRuleScope(counted, exempted)))
       const detail = document.createElement('span')
       detail.className = 'sf-row-detail'
       detail.textContent = status.detail
@@ -796,7 +880,11 @@ function openSectionDialog(section: Section | null, spaceId: string) {
   sectionPlace.value = section?.place ?? ''
   sectionSchedule.value = section?.schedule ?? ''
   // Los requisitos se editan sobre una copia; se guardan con el resto del ramo
-  editingRules = (section?.rules ?? []).map((rule) => ({ ...rule, itemIds: rule.itemIds ? [...rule.itemIds] : null }))
+  editingRules = (section?.rules ?? []).map((rule) => ({
+    ...rule,
+    itemIds: rule.itemIds ? [...rule.itemIds] : null,
+    exemptIds: rule.exemptIds ? [...rule.exemptIds] : null,
+  }))
   rulesItems = []
   rulesField.hidden = !section // uno nuevo aún no tiene evaluaciones a las que apuntar
   renderRuleEditors()
@@ -844,6 +932,12 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
     folderMessage.hidden = true
     if (space) openSyllabusUpload(space)
   })
+  setUpClassDialog()
+  const addClasses = (space: Space | null | undefined) => {
+    if (space && space.sections.length > 0) openClassDialog(space.sections)
+  }
+  document.querySelector('#folder-schedule-add')!.addEventListener('click', () => addClasses(getSpaces().find((item) => item.id === openSpaceId)))
+  document.querySelector('#home-schedule-add')!.addEventListener('click', () => addClasses(findRecentSpace()))
   setUpSyllabusImport((message) => {
     folderMessage.textContent = message
     folderMessage.hidden = false
@@ -909,9 +1003,17 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
       },
     }
     // Cada uno o la eximición necesitan evaluaciones a las que apuntar
-    if (editingRules.some((rule) => rule.kind !== 'average' && !rule.itemIds?.length)) {
-      sectionError.textContent = 'Marca las evaluaciones de cada requisito de "cada una" o de eximición.'
+    if (editingRules.some((rule) => rule.kind === 'each' && !rule.itemIds?.length)) {
+      sectionError.textContent = 'Marca las evaluaciones de cada requisito de "cada una".'
       return
+    }
+    // Para eximirse se promedian las marcadas, o si no hay, todas las demás; pero hay que decir de qué
+    if (editingRules.some((rule) => rule.kind === 'exempt' && !rule.itemIds?.length && !rule.exemptIds?.length)) {
+      sectionError.textContent = 'En cada requisito de eximición, marca de qué te eximes o qué se promedia.'
+      return
+    }
+    for (const rule of editingRules) {
+      if (rule.kind !== 'exempt') rule.exemptIds = null
     }
     if (editingRules.some((rule) => !Number.isFinite(rule.min))) {
       sectionError.textContent = 'Escribe la nota de cada requisito.'

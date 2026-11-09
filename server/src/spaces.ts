@@ -35,6 +35,9 @@ const MAX_RULE_LABEL_LENGTH = 120
 export const RULE_KINDS = ['average', 'each', 'exempt']
 const MAX_GRADE = 1000 // escalas como 0 a 100, 1 a 7 o 0 a 20 caben de sobra
 const WEEK_DAYS = 7
+const MAX_CLASSES = 20 // bloques de clase por semana
+const MAX_CLASS_TEXT = 40
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const NOT_FOUND = 'No se encontró. Puede que ya se haya borrado.'
 
 // La escala chilena es la que se propone; cada apartado puede cambiarla
@@ -45,7 +48,7 @@ const SECTION_COLUMNS = `sections.id, sections.space_id AS "spaceId", sections.n
   sections.teacher, sections.place, sections.weekly_goal_minutes AS "weeklyGoalMinutes",
   sections.grade_min::float8 AS "gradeMin", sections.grade_max::float8 AS "gradeMax",
   sections.grade_pass::float8 AS "gradePass", sections.exigencia, sections.schedule, sections.requirements,
-  sections.rules`
+  sections.rules, sections.classes`
 
 interface SectionRow {
   id: string
@@ -63,18 +66,30 @@ interface SectionRow {
   schedule: string | null
   requirements: string | null
   rules: Rule[]
+  classes: ClassBlock[]
+}
+
+// Una clase de la semana: día (1 es lunes, 7 domingo), hora de inicio y de término,
+// y si se sabe, qué es (cátedra, ayudantía, laboratorio) y dónde
+export interface ClassBlock {
+  day: number
+  start: string
+  end: string
+  kind: string | null
+  place: string | null
 }
 
 // Un requisito para aprobar. Sin evaluaciones, se refiere al promedio final del apartado.
 // average: el promedio ponderado de esas evaluaciones debe llegar a min.
 // each: cada una de esas evaluaciones debe llegar a min (por ejemplo, el examen).
-// exempt: con un promedio de esas evaluaciones de al menos min, se exime (por ejemplo, del examen).
+// exempt: con un promedio de esas evaluaciones de al menos min, se exime de las de exemptIds (por ejemplo, del examen).
 export interface Rule {
   id: string
   kind: 'average' | 'each' | 'exempt'
   label: string
   min: number
   itemIds: string[] | null
+  exemptIds?: string[] | null // solo en exempt; los requisitos guardados antes no lo tienen
 }
 
 function parseText(value: unknown, maxLength: number, label: string) {
@@ -113,8 +128,39 @@ export function parseRules(
     if (!label) throw new RequestError(400, 'Escribe qué dice cada requisito.')
     const min = parseNumber(raw.min, scale.gradeMin, scale.gradeMax, `La nota de "${label}" debe estar dentro de la escala.`)
     const itemIds = toItemIds(raw.itemIds ?? raw.evaluations)
-    return { id: String(index + 1), kind, label, min, itemIds: itemIds && itemIds.length > 0 ? itemIds : null }
+    const exemptIds = kind === 'exempt' ? (toItemIds(raw.exemptIds ?? raw.exempts) ?? []).filter((id) => !itemIds?.includes(id)) : []
+    return {
+      id: String(index + 1),
+      kind,
+      label,
+      min,
+      itemIds: itemIds && itemIds.length > 0 ? itemIds : null,
+      exemptIds: exemptIds.length > 0 ? exemptIds : null,
+    }
   })
+}
+
+// Las clases de la semana, ordenadas por día y hora
+export function parseClasses(value: unknown): ClassBlock[] {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value) || value.length > MAX_CLASSES) throw new RequestError(400, `Usa hasta ${MAX_CLASSES} clases por semana.`)
+  return value
+    .map((raw: Record<string, unknown>) => {
+      const day = raw?.day
+      if (!Number.isInteger(day) || (day as number) < 1 || (day as number) > 7) throw new RequestError(400, 'Elige el día de cada clase.')
+      if (typeof raw.start !== 'string' || !TIME.test(raw.start) || typeof raw.end !== 'string' || !TIME.test(raw.end)) {
+        throw new RequestError(400, 'Escribe la hora de inicio y de término de cada clase.')
+      }
+      if (raw.start >= raw.end) throw new RequestError(400, 'Cada clase debe terminar después de empezar.')
+      return {
+        day: day as number,
+        start: raw.start,
+        end: raw.end,
+        kind: parseText(raw.kind, MAX_CLASS_TEXT, 'El tipo de clase'),
+        place: parseText(raw.place, MAX_CLASS_TEXT, 'La sala de la clase'),
+      }
+    })
+    .sort((a, b) => a.day - b.day || a.start.localeCompare(b.start))
 }
 
 export function parseId(value: unknown) {
@@ -293,6 +339,13 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
         section.requirements,
       ],
     ))
+  } else if (route === 'POST /api/apartados/clases') {
+    // Las clases de la semana se ponen a mano desde el horario, aparte del resto del apartado
+    ;({ rowCount } = await query('UPDATE sections SET classes = $3 WHERE id = $1 AND user_id = $2', [
+      parseId(body.id),
+      account.id,
+      JSON.stringify(parseClasses(body.classes)),
+    ]))
   } else if (route === 'POST /api/apartados/reglas') {
     // Los requisitos de un apartado; sus evaluaciones deben ser de ese mismo apartado
     const section = await findSection(account.id, parseId(body.id))

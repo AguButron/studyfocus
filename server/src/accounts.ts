@@ -5,6 +5,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { describeCharacter, parseCharacter } from './character.ts'
 import { hasDatabase, query } from './database.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
+import { findTestAccountId, listTestAccounts, TEST_USERNAME_PREFIX } from './testPeople.ts'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || null // vacía en el .env es lo mismo que no tenerla
 const COOKIE_NAME = 'studyfocus_account'
@@ -113,6 +114,12 @@ function parseUsername(value: unknown) {
   if (username.length < MIN_USERNAME_LENGTH || username.length > MAX_USERNAME_LENGTH) return null
   if (!USERNAME.test(username) || RESERVED_USERNAMES.has(username)) return null
   return username
+}
+
+// Para crear una cuenta o elegir el nombre de usuario: "prueba." es de las cuentas de prueba
+function parseNewUsername(value: unknown) {
+  const username = parseUsername(value)
+  return username?.startsWith(TEST_USERNAME_PREFIX) ? null : username
 }
 
 function isUniqueViolation(error: unknown, constraint: string) {
@@ -264,7 +271,7 @@ async function startSession(request: IncomingMessage, response: ServerResponse, 
 // Las cuentas de Google y las locales nunca se unen solas: el correo local no está verificado,
 // y unirlas por correo dejaría a cualquiera preparar una cuenta con el correo de otra persona.
 async function register(body: Record<string, unknown>): Promise<Account> {
-  const username = parseUsername(body.username)
+  const username = parseNewUsername(body.username)
   if (!username) throw new RequestError(400, INVALID_USERNAME)
 
   const name = parseName(body.name)
@@ -342,6 +349,16 @@ async function logInWithGoogle(body: Record<string, unknown>): Promise<Account> 
   return rows[0]
 }
 
+// Solo mientras se desarrolla: entra a una cuenta de prueba sin contraseña
+async function logInAsTest(body: Record<string, unknown>): Promise<Account> {
+  const id = findTestAccountId(body.username)
+  if (!id) throw new RequestError(404, 'No encontrado.')
+
+  const { rows } = await query<Account>(`SELECT ${ACCOUNT_COLUMNS} FROM users WHERE users.id = $1`, [id])
+  if (!rows[0]) throw new RequestError(404, 'No encontrado.')
+  return rows[0]
+}
+
 async function logOut(request: IncomingMessage, response: ServerResponse) {
   const token = readCookie(request.headers.cookie)
   if (token) {
@@ -359,6 +376,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       isAvailable: hasDatabase(),
       googleClientId: hasDatabase() ? GOOGLE_CLIENT_ID : null,
       account: account ? describeAccount(account) : null,
+      testAccounts: listTestAccounts(), // nulo fuera del modo de desarrollo
     })
     return
   }
@@ -442,7 +460,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const account = await requireAccount(request)
     if (account.username) throw new RequestError(409, 'Tu nombre de usuario ya está elegido y no se puede cambiar.')
 
-    const username = parseUsername((await readBody(request)).username)
+    const username = parseNewUsername((await readBody(request)).username)
     if (!username) throw new RequestError(400, INVALID_USERNAME)
 
     try {
@@ -464,6 +482,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     'POST /api/account/register': register,
     'POST /api/account/login': logIn,
     'POST /api/account/google': logInWithGoogle,
+    'POST /api/account/prueba': logInAsTest,
   }
   const action = actions[route]
 

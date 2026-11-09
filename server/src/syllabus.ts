@@ -74,9 +74,10 @@ No multipliques nada: describe la estructura tal cual, con grupos.
 REQUISITOS PARA APROBAR (rules): cada condición por separado, tal como la pide el documento.
 - "average": el promedio de un grupo debe ser al menos min (en el ejemplo, "NTSO ≥ 3,5", "NTR ≥ 3,5" y "NTF ≥ 3,95" son tres requisitos distintos).
 - "each": cada evaluación indicada debe tener al menos min (por ejemplo "Midterm ≥ 3,5" y "Examen ≥ 3,95").
-- "exempt": con un promedio de al menos min en esas evaluaciones, la persona se exime (por ejemplo, del examen).
+- "exempt": con un promedio de al menos min en esas evaluaciones, la persona se exime (por ejemplo, del examen). En exempts van los índices de las evaluaciones de las que se exime (por ejemplo, el examen); groups y evaluations dicen qué notas se promedian para eximirse. Si el documento ofrece eximirse, agrega siempre este requisito: la planilla calcula la nota suponiendo que la persona se va a eximir.
 - groups: los índices de los grupos a los que se refiere; evaluations: los índices de evaluaciones sueltas. Usa groups siempre que el requisito sea sobre una nota intermedia. Si ambas listas quedan vacías, se refiere a la nota final del curso.
-- label: una frase corta, por ejemplo "NTSO (tareas de Sistemas Operativos) ≥ 3,5" o "Examen ≥ 3,95".
+- exempts: solo en "exempt"; en los demás tipos, una lista vacía.
+- label: una frase corta, por ejemplo "NTSO (tareas de Sistemas Operativos) ≥ 3,5", "Examen ≥ 3,95" o "Te eximes del examen con nota de presentación ≥ 5,0".
 - "average" y "each" son solo requisitos para aprobar. Las condiciones para eximirse van solo como "exempt".
 - Solo requisitos de nota, con min dentro de la escala de notas. La asistencia, los porcentajes de asistencia, las evaluaciones de pares y cualquier otra cosa que no sea una nota de la planilla no van en rules.
 
@@ -86,7 +87,7 @@ OTROS DATOS
 - teacher: el o los profesores. schedule: el horario de clases en una línea. place: la sala. null si no aparece.
 - sections: si el curso tiene varias secciones con distinto profesor, horario o sala (por ejemplo "Sección 1: Lunes y Miércoles módulo 2, sala B14, prof. Ruz"), una entrada por sección con su name ("Sección 1"), teacher, schedule y place. En ese caso deja en teacher, schedule y place solo lo que es igual para todas las secciones (o null). Si hay una sola sección, sections queda vacía.
 - gradeMin, gradeMax, gradePass: la escala de notas y la nota de aprobación, si el documento las dice o es evidente por el país (en Chile, 1,0 a 7,0 y se aprueba con 4,0). exigencia: el porcentaje de exigencia solo si el documento lo dice; si no, null.
-- requirements: un resumen breve, en palabras simples, de lo necesario para aprobar.`
+- requirements: un resumen breve, en palabras simples, de lo necesario para aprobar. Si se puede eximir de alguna evaluación, termina con una nota que lo diga, por ejemplo: "Puedes eximirte del examen con nota de presentación 5,0 o más; la nota se calcula suponiendo que te eximes."`
 
 const NULLABLE_STRING = { type: 'STRING', nullable: true }
 const NULLABLE_NUMBER = { type: 'NUMBER', nullable: true }
@@ -148,9 +149,10 @@ const RESPONSE_SCHEMA = {
           min: { type: 'NUMBER' },
           groups: { type: 'ARRAY', items: { type: 'INTEGER' } },
           evaluations: { type: 'ARRAY', items: { type: 'INTEGER' } },
+          exempts: { type: 'ARRAY', items: { type: 'INTEGER' } },
         },
-        required: ['kind', 'label', 'min', 'groups', 'evaluations'],
-        propertyOrdering: ['kind', 'label', 'min', 'groups', 'evaluations'],
+        required: ['kind', 'label', 'min', 'groups', 'evaluations', 'exempts'],
+        propertyOrdering: ['kind', 'label', 'min', 'groups', 'evaluations', 'exempts'],
       },
     },
   },
@@ -305,10 +307,15 @@ function normalizeCourse(raw: Record<string, unknown>) {
     const ruleGroups = (Array.isArray(rule.groups) ? rule.groups : []).map((value) => index(value, groups.count)).filter((value) => value >= 0)
     const fromGroups = split.flatMap((item, position) => (groups.chain(item.group).some((group) => ruleGroups.includes(group)) ? [position] : []))
     // Los índices de evaluaciones de la IA se refieren a la lista antes de separar los grupos como "Talleres (5)"
-    const fromEvaluations = (Array.isArray(rule.evaluations) ? rule.evaluations : [])
-      .filter((value): value is number => Number.isInteger(value) && value >= 0 && value < read.length)
-      .flatMap((value) => positions[value])
-    return [{ kind, label, min, evaluations: [...new Set([...fromGroups, ...fromEvaluations])].sort((a, b) => a - b) }]
+    const toPositions = (list: unknown) =>
+      (Array.isArray(list) ? list : [])
+        .filter((value): value is number => Number.isInteger(value) && value >= 0 && value < read.length)
+        .flatMap((value) => positions[value])
+    const fromEvaluations = toPositions(rule.evaluations)
+    // De qué se exime (por ejemplo, el examen): nunca de algo que también se promedia para eximirse
+    const evaluations = [...new Set([...fromGroups, ...fromEvaluations])].sort((a, b) => a - b)
+    const exempts = kind === 'exempt' ? [...new Set(toPositions(rule.exempts))].filter((value) => !evaluations.includes(value)) : []
+    return [{ kind, label, min, evaluations, exempts }]
   })
 
   return {

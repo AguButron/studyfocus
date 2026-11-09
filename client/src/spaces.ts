@@ -19,8 +19,19 @@ export interface Section {
   schedule: string | null // el horario de clases, como "Lun y Mié 10:00–11:20"
   requirements: string | null // lo que se necesita para aprobar, en palabras
   rules: Rule[]
+  classes: ClassBlock[] // las clases de cada semana, que se ponen a mano en el horario
   weekSeconds: number // estudiado en los últimos 7 días
   totalSeconds: number
+}
+
+// Una clase de la semana: day 1 es lunes y 7 domingo; start y end como "10:00".
+// kind dice qué es (cátedra, ayudantía, laboratorio) y place, dónde, si se sabe.
+export interface ClassBlock {
+  day: number
+  start: string
+  end: string
+  kind: string | null
+  place: string | null
 }
 
 export interface Space {
@@ -32,7 +43,8 @@ export interface Space {
 }
 
 // Un requisito para aprobar. Sin evaluaciones (itemIds nulo), se refiere al promedio final.
-// average: el promedio de esas evaluaciones llega a min. each: cada una llega a min. exempt: con ese promedio se exime.
+// average: el promedio de esas evaluaciones llega a min. each: cada una llega a min.
+// exempt: con ese promedio se exime de las evaluaciones de exemptIds (por ejemplo, del examen).
 export type RuleKind = 'average' | 'each' | 'exempt'
 export interface Rule {
   id: string
@@ -40,6 +52,7 @@ export interface Rule {
   label: string
   min: number
   itemIds: string[] | null
+  exemptIds?: string[] | null // los requisitos guardados antes no lo tienen
 }
 
 export type SectionDraft = Pick<Section, 'name' | 'color' | 'code' | 'teacher' | 'place' | 'schedule' | 'requirements' | 'weeklyGoalMinutes'> & {
@@ -153,6 +166,8 @@ export const createSection = (spaceId: string, draft: SectionDraft) => change('/
 export const updateSection = (id: string, draft: SectionDraft) => change('/api/apartados/editar', { id, ...draft })
 export const deleteSection = (id: string) => change('/api/apartados/borrar', { id })
 export const updateRules = (id: string, rules: Rule[]) => change('/api/apartados/reglas', { id, rules })
+// Las clases de la semana se guardan aparte, desde el horario
+export const updateClasses = (id: string, classes: ClassBlock[]) => change('/api/apartados/clases', { id, classes })
 
 // Lo que trae la creación desde los programas: las carpetas al día y cuánto se creó
 export async function storeSpaces(result: SpacesResponse) {
@@ -199,9 +214,23 @@ export interface RuleStatus {
 
 type GradedItem = { id: string; weight: number | null; grade: number | null; title: string }
 
+// Las evaluaciones de un requisito; sin evaluaciones marcadas, todas las que tienen porcentaje
+// (menos aquellas de las que se exime, que no cuentan para eximirse)
+function ruleGroup(rule: Rule, items: GradedItem[]) {
+  if (rule.itemIds) return items.filter((item) => rule.itemIds!.includes(item.id))
+  return items.filter((item) => item.weight && !rule.exemptIds?.includes(item.id))
+}
+
+// El promedio del grupo: ponderado si tienen porcentaje, si no, simple
+function groupAverage(graded: GradedItem[]) {
+  const weighted = graded.every((item) => item.weight)
+  const total = graded.reduce((sum, item) => sum + (weighted ? item.weight! : 1), 0)
+  return total > 0 ? graded.reduce((sum, item) => sum + item.grade! * (weighted ? item.weight! : 1), 0) / total : null
+}
+
 // Cómo va cada requisito según las notas que ya hay
 export function describeRule(section: Section, rule: Rule, items: GradedItem[]): RuleStatus {
-  const group = rule.itemIds ? items.filter((item) => rule.itemIds!.includes(item.id)) : items.filter((item) => item.weight)
+  const group = ruleGroup(rule, items)
   if (group.length === 0) return { state: 'pending', detail: 'Sus evaluaciones ya no están.' }
   const graded = group.filter((item) => item.grade !== null)
   const missing = group.length - graded.length
@@ -213,10 +242,7 @@ export function describeRule(section: Section, rule: Rule, items: GradedItem[]):
     return { state: 'met', detail: 'Lo cumples.' }
   }
 
-  // El promedio del grupo: ponderado si tienen porcentaje, si no, simple
-  const weighted = graded.every((item) => item.weight)
-  const total = graded.reduce((sum, item) => sum + (weighted ? item.weight! : 1), 0)
-  const average = total > 0 ? graded.reduce((sum, item) => sum + item.grade! * (weighted ? item.weight! : 1), 0) / total : null
+  const average = groupAverage(graded)
   const current = average === null ? 'Aún sin notas.' : `Llevas ${formatGrade(section, average)}.`
   if (missing > 0 || average === null) return { state: 'pending', detail: current }
   const reached = average >= rule.min - 1e-9
@@ -225,15 +251,53 @@ export function describeRule(section: Section, rule: Rule, items: GradedItem[]):
   return { state: reached ? 'met' : 'failed', detail: `Tienes ${formatGrade(section, average)}.` }
 }
 
-export function computeAverage(section: Section, items: { weight: number | null; grade: number | null }[]): Average {
-  const graded = items.filter((item) => item.grade !== null && item.weight !== null && item.weight > 0)
+export interface Exemption {
+  rule: Rule
+  titles: string[] // de qué se exime, como "Examen"
+  weight: number // cuánto pesaban en la nota final
+  excludedIds: Set<string>
+}
+
+// Una eximición que todavía se puede lograr. Mientras sea posible, la nota se calcula como si la persona
+// se fuera a eximir: sin esas evaluaciones. Deja de serlo si ya rindió el examen (tiene nota), o si ya están
+// todas las notas para eximirse y no le alcanzó.
+export function findExemption(section: Section, items: GradedItem[]): Exemption | null {
+  for (const rule of section.rules) {
+    if (rule.kind !== 'exempt' || !rule.exemptIds?.length) continue
+    const exempted = items.filter((item) => rule.exemptIds!.includes(item.id))
+    if (exempted.length === 0 || exempted.some((item) => item.grade !== null)) continue
+
+    const group = ruleGroup(rule, items)
+    const graded = group.filter((item) => item.grade !== null)
+    const average = groupAverage(graded)
+    if (group.length > 0 && graded.length === group.length && average !== null && average < rule.min - 1e-9) continue
+
+    return {
+      rule,
+      titles: exempted.map((item) => item.title),
+      weight: exempted.reduce((sum, item) => sum + (item.weight ?? 0), 0),
+      excludedIds: new Set(exempted.map((item) => item.id)),
+    }
+  }
+  return null
+}
+
+// Con una eximición, lo que se exime no cuenta y el resto se reparte la nota completa
+export function computeAverage(
+  section: Section,
+  items: { id: string; weight: number | null; grade: number | null }[],
+  exemption: Exemption | null = null,
+): Average {
+  const counted = exemption ? items.filter((item) => !exemption.excludedIds.has(item.id)) : items
+  const base = Math.max(0, 100 - (exemption?.weight ?? 0))
+  const graded = counted.filter((item) => item.grade !== null && item.weight !== null && item.weight > 0)
   const evaluated = graded.reduce((sum, item) => sum + item.weight!, 0)
   const points = graded.reduce((sum, item) => sum + item.grade! * item.weight!, 0)
-  const remaining = Math.max(0, 100 - evaluated)
+  const remaining = Math.max(0, base - evaluated)
   return {
     average: evaluated > 0 ? points / evaluated : null,
-    evaluated,
-    remaining,
-    needed: remaining > 0 ? (section.gradePass * 100 - points) / remaining : null,
+    evaluated: base > 0 ? (evaluated / base) * 100 : 0,
+    remaining: base > 0 ? (remaining / base) * 100 : 0,
+    needed: remaining > 0 ? (section.gradePass * base - points) / remaining : null,
   }
 }

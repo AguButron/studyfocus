@@ -148,6 +148,9 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] Requisitos para aprobar que se revisan solos con las notas, y un ícono que los explica
 - [x] Editar, agregar y quitar requisitos en la ventana del ramo
 - [x] Deshacer el borrado de una evaluación o tarea (durante 5 minutos)
+- [x] [Eximirse del examen](decisiones/0019-programas-con-ia.md): la IA marca de qué se exime, y la nota se calcula suponiendo que te eximes, con una nota que lo avisa
+- [x] [Cuentas y personas de prueba](decisiones/0020-cuentas-de-prueba.md) al desarrollar: entrar con un botón y ver amigos estudiando en una sala
+- [x] [Horario de la semana](decisiones/0021-horario-semanal.md): se agregan a mano las clases de cada ramo (tipo, veces por semana, día y hora), y la semana se ve en Inicio y en la carpeta, con los topes marcados
 - [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)
 - [ ] Agregar `GEMINI_API_KEY` en Render para la versión publicada
 - [x] Inicio en dos columnas: ¿Estudiamos? y tu carpeta más reciente con el punteo de sus ramos a la izquierda, y los próximos 7 días en una columna a la derecha

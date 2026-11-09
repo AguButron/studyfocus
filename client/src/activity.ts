@@ -268,6 +268,8 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
   let time = 0
   let sleepTime = 0
   let lean = 0
+  // Con el temporizador detenido (por ejemplo, esperando que empiece) no hay nada sobre la mesa
+  let isIdle = true
   const sleep = createSleep(sleeveColor)
   root.add(sleep.group)
 
@@ -289,13 +291,14 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
   }
 
   getModel(kind).update(0, false)
+  getModel(kind).group.visible = false
 
   return {
     setKind(newKind) {
       getModel(kind).group.visible = false
       kind = newKind
       const model = getModel(kind)
-      model.group.visible = true
+      model.group.visible = !isIdle
       model.update(time, false)
       showSleeping(sleep.group.visible)
     },
@@ -312,6 +315,9 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
     },
     update(delta, pose) {
       if (!root.visible) return
+
+      isIdle = pose === 'idle'
+      getModel(kind).group.visible = !isIdle
 
       const isActive = pose === 'study'
       if (isActive) {

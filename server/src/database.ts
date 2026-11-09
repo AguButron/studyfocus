@@ -149,6 +149,9 @@ const SCHEMA = `
   ALTER TABLE sections ADD COLUMN IF NOT EXISTS requirements TEXT;
   ALTER TABLE sections ADD COLUMN IF NOT EXISTS rules JSONB NOT NULL DEFAULT '[]';
 
+  -- Las clases de cada semana, para el horario: [{ day, start, end, kind, place }], day 1 es lunes
+  ALTER TABLE sections ADD COLUMN IF NOT EXISTS classes JSONB NOT NULL DEFAULT '[]';
+
   -- El orden que cada persona les da a las cosas de un apartado, arrastrándolas; vacío es por fecha
   ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS position INTEGER;
 

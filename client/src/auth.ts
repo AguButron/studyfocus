@@ -1,4 +1,5 @@
-import { sendAccount, setupGoogleButton, type Account } from './account'
+import { sendAccount, setupGoogleButton, type Account, type TestAccount } from './account'
+import { createCharacterPhoto } from './character'
 
 type AuthMode = 'login' | 'register'
 
@@ -16,6 +17,8 @@ const passwordInput = document.querySelector<HTMLInputElement>('#auth-password')
 const submitButton = document.querySelector<HTMLButtonElement>('#auth-submit')!
 const googleButton = document.querySelector<HTMLDivElement>('#google-button')!
 const errorText = document.querySelector<HTMLParagraphElement>('#auth-error')!
+const testSection = document.querySelector<HTMLElement>('#test-accounts')!
+const testList = document.querySelector<HTMLUListElement>('#test-accounts-list')!
 const chooseSection = document.querySelector<HTMLElement>('#choose-username')!
 const chooseForm = document.querySelector<HTMLFormElement>('#choose-username-form')!
 const chooseInput = document.querySelector<HTMLInputElement>('#choose-username-input')!
@@ -58,8 +61,32 @@ async function submit(path: string, body: unknown) {
   signedInListener(account)
 }
 
-export function setUpAuth(googleClientId: string | null, onSignedIn: (account: Account) => void) {
+// Un botón por cuenta de prueba, con su foto y su apodo
+function showTestAccounts(testAccounts: TestAccount[]) {
+  testList.replaceChildren(
+    ...testAccounts.map((testAccount) => {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = 'sf-btn sf-btn--sm'
+      button.title = `Entrar como @${testAccount.username}`
+      button.append(createCharacterPhoto(testAccount.character, ''), testAccount.name)
+      button.addEventListener('click', () => submit('prueba', { username: testAccount.username }))
+
+      const item = document.createElement('li')
+      item.append(button)
+      return item
+    }),
+  )
+  testSection.hidden = testAccounts.length === 0
+}
+
+export function setUpAuth(
+  googleClientId: string | null,
+  testAccounts: TestAccount[] | null,
+  onSignedIn: (account: Account) => void,
+) {
   signedInListener = onSignedIn
+  if (testAccounts) showTestAccounts(testAccounts)
 
   for (const button of modeButtons) {
     button.addEventListener('click', () => setMode(button.dataset.authMode as AuthMode))

@@ -14,6 +14,7 @@ import { createFriendsHandler } from './friends.ts'
 import { clearPresence, setPresence } from './presence.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
 import { deleteAbandonedRooms, deleteSavedRoom, saveRoom, touchSavedRoom } from './savedRooms.ts'
+import { startTestPeople } from './testPeople.ts'
 
 const PORT = Number(process.env.PORT) || 3000 // el hosting indica el puerto con esta variable
 const CLIENT_DIR = fileURLToPath(new URL('../../client/dist', import.meta.url))
@@ -692,4 +693,14 @@ socket.on('seat:leave', () => {
 
 httpServer.listen(PORT, () => {
   console.log(`Servidor escuchando en el puerto ${PORT}`)
+})
+
+// Solo con `npm run dev`: personas de prueba sentadas en una sala, para no estar nunca solo al probar
+startTestPeople({
+  io,
+  createCode: createFreeRoomCode,
+  addRoom(code, kind, players) {
+    rooms.set(code, new Map(players.map((player) => [player.id, player])))
+    roomKinds.set(code, kind)
+  },
 })

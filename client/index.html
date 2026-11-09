@@ -280,6 +280,13 @@
 
         <div id="google-button" hidden></div>
         <p id="auth-error" class="sf-error" role="alert"></p>
+
+        <!-- Solo aparece con npm run dev: el servidor publicado no entrega cuentas de prueba -->
+        <section id="test-accounts" class="test-accounts" aria-labelledby="test-accounts-title" hidden>
+          <h2 id="test-accounts-title" class="test-accounts-title">Cuentas de prueba</h2>
+          <p class="test-accounts-hint">Solo mientras desarrollas. Entra sin contraseña; para probar con dos personas, usa otra ventana en modo incógnito.</p>
+          <ul id="test-accounts-list" class="test-accounts-list"></ul>
+        </section>
       </section>
 
       <section id="choose-username" class="auth-card sf-card" aria-labelledby="choose-username-title" hidden>
@@ -390,6 +397,15 @@
                   <button class="sf-btn sf-btn--sm" type="button" data-open-panel="spaces">Crear una carpeta</button>
                 </div>
               </div>
+
+              <div id="home-schedule" class="home-space" hidden>
+                <div class="schedule-head">
+                  <h3 class="sf-section-title">Horario de clases</h3>
+                  <button id="home-schedule-add" class="sf-btn sf-btn--sm" type="button">+ Agregar</button>
+                </div>
+                <div id="home-schedule-grid"></div>
+                <p id="home-schedule-empty" class="sf-row-detail" hidden>Aún no hay clases. Usa «+ Agregar» para poner tus ramos en el horario.</p>
+              </div>
             </div>
 
             <div class="upcoming sf-card">
@@ -474,6 +490,14 @@
               <p id="folder-message" class="folder-message" role="status" hidden></p>
               <p id="folder-empty" class="sf-row-detail" hidden></p>
               <div id="folder-sections" class="folder-sections"></div>
+              <div id="folder-schedule" class="sf-section folder-schedule" hidden>
+                <div class="schedule-head">
+                  <h3 class="sf-section-title">Horario de la semana</h3>
+                  <button id="folder-schedule-add" class="sf-btn sf-btn--sm sf-btn--primary" type="button">+ Agregar</button>
+                </div>
+                <div id="folder-schedule-grid"></div>
+                <p id="folder-schedule-empty" class="sf-row-detail" hidden>Aún no hay clases. Usa «+ Agregar» para poner tus ramos en el horario.</p>
+              </div>
             </div>
 
             <div id="section-view" class="spaces-view" hidden>
@@ -509,6 +533,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
                 </div>
               </dl>
               <p id="section-needed" class="sf-row-detail"></p>
+              <p id="section-exemption" class="section-exemption" hidden></p>
               <div id="section-rules-box" class="sf-section" hidden>
                 <h3 class="sf-section-title">Requisitos para aprobar</h3>
                 <ul id="section-rules" class="section-rules"></ul>
@@ -824,6 +849,42 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           <button id="section-cancel" class="sf-btn" type="button">Cancelar</button>
           <span class="agenda-form-spacer"></span>
           <button id="section-delete" class="sf-btn" type="button" hidden>Borrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="class-dialog" class="agenda-dialog sf-card" aria-labelledby="class-dialog-title">
+      <form id="class-form" class="agenda-form">
+        <h2 id="class-dialog-title">Agregar al horario</h2>
+        <label class="sf-field">
+          Ramo
+          <select id="class-section" class="sf-input" required></select>
+        </label>
+        <span id="class-section-hint" class="sf-field-hint" hidden></span>
+        <div class="agenda-form-row">
+          <label class="sf-field">
+            Tipo
+            <select id="class-kind" class="sf-input"></select>
+          </label>
+          <label class="sf-field">
+            Veces por semana
+            <input id="class-count" class="sf-input" type="number" min="1" max="7" step="1" required />
+          </label>
+        </div>
+        <div class="sf-field">
+          Días y horas
+          <ul id="class-times" class="class-times"></ul>
+        </div>
+        <label class="sf-field">
+          Sala (opcional)
+          <input id="class-place" class="sf-input" maxlength="40" autocomplete="off" />
+        </label>
+        <p id="class-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+          <button id="class-cancel" class="sf-btn" type="button">Cancelar</button>
+          <span class="agenda-form-spacer"></span>
+          <button id="class-delete" class="sf-btn" type="button" hidden>Borrar</button>
         </div>
       </form>
     </dialog>

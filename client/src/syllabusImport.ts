@@ -22,6 +22,7 @@ interface DraftRule {
   label: string
   min: number
   evaluationKeys: number[] // vacío: el promedio final
+  exemptKeys: number[] // solo al eximirse: de qué evaluaciones, como el examen
 }
 
 // Una sección del curso (sección 1, 2…), con su profesor, horario y sala
@@ -82,7 +83,7 @@ interface ReadCourse {
   scale: typeof DEFAULT_SCALE | null
   requirements: string | null
   evaluations: Omit<Evaluation, 'key'>[]
-  rules: { kind: RuleKind; label: string; min: number; evaluations: number[] }[]
+  rules: { kind: RuleKind; label: string; min: number; evaluations: number[]; exempts?: number[] }[]
 }
 
 const EVALUATION_KINDS = KINDS.filter(({ id }) => id !== 'recordatorio')
@@ -177,14 +178,16 @@ function toDraft(course: ReadCourse, file: string): DraftCourse {
       label: rule.label,
       min: rule.min,
       evaluationKeys: rule.evaluations.map((index) => evaluations[index]?.key).filter((key): key is number => key !== undefined),
+      exemptKeys: (rule.exempts ?? []).map((index) => evaluations[index]?.key).filter((key): key is number => key !== undefined),
     })),
   }
 }
 
 function describeGroup(course: DraftCourse, rule: DraftRule) {
-  if (rule.evaluationKeys.length === 0) return describeRuleScope(null)
+  const exempted = rule.exemptKeys.flatMap((key) => course.evaluations.filter((item) => item.key === key).map(({ title }) => title))
+  if (rule.evaluationKeys.length === 0) return describeRuleScope(null, exempted)
   const counted = rule.evaluationKeys.flatMap((key) => course.evaluations.filter((item) => item.key === key).map(({ title, weight }) => ({ title, weight })))
-  return describeRuleScope(counted)
+  return describeRuleScope(counted, exempted)
 }
 
 function readNumber(value: string) {
@@ -359,6 +362,7 @@ function createCourseCard(course: DraftCourse) {
     field('Horario', input(course.schedule, (value) => (course.schedule = value || null), { maxLength: 200 }), 'syllabus-wide'),
   )
   card.append(main)
+
 
   // La escala, solo al crear: uno que ya existe mantiene la suya
   if (!course.sectionId) {
@@ -643,6 +647,7 @@ function toRequest(course: DraftCourse) {
       label: rule.label,
       min: rule.min,
       evaluations: rule.evaluationKeys.map((key) => course.evaluations.findIndex((item) => item.key === key)).filter((index) => index >= 0),
+      exempts: rule.exemptKeys.map((key) => course.evaluations.findIndex((item) => item.key === key)).filter((index) => index >= 0),
     })),
   }
 }

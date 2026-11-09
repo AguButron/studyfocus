@@ -63,6 +63,14 @@ Para entrar a una sala hay que iniciar sesión, así que el servidor necesita un
 
 En el hosting, estas mismas variables se definen en su panel. En producción no se lee el archivo `.env`.
 
+### Cuentas y personas de prueba
+
+Con `npm run dev`, el servidor prepara cuentas de prueba sin contraseña: Ana, Benja y Cata. Para entrar, toca su botón en la ventana de iniciar sesión, en el apartado "Cuentas de prueba". Para probar con dos personas a la vez, abre la otra en una ventana de incógnito.
+
+También deja conectadas a otras cuatro personas de prueba, que son amigas de esas cuentas: Diego, Ema y Fran estudian sentados en una sala, y Gabi estudia sola. Cambian solas entre estudio y descanso, y tienen horas de estudio de los últimos días. El código de su sala aparece en la terminal del servidor, en la línea "Personas de prueba estudiando en la sala".
+
+Nada de esto existe con `npm start`. Los motivos están en [la decisión 0020](docs/decisiones/0020-cuentas-de-prueba.md).
+
 ## Ejecutar como en producción
 
 Un solo servidor entrega la página y atiende las conexiones, en el puerto de la variable `PORT` (3000 si no está definida):

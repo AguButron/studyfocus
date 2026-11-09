@@ -34,8 +34,10 @@ Al empezar un semestre, crear cada ramo, sus evaluaciones, sus fechas, sus porce
   - cada evaluación de un grupo debe llegar a una nota, por ejemplo el examen;
   - con un promedio de un grupo se exime, por ejemplo del examen.
 
+  **La eximición** (agregada el 2026-11-09) dice también **de qué** se exime. Si el programa permite eximirse, la IA siempre agrega ese requisito, marcando de qué evaluaciones. Mientras eximirse sea posible, el promedio, el porcentaje evaluado y la nota que falta se calculan **sin esas evaluaciones**, como si la persona se fuera a eximir. Lo demás se reparte la nota completa, así que es la nota de presentación. Una nota en el ramo avisa que el cálculo supone la eximición y cuánto pesa el examen si no se exime. El examen vuelve a contar si ya tiene nota (se rindió), o si ya están todas las notas para eximirse y no alcanzó. En la ventana del ramo se marca de qué te eximes en "Te eximes de"; los requisitos de eximición guardados antes no lo tienen, así que no cambian el cálculo hasta marcarlo.
+
   El ramo muestra cuáles se cumplen y sobre qué evaluaciones. Junto al promedio hay un ícono que explica cómo se calcula. La IA también resume los requisitos en palabras; ese texto se guarda en el ramo, pero ya no se muestra ni se edita, porque un cuadro de texto largo confundía más de lo que ayudaba.
-- **El horario** se guarda y se muestra en el ramo, pero no va al calendario.
+- **El horario** se guarda y se muestra en el ramo, pero no va al calendario. El horario de la semana se arma a mano ([0021](0021-horario-semanal.md)); la IA no lo llena.
 - **Secciones:** si el curso tiene varias secciones con distinto profesor, horario o sala, la IA lee los datos de cada una. En la revisión aparece "Tu sección": al elegirla se completan el profesor, el horario y la sala de esa sección, en vez de guardar los de todas.
 - **Un ramo que ya existe** en la carpeta, con la misma sigla o el mismo nombre, se completa: se le agrega lo que falta, sin duplicarlo ni cambiar su escala.
 - **Los PDF no se guardan:** se leen y se descartan.
