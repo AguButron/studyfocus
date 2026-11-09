@@ -129,6 +129,7 @@ export function createWeekSchedule(sections: Section[], openClass: (section: Sec
         item.kind,
         item.place ?? section.place,
         entry.lanes > 1 ? 'Tope de horario con otra clase' : null,
+        day.id === today && entry.start <= nowMinutes && nowMinutes < entry.end ? 'Ahora en clase' : null,
       ]
         .filter(Boolean)
         .join('\n')

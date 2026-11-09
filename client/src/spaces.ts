@@ -67,7 +67,7 @@ export const SPACE_KINDS: { id: SpaceKind; name: string; sections: string; secti
   { id: 'otro', name: 'Otro', sections: 'Secciones', section: 'Sección', example: 'Preuniversitario' },
 ]
 
-export const DEFAULT_SCALE = { gradeMin: 1, gradeMax: 7, gradePass: 4, exigencia: 60 }
+export const DEFAULT_SCALE = { gradeMin: 1, gradeMax: 7, gradePass: 4, exigencia: 50 }
 
 export function describeKind(kind: SpaceKind) {
   return SPACE_KINDS.find(({ id }) => id === kind) ?? SPACE_KINDS[3]

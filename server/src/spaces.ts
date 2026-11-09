@@ -41,7 +41,7 @@ const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const NOT_FOUND = 'No se encontró. Puede que ya se haya borrado.'
 
 // La escala chilena es la que se propone; cada apartado puede cambiarla
-const DEFAULT_SCALE = { gradeMin: 1, gradeMax: 7, gradePass: 4, exigencia: 60 }
+const DEFAULT_SCALE = { gradeMin: 1, gradeMax: 7, gradePass: 4, exigencia: 50 }
 
 const SPACE_COLUMNS = `id, kind, name, archived_at IS NOT NULL AS archived`
 const SECTION_COLUMNS = `sections.id, sections.space_id AS "spaceId", sections.name, sections.color, sections.code,

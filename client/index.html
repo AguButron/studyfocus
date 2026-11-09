@@ -400,7 +400,10 @@
 
               <div id="home-schedule" class="home-space" hidden>
                 <div class="schedule-head">
-                  <h3 class="sf-section-title">Horario de clases</h3>
+                  <div class="schedule-title">
+                    <h3 class="sf-section-title">Horario de clases</h3>
+                    <select id="home-schedule-space" class="sf-input schedule-space" aria-label="Carpeta del horario" title="Elige de qué carpeta es el horario"></select>
+                  </div>
                   <button id="home-schedule-add" class="sf-btn sf-btn--sm" type="button">+ Agregar</button>
                 </div>
                 <div id="home-schedule-grid"></div>
@@ -841,7 +844,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           <label class="sf-field">Máxima <input id="section-grade-max" class="sf-input" type="number" step="any" required /></label>
           <label class="sf-field">Para aprobar <input id="section-grade-pass" class="sf-input" type="number" step="any" required /></label>
           <label class="sf-field">Exigencia (%) <input id="section-exigencia" class="sf-input" type="number" min="1" max="99" step="1" required /></label>
-          <span class="sf-field-hint">La exigencia es el porcentaje del puntaje que da la nota para aprobar: con 60 %, el 60 % del puntaje es un 4,0.</span>
+          <span class="sf-field-hint">La exigencia es el porcentaje del puntaje que da la nota para aprobar: con 50 %, la mitad del puntaje es un 4,0.</span>
         </fieldset>
         <p id="section-error" class="sf-error" role="alert"></p>
         <div class="agenda-form-actions">

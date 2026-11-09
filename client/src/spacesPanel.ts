@@ -280,6 +280,9 @@ const homeSpaceTitle = document.querySelector<HTMLHeadingElement>('#home-space-t
 const homeSchedule = document.querySelector<HTMLDivElement>('#home-schedule')!
 const homeScheduleGrid = document.querySelector<HTMLDivElement>('#home-schedule-grid')!
 const homeScheduleEmpty = document.querySelector<HTMLParagraphElement>('#home-schedule-empty')!
+const homeScheduleSpace = document.querySelector<HTMLSelectElement>('#home-schedule-space')!
+const SCHEDULE_KEY = 'studyfocus.scheduleSpace'
+let chosenScheduleSpace: string | null = null // la carpeta elegida para el horario de Inicio
 let showSpacesPanel = () => {}
 
 // El último espacio que se abrió, para mostrarlo en Inicio
@@ -313,9 +316,34 @@ function renderRecentSpace() {
   homeSpaceEmpty.hidden = space !== null
   homeSpaceTitle.textContent = space ? 'Tu carpeta más reciente' : 'Tu carpeta'
   homeSpaceCard.replaceChildren(...(space ? [createRecentCard(space)] : []))
-  // El horario de clases de esa carpeta, si tiene ramos que poner en él
-  homeSchedule.hidden = !space || space.archived || space.sections.length === 0
-  if (space) renderSchedule(space, homeScheduleGrid, homeScheduleEmpty)
+  renderHomeSchedule()
+}
+
+// Las carpetas que pueden tener horario: las activas con ramos
+const scheduleSpaces = () => getSpaces().filter((space) => !space.archived && space.sections.length > 0)
+
+// La carpeta del horario de Inicio: la que se eligió en el selector, o si no, la más reciente
+function findScheduleSpace() {
+  const options = scheduleSpaces()
+  let saved = chosenScheduleSpace
+  try {
+    saved ??= localStorage.getItem(SCHEDULE_KEY)
+  } catch {
+    // Sin almacenamiento se usa la más reciente
+  }
+  const recent = findRecentSpace()
+  return options.find((space) => space.id === saved) ?? options.find((space) => space.id === recent?.id) ?? options[0] ?? null
+}
+
+function renderHomeSchedule() {
+  const space = findScheduleSpace()
+  homeSchedule.hidden = !space
+  if (!space) return
+  const options = scheduleSpaces()
+  homeScheduleSpace.replaceChildren(...options.map((option) => new Option(option.name, option.id)))
+  homeScheduleSpace.value = space.id
+  homeScheduleSpace.hidden = options.length < 2 // con una sola carpeta no hay qué elegir
+  renderSchedule(space, homeScheduleGrid, homeScheduleEmpty)
 }
 
 // El horario con las clases que se pusieron a mano; al apretar una se cambia o se borra
@@ -937,7 +965,16 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
     if (space && space.sections.length > 0) openClassDialog(space.sections)
   }
   document.querySelector('#folder-schedule-add')!.addEventListener('click', () => addClasses(getSpaces().find((item) => item.id === openSpaceId)))
-  document.querySelector('#home-schedule-add')!.addEventListener('click', () => addClasses(findRecentSpace()))
+  document.querySelector('#home-schedule-add')!.addEventListener('click', () => addClasses(findScheduleSpace()))
+  homeScheduleSpace.addEventListener('change', () => {
+    chosenScheduleSpace = homeScheduleSpace.value
+    try {
+      localStorage.setItem(SCHEDULE_KEY, homeScheduleSpace.value)
+    } catch {
+      // Sin almacenamiento, la elección dura hasta recargar
+    }
+    renderHomeSchedule()
+  })
   setUpSyllabusImport((message) => {
     folderMessage.textContent = message
     folderMessage.hidden = false

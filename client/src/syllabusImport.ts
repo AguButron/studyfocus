@@ -170,7 +170,7 @@ function toDraft(course: ReadCourse, file: string): DraftCourse {
     sectionChoice: null,
     common: { teacher: course.teacher, schedule: course.schedule, place: course.place },
     requirements: course.requirements,
-    scale: course.scale ?? { ...DEFAULT_SCALE, exigencia: 50 }, // en los programas se asume 50 % de exigencia si no la dicen
+    scale: course.scale ?? { ...DEFAULT_SCALE }, // si el programa no la dice, la de siempre (50 % de exigencia)
     isScaleGuessed: course.scale === null,
     evaluations,
     rules: course.rules.map((rule) => ({

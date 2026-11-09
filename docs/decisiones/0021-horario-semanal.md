@@ -23,7 +23,7 @@ Los ramos guardaban su horario solo como una línea de texto ("Lun y Mié 10:00�
   - Si el ramo tiene el horario en texto (por ejemplo, el que leyó la IA del programa), la ventana lo muestra como ayuda.
 - **Para cambiar o borrar**, se aprieta una clase de la grilla. Se abre la misma ventana con todas las clases de ese tipo de ese ramo (por ejemplo, las dos clases de Cálculo), y ahí se cambian o se borran juntas.
 - **La IA no llena el horario.** Al leer un programa sigue sacando el horario en una línea de texto, que se guarda en el ramo.
-- **El horario está en Inicio y en la carpeta.** En Inicio aparece el de la carpeta más reciente, debajo de ella. En la carpeta, debajo de sus ramos. En ambos:
+- **El horario está en Inicio y en la carpeta.** En Inicio aparece el de la carpeta más reciente, debajo de ella. Junto al título, un selector permite elegir otra carpeta, y la elección se recuerda en ese navegador. El selector solo aparece si hay más de una carpeta activa con ramos. En la carpeta, debajo de sus ramos. En ambos:
   - una columna por día, de lunes a viernes, más sábado y domingo solo si hay clases esos días;
   - las horas van desde la primera clase hasta la última;
   - cada clase va con el color de su ramo;
