@@ -28,6 +28,7 @@
   --break: #5aa9e6;
   --danger: #c4320a;
   --danger-wash: #fde6dd;
+  --ok-ink: #1f7a4f; /* texto de algo cumplido o creado */
   --focus: #0b5fff;
   --lift-1: 0 1px 2px #16181b14;
   --lift-2: 0 1px 2px #16181b0f, 0 4px 12px -2px #16181b1a;
@@ -53,6 +54,7 @@
   --break: #6cb6f0;
   --danger: #ff7d5c;
   --danger-wash: #3a1a11;
+  --ok-ink: #5fd39a;
   --focus: #7cc4ff;
   --lift-1: 0 1px 2px #00000066;
   --lift-2: 0 1px 2px #00000066, 0 4px 12px -2px #00000080;
@@ -1007,7 +1009,7 @@ body {
   stroke-linejoin: round;
 }
 .friends-drawer-label { flex: 1; text-align: left; }
-.friends-drawer-count { background: var(--study, var(--marker)); color: var(--ink); }
+.friends-drawer-count { background: var(--study, var(--marker)); color: var(--on-marker); }
 .friends-drawer-chevron { color: var(--ink-soft); }
 
 /* Cerrada queda una franja con el ícono y cuántos están conectados */
@@ -1328,6 +1330,7 @@ body {
   padding: 0 6px;
   border-radius: var(--radius-0);
   background: var(--marker);
+  color: var(--on-marker);
 }
 .calendar-day-items { display: flex; flex-direction: column; gap: var(--cell-half); }
 
@@ -1402,7 +1405,7 @@ body {
 .calendar-cell[data-other-month] { background: var(--card-sunken); }
 .calendar-cell[data-other-month] .calendar-cell-number { color: var(--ink-soft); }
 .calendar-cell-number { align-self: flex-start; padding: 0 4px; font-size: 13px; line-height: 20px; font-weight: 600; }
-.calendar-cell[data-today] .calendar-cell-number { border-radius: var(--radius-0); background: var(--marker); }
+.calendar-cell[data-today] .calendar-cell-number { border-radius: var(--radius-0); background: var(--marker); color: var(--on-marker); }
 .calendar-cell .calendar-add { width: 22px; height: 22px; font-size: 13px; }
 .calendar-more {
   align-self: flex-start;
@@ -1448,7 +1451,7 @@ body {
 }
 .calendar-mini-day:hover { background: var(--card-sunken); }
 .calendar-mini-day:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.calendar-mini-day[data-today] { background: var(--marker); font-weight: 700; }
+.calendar-mini-day[data-today] { background: var(--marker); color: var(--on-marker); font-weight: 700; }
 .calendar-mini-day[data-kind] { font-weight: 700; }
 .calendar-mini-day[data-kind]::after {
   content: "";
@@ -1749,7 +1752,7 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .syllabus-queue-item[data-state="waiting"] { opacity: 0.7; }
 .syllabus-queue-item[data-state="reading"] .syllabus-queue-status::after { content: ""; display: inline-block; width: 10px; height: 10px; margin-left: 6px; border: 2px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: syllabus-spin 0.8s linear infinite; vertical-align: -1px; }
 .syllabus-queue-item[data-state="ready"] .syllabus-queue-status { color: var(--ink); font-weight: 600; }
-.syllabus-queue-item[data-state="created"] .syllabus-queue-number { background: color-mix(in srgb, #30a46c 20%, var(--card)); color: #1f7a4f; }
+.syllabus-queue-item[data-state="created"] .syllabus-queue-number { background: color-mix(in srgb, #30a46c 20%, var(--card)); color: var(--ok-ink); }
 .syllabus-queue-item[data-state="created"] .syllabus-queue-status { color: #1f7a4f; }
 .syllabus-queue-item[data-state="skipped"] { opacity: 0.55; }
 .syllabus-queue-item[data-state="skipped"] .syllabus-queue-name { text-decoration: line-through; }
@@ -2000,7 +2003,7 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   background: var(--card);
 }
 .section-rule-icon { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; font-size: 13px; font-weight: 700; background: var(--card-sunken); color: var(--ink-soft); }
-.section-rule[data-state="met"] .section-rule-icon { background: color-mix(in srgb, #30a46c 18%, var(--card)); color: #1f7a4f; }
+.section-rule[data-state="met"] .section-rule-icon { background: color-mix(in srgb, #30a46c 18%, var(--card)); color: var(--ok-ink); }
 .section-rule[data-state="failed"] .section-rule-icon { background: color-mix(in srgb, var(--danger) 16%, var(--card)); color: var(--danger); }
 .section-rule-text { display: flex; flex-direction: column; min-width: 0; }
 .section-item[data-undated] .sf-row-detail { font-style: italic; }
@@ -2913,3 +2916,6 @@ input.section-item-grade:invalid { border-color: var(--danger); }
     padding: 0 var(--cell-2);
   }
 }
+
+/* Perfil: el tema de la interfaz */
+.theme-picker { align-self: flex-start; width: max-content; max-width: 100%; }

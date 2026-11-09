@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // El tema elegido (src/theme.ts), aplicado antes de pintar para que no parpadee en claro
+      try {
+        const saved = localStorage.getItem('studyfocus.theme')
+        const dark = saved === 'oscuro' || (saved !== 'claro' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'grafito' : 'papel'
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -743,6 +751,16 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
                 <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
               </form>
               <p id="about-message" class="form-message" role="status"></p>
+            </div>
+
+            <div class="sf-section">
+              <h3 class="sf-section-title">Apariencia</h3>
+              <div id="theme-picker" class="sf-seg theme-picker" role="group" aria-label="Tema">
+                <button type="button" data-theme-choice="auto" title="Igual que tu computador o celular">Automático</button>
+                <button type="button" data-theme-choice="claro">Claro</button>
+                <button type="button" data-theme-choice="oscuro">Oscuro</button>
+              </div>
+              <p class="sf-field-hint">Automático usa el mismo tema que tu computador o celular. Dentro de una sala siempre es oscuro.</p>
             </div>
 
             <div class="sf-section">

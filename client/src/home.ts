@@ -1,4 +1,5 @@
 import { loadAccount, type Account } from './account'
+import { setRoomTheme } from './theme'
 import type { Character } from './character'
 import { chooseUsername, hideAuth, setUpAuth, showAuth } from './auth'
 import { hideLanding, setUpLanding, showLanding } from './landing'
@@ -123,8 +124,8 @@ export async function showHome(
   ) {
     const isSolo = kind === SOLO_KIND
     saveCodeInUrl(code)
-    // Dentro de la sala la interfaz se oscurece (Grafito); al salir se recarga y vuelve a Papel
-    document.documentElement.dataset.theme = 'grafito'
+    // Dentro de la sala la interfaz se oscurece (Grafito); al salir se recarga y vuelve al tema elegido
+    setRoomTheme(true)
     // Estudiando solo no hay sala 3D ni link para compartir
     document.documentElement.dataset.mode = isSolo ? 'solo' : 'room'
     hudRoomLabel.textContent = isSolo ? 'Estudiando solo' : 'Sala'
