@@ -260,7 +260,13 @@ async function send() {
   sendButton.disabled = true
   const to = person.id
   try {
-    const result: { message?: Message; error?: string } = await socket.timeout(10_000).emitWithAck('chat:send', { to, body })
+    // Sin conexión no se envía: Socket.IO guardaría el mensaje y lo mandaría al reconectar, minutos después,
+    // como si fuera nuevo (y además de mostrar el error). volatile: si se corta justo ahora, se descarta
+    if (!socket.connected) {
+      errorText.textContent = 'Sin conexión con el servidor. Espera un momento y vuelve a enviarlo.'
+      return
+    }
+    const result: { message?: Message; error?: string } = await socket.volatile.timeout(10_000).emitWithAck('chat:send', { to, body })
     if (result.error) {
       errorText.textContent = result.error
       return
@@ -300,7 +306,7 @@ function sendTyping() {
   const now = Date.now()
   if (now - lastTypingSent < TYPING_SEND_INTERVAL) return
   lastTypingSent = now
-  socket.emit('chat:typing', { to: person.id })
+  socket.volatile.emit('chat:typing', { to: person.id }) // un aviso viejo no sirve: si no hay conexión, se descarta
 }
 
 export function setUpChat(options: { isVisible: () => boolean; onChange: () => void }) {

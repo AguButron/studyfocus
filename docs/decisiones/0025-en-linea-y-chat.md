@@ -30,6 +30,7 @@ Un amigo solo se veía conectado si estaba en una sala o estudiando solo; con St
 - **Visto:** tu último mensaje dice "Enviado" o "Visto".
 - **Escribiendo…:** aparece unos segundos mientras la otra persona escribe. La página lo avisa cada 2,5 segundos como mucho, no en cada tecla.
 - **Límite:** 120 mensajes por cuenta cada 15 minutos, para frenar a quien manda en ráfaga.
+- **Sin conexión no se envía (2026-11-10):** Socket.IO guarda lo que se envía mientras está desconectado y lo manda al reconectar. Así, un mensaje que había mostrado "No se pudo enviar" llegaba minutos después, como si fuera nuevo. Ahora, sin conexión, el chat avisa y deja el texto escrito para reenviarlo. Los mensajes, el "Escribiendo…" y el aviso de actividad se envían sin quedar en cola (`volatile`).
 
 ### Una cuenta en la misma sala desde dos ventanas
 

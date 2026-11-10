@@ -221,7 +221,7 @@ function reportActivity() {
   const now = Date.now()
   if (now - lastActiveSent < ACTIVE_INTERVAL) return
   lastActiveSent = now
-  socket.emit('presence:active')
+  socket.volatile.emit('presence:active') // sin conexión no sirve guardarlo para después
 }
 
 for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const) {

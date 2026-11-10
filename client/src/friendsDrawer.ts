@@ -145,13 +145,15 @@ const EDGE = 16 // píxeles de margen con el borde de la pantalla
 const ARROW_OFFSET = 36 // píxeles desde arriba de la ventana hasta la flecha que apunta al amigo
 
 function showChat(person: Person, anchor?: HTMLElement) {
+  // Con la pestaña cerrada se apretó una foto, que desaparece al abrirla: la altura se mide antes, y si después
+  // está la fila de ese amigo en la lista ya abierta, se usa esa (el chat sale a su lado)
+  const before = anchor?.getBoundingClientRect()
   showDrawer()
-  if (anchor) {
-    const rect = anchor.getBoundingClientRect()
-    anchorY = rect.top + rect.height / 2
-  } else {
-    anchorY = null
-  }
+  const row = drawer.querySelector<HTMLElement>(`.drawer-friend[data-person-id="${CSS.escape(person.id)}"]`)
+  const rowRect = row?.getBoundingClientRect()
+  if (rowRect && rowRect.height > 0) anchorY = rowRect.top + rowRect.height / 2
+  else if (before && before.height > 0) anchorY = before.top + before.height / 2
+  else anchorY = null
   openChat(person)
   // Que se note que sale del amigo: se vuelve a animar cada vez que se abre
   chatWindow.removeAttribute('data-pop')
@@ -194,6 +196,7 @@ function createRow(person: Friend | PastChat, detail: { text: string; kind: stri
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'drawer-friend'
+  button.dataset.personId = person.id
   button.title = `Escribirle a ${person.name}`
   button.toggleAttribute('data-unread', person.unread > 0)
   button.toggleAttribute('data-active', getOpenChatId() === person.id)
