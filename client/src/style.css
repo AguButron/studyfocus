@@ -867,11 +867,22 @@ body {
   display: flex;
   align-items: center;
   gap: var(--cell-1);
+  min-height: 44px;
   margin-top: auto;
   padding: 0 var(--cell-1-5);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: transparent;
   color: var(--ink-soft);
+  font: inherit;
   font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
 }
+.menu-user:hover { background: var(--card-sunken); color: var(--ink); }
+.menu-user[aria-current="page"] { background: var(--card-sunken); color: var(--ink); font-weight: 600; }
+.menu-user:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 #menu-user-name {
   overflow: hidden;
@@ -2216,8 +2227,16 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   }
 
   .menu-nav .sf-wordmark,
-  .menu-user {
+  #menu-user-name {
     display: none;
+  }
+
+  /* En la barra de arriba, tu foto queda a la derecha, sin el nombre */
+  .menu-user {
+    flex: none;
+    min-height: 36px;
+    margin: 0 0 0 auto;
+    padding: 0 var(--cell-half);
   }
 
   .menu-nav .sf-nav {

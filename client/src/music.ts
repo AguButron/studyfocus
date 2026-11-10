@@ -201,6 +201,15 @@ export function setUpMusic() {
     }
   })
 
+  // Al salir de la pantalla completa del video, el navegador a veces deja su imagen dibujada donde no está
+  // (un cuadro negro sobre la sala). Ocultar y volver a mostrar la música un instante obliga a redibujarla;
+  // el video no se recarga ni se detiene.
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) return
+    musicSection.style.visibility = 'hidden'
+    window.setTimeout(() => (musicSection.style.visibility = ''), 50)
+  })
+
   musicSection.hidden = false
   play(false)
 }

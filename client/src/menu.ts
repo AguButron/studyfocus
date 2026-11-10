@@ -24,7 +24,8 @@ const PANEL_KEY = 'studyfocus.panel'
 const NAV_KEY = 'studyfocus.navCollapsed'
 
 const menu = document.querySelector<HTMLDivElement>('#menu')!
-const menuLinks = document.querySelectorAll<HTMLButtonElement>('.sf-nav-link[data-panel]')
+// Las secciones del menú, más tu foto abajo, que abre el perfil
+const menuLinks = document.querySelectorAll<HTMLButtonElement>('.menu-nav button[data-panel]')
 const panels = document.querySelectorAll<HTMLElement>('.menu-panel')
 const userNameText = document.querySelector<HTMLSpanElement>('#menu-user-name')!
 const userPhoto = document.querySelector<HTMLImageElement>('#menu-user-photo')!
@@ -205,6 +206,7 @@ function setNavCollapsed(isCollapsed: boolean) {
   toggle.setAttribute('aria-label', label)
   toggle.title = label
   for (const link of menuLinks) {
+    if (link.classList.contains('menu-user')) continue // siempre dice "Perfil"
     link.title = isCollapsed ? (link.querySelector('.sf-nav-label')?.textContent ?? '') : ''
   }
   try {
