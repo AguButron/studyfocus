@@ -1,6 +1,6 @@
-// La pestaña de Amigos: tus amigos, primero los conectados y después los desconectados, y el chat con cada uno.
-// En el menú de escritorio va a la derecha. En la sala y en el celular es flotante: se abre con un botón,
-// encima de lo demás, y se cierra con ✕.
+// La pestaña de Amigos: tus amigos, primero los conectados y después los desconectados. Al apretar uno, su chat
+// sale en una ventana a la izquierda de la pestaña. En el menú de escritorio va a la derecha. En la sala y en el
+// celular es flotante: se abre con un botón, encima de lo demás, y se cierra con ✕.
 import { closeChat, getOpenChatId, markRead, openChat, refreshChatHeader, setUpChat } from './chat'
 import { createCharacterPhoto } from './character'
 import { describePresence, getUnreadTotal, onFriendsChange, setChatOpener, type Friend, type PastChat, type Person } from './friends'
@@ -21,10 +21,14 @@ const offlineList = document.querySelector<HTMLUListElement>('#drawer-offline')!
 const pastList = document.querySelector<HTMLUListElement>('#drawer-past')!
 const emptyText = document.querySelector<HTMLParagraphElement>('#drawer-empty')!
 const onlinePhotos = document.querySelector<HTMLUListElement>('#drawer-online-photos')!
+const chatWindow = document.querySelector<HTMLElement>('#chat')!
+const CHAT_GAP = 12 // píxeles entre la pestaña y la ventana del chat
 
 let isInRoom = false // en la sala la pestaña flota sobre la escena
 let homeParent: HTMLElement | null = null // dónde vive en el menú, para devolverla al salir de la sala
 const unreadListeners: ((count: number) => void)[] = []
+let lastFriends: Friend[] = []
+let lastPastChats: PastChat[] = []
 
 const isFloating = () => isInRoom || narrowScreen.matches
 
@@ -129,6 +133,7 @@ function createRow(person: Friend | PastChat, detail: { text: string; kind: stri
   button.className = 'drawer-friend'
   button.title = `Escribirle a ${person.name}`
   button.toggleAttribute('data-unread', person.unread > 0)
+  button.toggleAttribute('data-active', getOpenChatId() === person.id)
   button.append(createCharacterPhoto(person.character, 'character-photo--small'))
 
   const text = document.createElement('span')
@@ -152,6 +157,8 @@ function createRow(person: Friend | PastChat, detail: { text: string; kind: stri
 }
 
 function render(friends: Friend[], pastChats: PastChat[]) {
+  lastFriends = friends
+  lastPastChats = pastChats
   const online = friends.filter((friend) => friend.presence)
   const offline = friends.filter((friend) => !friend.presence)
 
@@ -184,8 +191,16 @@ export function setDrawerInRoom(inRoom: boolean) {
   applyLayout()
 }
 
-export function setUpFriendsDrawer(openProfile: (username: string) => boolean) {
+// La ventana del chat queda a la izquierda de la pestaña, con el ancho que tenga (abierta, cerrada o escondida)
+function placeChat() {
+  const width = drawer.hidden ? 0 : drawer.getBoundingClientRect().width
+  chatWindow.style.setProperty('--chat-right', `${Math.round(width) + CHAT_GAP}px`)
+}
+
+export function setUpFriendsDrawer() {
   applyLayout()
+  new ResizeObserver(placeChat).observe(drawer)
+  placeChat()
   // Al pasar de celular a escritorio (o al revés), solo si cambió el modo
   const relayout = () => {
     if (drawer.hasAttribute('data-floating') !== isFloating()) applyLayout()
@@ -204,9 +219,12 @@ export function setUpFriendsDrawer(openProfile: (username: string) => boolean) {
     }
   })
   setUpChat({
-    isVisible: () => isDrawerVisible() && getOpenChatId() !== null,
-    openProfile,
-    onBack: () => {},
+    isVisible: () => getOpenChatId() !== null,
+    // Se marca en la lista con quién está abierto el chat
+    onChange: () => {
+      placeChat()
+      render(lastFriends, lastPastChats)
+    },
   })
   setChatOpener(showChat)
   onFriendsChange(render)

@@ -20,7 +20,8 @@ Un amigo solo se veía conectado si estaba en una sala o estudiando solo; con St
 ### El chat
 
 - **Solo entre amigos.** Si dejan de serlo, la conversación queda en "Conversaciones anteriores" para leerla, pero no se puede escribir. Si vuelven a ser amigos, sigue donde estaba.
-- **Vive en la pestaña de Amigos de la derecha.** Al apretar un amigo se abre su conversación en la misma pestaña, con una flecha para volver a la lista. Su nombre abre su perfil. En la sección Amigos, cada amigo tiene un botón "Escribir".
+- **Se abre desde la pestaña de Amigos de la derecha.** Al apretar un amigo, su conversación sale en una ventana a la izquierda de la pestaña, encima de todo, y la lista sigue a la vista con ese amigo marcado. Se cierra con ✕ o Escape. En el celular la ventana tapa la pantalla entera. En la sección Amigos, cada amigo tiene un botón "Escribir". (Hasta el 2026-11-10, la conversación reemplazaba a la lista dentro de la pestaña).
+- **Su foto y su nombre**, arriba del chat, abren su perfil **siempre en otra pestaña**, para no cortar una sesión de estudio.
 - **Dentro de la sala también:** un botón "Amigos" en la barra de arriba (o en la esquina si estás sentado) abre la pestaña flotando a la derecha, encima de la escena. Escribir en el chat no mueve al personaje ni cambia la cámara.
 - **En el celular,** donde el menú no tiene la columna de la derecha, la pestaña también flota: se abre con "Escribir" y se cierra con ✕.
 - **Mensajes:** texto y emojis, hasta 1000 caracteres. Los links se abren con un clic, en otra pestaña. Se guardan siempre: al abrir una conversación se cargan los últimos 50, y subiendo, los anteriores. Enter envía; Shift + Enter hace un salto de línea.

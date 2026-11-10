@@ -187,6 +187,34 @@
       </button>
     </aside>
 
+    <!-- El chat con un amigo: una ventana que sale a la izquierda de la pestaña de Amigos -->
+    <section id="chat" class="chat" aria-labelledby="chat-name" hidden>
+      <header class="chat-head">
+        <!-- Su foto y su nombre abren su perfil en otra pestaña, para no cortar la sesión de estudio -->
+        <a id="chat-profile" class="chat-profile" target="_blank" rel="noopener" title="Ver su perfil en otra pestaña">
+          <span id="chat-photo" class="chat-photo"></span>
+          <span class="chat-head-text">
+            <span id="chat-name" class="chat-name"></span>
+            <span id="chat-presence" class="sf-presence"></span>
+          </span>
+        </a>
+        <button id="chat-close" class="sf-btn sf-btn--sm sf-btn--quiet chat-close" type="button" aria-label="Cerrar el chat" title="Cerrar el chat">✕</button>
+      </header>
+      <div id="chat-scroll" class="chat-scroll">
+        <p id="chat-status" class="sf-row-detail chat-status" role="status"></p>
+        <ol id="chat-messages" class="chat-messages" aria-label="Mensajes"></ol>
+      </div>
+      <p id="chat-typing" class="chat-typing" aria-live="polite" hidden>Escribiendo…</p>
+      <p id="chat-closed" class="sf-row-detail chat-closed" hidden>Ya no son amigos: puedes leer la conversación, pero no escribir.</p>
+      <form id="chat-form" class="chat-form">
+        <textarea id="chat-input" class="sf-input chat-input" rows="1" maxlength="1000" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
+        <button id="chat-send" class="sf-btn sf-btn--primary chat-send" type="submit" aria-label="Enviar" title="Enviar (Enter)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+      </form>
+      <p id="chat-error" class="sf-error chat-error" role="alert"></p>
+    </section>
+
     <main id="home" class="sf-paper">
       <p id="home-status" class="muted" role="status">Cargando…</p>
 
@@ -864,30 +892,6 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
               <ul id="drawer-past" class="drawer-list"></ul>
             </div>
 
-            <!-- El chat con un amigo: reemplaza a la lista mientras está abierto -->
-            <section id="chat" class="chat" aria-labelledby="chat-name" hidden>
-              <header class="chat-head">
-                <button id="chat-back" class="sf-btn sf-btn--sm sf-btn--quiet chat-back" type="button" aria-label="Volver a tus amigos" title="Volver a tus amigos">‹</button>
-                <span id="chat-photo" class="chat-photo"></span>
-                <span class="chat-head-text">
-                  <a id="chat-name" class="chat-name" title="Ver su perfil"></a>
-                  <span id="chat-presence" class="sf-presence"></span>
-                </span>
-              </header>
-              <div id="chat-scroll" class="chat-scroll">
-                <p id="chat-status" class="sf-row-detail chat-status" role="status"></p>
-                <ol id="chat-messages" class="chat-messages" aria-label="Mensajes"></ol>
-              </div>
-              <p id="chat-typing" class="chat-typing" aria-live="polite" hidden>Escribiendo…</p>
-              <p id="chat-closed" class="sf-row-detail chat-closed" hidden>Ya no son amigos: puedes leer la conversación, pero no escribir.</p>
-              <form id="chat-form" class="chat-form">
-                <textarea id="chat-input" class="sf-input chat-input" rows="1" maxlength="1000" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
-                <button id="chat-send" class="sf-btn sf-btn--primary chat-send" type="submit" aria-label="Enviar" title="Enviar (Enter)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-                </button>
-              </form>
-              <p id="chat-error" class="sf-error chat-error" role="alert"></p>
-            </section>
           </div>
         </aside>
       </div>

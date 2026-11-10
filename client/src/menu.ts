@@ -252,12 +252,7 @@ export function setUpMenu(menuActions: MenuActions) {
   setUpFriends((code) => actions.joinRoom(code))
   setUpProfileDialog((code) => actions.joinRoom(code))
   setUpNavToggle()
-  // Desde el chat, el nombre abre el perfil aquí mismo; dentro de una sala, el link lo abre en otra pestaña
-  setUpFriendsDrawer((username) => {
-    if (document.documentElement.dataset.mode) return false
-    showPersonPanel(username)
-    return true
-  })
+  setUpFriendsDrawer()
   setUpSummary(() => showPanel('stats'))
 
   joinForm.addEventListener('submit', (event) => {

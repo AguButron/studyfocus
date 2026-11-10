@@ -1,4 +1,5 @@
-// El chat con un amigo, dentro de la pestaña de Amigos (a la derecha del menú, o flotante en la sala y en el celular).
+// El chat con un amigo: una ventana que sale a la izquierda de la pestaña de Amigos (en el celular, la tapa entera).
+// Su foto y su nombre abren su perfil en otra pestaña, para no cortar una sesión de estudio.
 // Los mensajes llegan al instante por la conexión con el servidor; al abrir una conversación se cargan los últimos
 // 50, y subiendo se cargan los anteriores. Muestra "Visto" en tu último mensaje leído y "Escribiendo…".
 import { createCharacterPhoto } from './character'
@@ -21,10 +22,10 @@ interface Message {
 }
 
 const chatBox = document.querySelector<HTMLElement>('#chat')!
-const listsBox = document.querySelector<HTMLDivElement>('#drawer-lists')!
-const backButton = document.querySelector<HTMLButtonElement>('#chat-back')!
+const closeButton = document.querySelector<HTMLButtonElement>('#chat-close')!
+const profileLink = document.querySelector<HTMLAnchorElement>('#chat-profile')!
 const photoBox = document.querySelector<HTMLSpanElement>('#chat-photo')!
-const nameLink = document.querySelector<HTMLAnchorElement>('#chat-name')!
+const nameText = document.querySelector<HTMLSpanElement>('#chat-name')!
 const presenceText = document.querySelector<HTMLSpanElement>('#chat-presence')!
 const scrollBox = document.querySelector<HTMLDivElement>('#chat-scroll')!
 const statusText = document.querySelector<HTMLParagraphElement>('#chat-status')!
@@ -49,8 +50,8 @@ let canWrite = false
 let request = 0 // descarta lo que llega de una conversación que ya se cerró
 let lastTypingSent = 0
 let typingTimer = 0
-let isVisible: () => boolean = () => true // si la pestaña de Amigos se ve: ahí recién cuenta como leído
-let showProfile: (username: string) => boolean = () => false // true si lo abrió dentro de la app
+let isVisible: () => boolean = () => true // si la ventana del chat se ve: ahí recién cuenta como leído
+let onChange: () => void = () => {} // se abrió o se cerró una conversación
 
 const compareIds = (a: string, b: string) => (BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0)
 
@@ -148,9 +149,10 @@ function showHeader() {
   if (!person) return
   const current = findPerson(person.id)
   photoBox.replaceChildren(createCharacterPhoto(person.character, 'character-photo--small'))
-  nameLink.textContent = person.name
-  if (person.username) nameLink.href = profileUrl(person.username)
-  else nameLink.removeAttribute('href')
+  nameText.textContent = person.name
+  // Sin nombre de usuario no hay página de perfil
+  if (person.username) profileLink.href = profileUrl(person.username)
+  else profileLink.removeAttribute('href')
   const presence = current && 'presence' in current ? describePresence(current) : null
   presenceText.hidden = !presence
   presenceText.textContent = presence?.text ?? ''
@@ -188,8 +190,8 @@ export async function openChat(next: Person) {
   errorText.textContent = ''
   typingText.hidden = true
   input.value = ''
-  listsBox.hidden = true
   chatBox.hidden = false
+  onChange()
   showHeader()
   form.hidden = true
   closedText.hidden = true
@@ -219,7 +221,7 @@ export function closeChat() {
   request++
   person = null
   chatBox.hidden = true
-  listsBox.hidden = false
+  onChange()
 }
 
 export function getOpenChatId() {
@@ -301,20 +303,16 @@ function sendTyping() {
   socket.emit('chat:typing', { to: person.id })
 }
 
-export function setUpChat(options: {
-  isVisible: () => boolean
-  openProfile: (username: string) => boolean
-  onBack: () => void
-}) {
+export function setUpChat(options: { isVisible: () => boolean; onChange: () => void }) {
   isVisible = options.isVisible
-  showProfile = options.openProfile
+  onChange = options.onChange
 
-  backButton.addEventListener('click', () => {
+  closeButton.addEventListener('click', closeChat)
+  // Escape cierra el chat (sin cerrar también la pestaña de Amigos)
+  chatBox.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return
+    event.stopPropagation()
     closeChat()
-    options.onBack()
-  })
-  nameLink.addEventListener('click', (event) => {
-    if (person?.username && showProfile(person.username)) event.preventDefault()
   })
   form.addEventListener('submit', (event) => {
     event.preventDefault()

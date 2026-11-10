@@ -1164,31 +1164,66 @@ body {
   padding: 0;
 }
 
-/* El chat ocupa la pestaña entera: arriba con quién, al medio los mensajes y abajo para escribir */
+/* El chat: una ventana que sale a la izquierda de la pestaña de Amigos, encima de todo (también de la música).
+   Su borde de abajo queda sobre el botón de la música, para no taparlo. Arriba con quién, al medio los mensajes
+   y abajo para escribir */
 .friends-drawer-body { flex: 1; min-height: 0; }
-.friends-drawer-body:has(> .chat:not([hidden])) { padding: 0; overflow: hidden; }
-.chat { display: flex; flex: 1; flex-direction: column; min-height: 0; height: 100%; }
+.chat {
+  position: fixed;
+  z-index: 45;
+  right: var(--chat-right, var(--cell-2));
+  bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100vw - var(--chat-right, 16px) - var(--cell-2)));
+  height: min(560px, calc(100vh - 80px));
+  overflow: hidden;
+  border: var(--stroke-1) solid var(--line);
+  border-radius: var(--radius-2);
+  background: var(--card);
+  box-shadow: var(--lift-3);
+}
+/* En el celular no cabe al lado: tapa la pantalla entera */
+@media (max-width: 720px) {
+  .chat { inset: 0; width: auto; height: auto; height: 100dvh; border: 0; border-radius: 0; }
+}
 .chat-head {
   display: flex;
   align-items: center;
   gap: var(--cell-1);
-  padding: var(--cell-1) var(--cell-1-5);
+  padding: var(--cell-1) var(--cell-1) var(--cell-1) var(--cell-1-5);
   border-bottom: var(--stroke-1) solid var(--line);
 }
-.chat-back { min-width: 32px; padding: 0; font-size: 20px; }
+/* Su foto y su nombre: un link a su perfil, en otra pestaña */
+.chat-profile {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--cell-1);
+  min-width: 0;
+  margin: -4px 0 -4px -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-1);
+  color: var(--ink);
+  text-decoration: none;
+}
+.chat-profile[href]:hover { background: var(--card-sunken); }
+.chat-profile[href]:hover .chat-name { text-decoration: underline; text-underline-offset: 3px; }
+.chat-profile:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+.chat-close { flex: none; min-width: 32px; padding: 0; }
 .chat-photo .character-photo { display: block; }
 .chat-head-text { display: flex; flex-direction: column; min-width: 0; }
 .chat-name {
   overflow: hidden;
-  color: var(--ink);
   font-size: 14px;
   line-height: 20px;
   font-weight: 600;
-  text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.chat-name[href]:hover { text-decoration: underline; text-underline-offset: 3px; }
+.chat-profile[href] .chat-name::after { content: " ↗"; color: var(--ink-soft); font-weight: 500; }
+/* En la lista, el amigo con el chat abierto */
+.drawer-friend[data-active] { background: var(--card-sunken); box-shadow: inset 3px 0 0 var(--ink); }
 .chat-head-text .sf-presence { font-size: 12px; line-height: 16px; }
 .chat-scroll { flex: 1; min-height: 0; padding: var(--cell-1-5); overflow-y: auto; overscroll-behavior: contain; }
 .chat-status { margin: 0 0 var(--cell-1); text-align: center; font-size: 12px; }
