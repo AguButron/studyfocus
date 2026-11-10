@@ -153,6 +153,13 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] [Horario de la semana](decisiones/0021-horario-semanal.md): se agregan a mano las clases de cada ramo (tipo, veces por semana, día y hora), y la semana se ve en Inicio y en la carpeta, con los topes marcados
 - [x] [Modo oscuro](decisiones/0022-modo-oscuro.md): en Perfil se elige automático, claro u oscuro
 - [x] Perfil se abre desde tu foto y nombre, abajo en el menú (arriba a la derecha en el celular), en vez de tener su propio enlace
+- [x] [El ramo en la tarjeta y la página del perfil](decisiones/0023-perfil-de-cada-persona.md): al hacer clic en alguien en la sala se ve qué ramo estudia, y su nombre abre su perfil en otra pestaña
+- [x] [La música en todo momento](decisiones/0024-musica-en-todo-momento.md): también en el menú, y salir de la sala ya no la corta
+- [x] [En línea y chat entre amigos](decisiones/0025-en-linea-y-chat.md): en línea con StudyFocus abierto (o ausente), "activo hace…", y chat con sin leer, visto y escribiendo, también dentro de la sala
+- [x] Una cuenta en la misma sala desde dos ventanas: pregunta si cambiar la sesión a la nueva, y la otra vuelve al menú
+- [x] [La cámara con la tecla C](decisiones/0004-camaras-al-estudiar.md): un aviso pequeño abajo a la izquierda en vez del panel de cámaras
+- [ ] Chat de sala
+- [ ] Que el video de YouTube no deje un cuadro negro al salir de su pantalla completa
 - [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)
 - [ ] Agregar `GEMINI_API_KEY` en Render para la versión publicada
 - [x] Inicio en dos columnas: ¿Estudiamos? y tu carpeta más reciente con el punteo de sus ramos a la izquierda, y los próximos 7 días en una columna a la derecha

@@ -43,7 +43,8 @@ interface TestPersonInfo {
   bio: string
   studies: string
   // Las que están conectadas: en qué sala, en qué silla y qué hacen. Sin esto, es para entrar con ella.
-  bot?: { room: 'study' | 'solo'; seatId: number; activity: string; offsetMinutes: number }
+  // subject: el ramo que dicen estar estudiando, para ver la tarjeta con datos
+  bot?: { room: 'study' | 'solo'; seatId: number; activity: string; offsetMinutes: number; subject?: BotPlayer['subject'] }
   dailyMinutes: number // cuánto estudió, en promedio, cada uno de los últimos días
 }
 
@@ -54,12 +55,12 @@ const PEOPLE: TestPersonInfo[] = [
   {
     key: 'diego', name: 'Diego', color: CHARACTER_COLORS[4], bio: 'Persona de prueba: siempre está conectada.',
     studies: 'Arquitectura', dailyMinutes: 150,
-    bot: { room: 'study', seatId: 0, activity: 'computer', offsetMinutes: 0 },
+    bot: { room: 'study', seatId: 0, activity: 'computer', offsetMinutes: 0, subject: { name: 'Taller de Arquitectura', code: 'ARQ2010', color: '#f76b15' } },
   },
   {
     key: 'ema', name: 'Ema', color: CHARACTER_COLORS[1], bio: 'Persona de prueba: siempre está conectada.',
     studies: 'Psicología', dailyMinutes: 90,
-    bot: { room: 'study', seatId: 6, activity: 'reading', offsetMinutes: 12 },
+    bot: { room: 'study', seatId: 6, activity: 'reading', offsetMinutes: 12, subject: { name: 'Psicología del Desarrollo', code: null, color: '#8e4ec6' } },
   },
   {
     key: 'fran', name: 'Fran', color: CHARACTER_COLORS[6], bio: 'Persona de prueba: siempre está conectada.',
@@ -172,6 +173,7 @@ export interface BotPlayer {
   activity: string
   period: string
   isRunning: boolean
+  subject?: { name: string; code: string | null; color: string } | null
 }
 
 // En qué periodo va cada una: estudio y descanso, siempre corriendo, desfasadas entre sí
@@ -203,6 +205,7 @@ async function connectBots({ io, addRoom, createCode }: RoomsAccess) {
         activity: person.bot!.activity,
         period: periodFor(person.bot!.offsetMinutes),
         isRunning: true,
+        subject: person.bot!.subject ?? null,
       }
       moving.push({ player, offsetMinutes: person.bot!.offsetMinutes, code })
       setPresence(accountIds.get(username)!, { code, kind, player })

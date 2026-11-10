@@ -7,6 +7,7 @@ import { onKeyPress } from './input'
 import { findRemotePlayerAt, getRemotePlayerPosition, getRemotePlayerState } from './remotePlayers'
 import { getCountryName, getFlag } from './countries'
 import { camera, renderer } from './scene'
+import { profileUrl } from './profilePage'
 
 const UPDATE_INTERVAL = 500 // milisegundos
 const ACTIVITY_NAMES: Record<ActivityKind, string> = {
@@ -16,7 +17,8 @@ const ACTIVITY_NAMES: Record<ActivityKind, string> = {
 }
 
 const card = document.querySelector<HTMLDivElement>('#player-card')!
-const nameText = document.querySelector<HTMLElement>('#player-card-name')!
+const nameText = document.querySelector<HTMLAnchorElement>('#player-card-name')!
+const subjectText = document.querySelector<HTMLSpanElement>('#player-card-subject')!
 const photo = document.querySelector<HTMLImageElement>('#player-card-photo')!
 const statusText = document.querySelector<HTMLSpanElement>('#player-card-status')!
 const activityText = document.querySelector<HTMLSpanElement>('#player-card-activity')!
@@ -52,6 +54,15 @@ function renderCard() {
   card.dataset.period = state.isRunning ? state.period : 'idle'
   statusText.dataset.presence = state.isRunning ? state.period : 'room'
   nameText.textContent = state.nickname
+  // Sin nombre de usuario no hay página de perfil
+  if (state.username) nameText.href = profileUrl(state.username)
+  else nameText.removeAttribute('href')
+  // El ramo que está estudiando, con su color
+  const subject = state.subject
+  subjectText.hidden = !subject
+  subjectText.style.setProperty('--section', subject?.color ?? 'transparent')
+  subjectText.textContent = subject ? `${subject.name}${subject.code ? ` · ${subject.code}` : ''}` : ''
+  subjectText.title = subject ? `Está estudiando ${subject.name}` : ''
   const photoUrl = getCharacterPhoto(state.character)
   if (photo.getAttribute('src') !== photoUrl) photo.src = photoUrl
   statusText.textContent = !state.isRunning ? 'Temporizador detenido' : state.period === 'study' ? 'Estudiando' : 'En descanso'

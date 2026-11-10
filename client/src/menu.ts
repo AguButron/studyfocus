@@ -3,7 +3,8 @@ import { setUpFriends, startFriends, stopFriends } from './friends'
 import { refreshCalendar } from './calendar'
 import { refreshSpacesPanel, setUpSpacesPanel } from './spacesPanel'
 import { refreshHomePanel, setUpHomePanel } from './homePanel'
-import { setUpFriendsDrawer } from './friendsDrawer'
+import { resetFriendsDrawer, setUpFriendsDrawer } from './friendsDrawer'
+import { clearProfileParam, openProfilePage, setUpProfilePage } from './profilePage'
 import { setUpProfileDialog } from './profileDialog'
 import { CHARACTER_COLORS, getCharacterPhoto, type Character } from './character'
 import { drawRoomPlan } from './roomPlan'
@@ -11,7 +12,7 @@ import { COUNTRIES, getFlag } from './countries'
 import { ROOM_KINDS } from './roomKinds'
 import { refreshStats, setUpSummary, showSavedSummary } from './stats'
 
-type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile'
+type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person'
 
 interface MenuActions {
   createRoom(kind: string): void
@@ -83,6 +84,9 @@ function showPanel(panel: Panel) {
   } else if (panel === 'spaces') {
     refreshSpacesPanel()
   }
+  // El perfil de otra persona se abre con su dirección; al ir a otra sección, la dirección deja de apuntarlo
+  if (panel === 'person') return
+  clearProfileParam()
 
   try {
     sessionStorage.setItem(PANEL_KEY, panel)
@@ -238,6 +242,7 @@ export function setUpMenu(menuActions: MenuActions) {
 
   createRoomButton.addEventListener('click', () => actions.createRoom(selectedKind))
   setUpHomePanel()
+  setUpProfilePage({ joinRoom: (code) => actions.joinRoom(code), editOwnProfile: () => showPanel('profile') })
   setUpSpacesPanel(() => showPanel('spaces'))
   // Botones dentro de una sección que llevan a otra, como "Ver calendario"
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open-panel]')) {
@@ -247,7 +252,12 @@ export function setUpMenu(menuActions: MenuActions) {
   setUpFriends((code) => actions.joinRoom(code))
   setUpProfileDialog((code) => actions.joinRoom(code))
   setUpNavToggle()
-  setUpFriendsDrawer()
+  // Desde el chat, el nombre abre el perfil aquí mismo; dentro de una sala, el link lo abre en otra pestaña
+  setUpFriendsDrawer((username) => {
+    if (document.documentElement.dataset.mode) return false
+    showPersonPanel(username)
+    return true
+  })
   setUpSummary(() => showPanel('stats'))
 
   joinForm.addEventListener('submit', (event) => {
@@ -303,6 +313,8 @@ export function setUpMenu(menuActions: MenuActions) {
       profileMessage.textContent = error
       return
     }
+    stopFriends()
+    resetFriendsDrawer()
     actions.onAccountChange(null)
   })
 }
@@ -320,12 +332,18 @@ export function showMenu(account: Account) {
   menu.hidden = false
 }
 
+// La página del perfil de alguien, por su nombre de usuario
+export function showPersonPanel(username: string) {
+  showPanel('person')
+  openProfilePage(username)
+}
+
 // El logo lleva a Inicio
 export function showHomePanel() {
   showPanel('home')
 }
 
 export function hideMenu() {
-  stopFriends()
+  clearProfileParam() // al entrar a una sala, la dirección deja de apuntar a un perfil
   menu.hidden = true
 }

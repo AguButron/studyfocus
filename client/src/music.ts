@@ -1,4 +1,5 @@
-// La música de cada persona, abajo a la derecha de la sala. Nadie más la escucha.
+// La música de cada persona, abajo a la derecha: en el menú y en la sala, sin cortarse al pasar de uno a otro.
+// Nadie más la escucha.
 import { setLofiVolume, startLofi, stopLofi } from './lofi'
 import { MUSIC_RECOMMENDATIONS } from './musicRecommendations'
 import { createYouTubePlayer, parseYouTubeLink } from './youtube'
@@ -156,13 +157,24 @@ function setPanelOpen(open: boolean) {
   toggleButton.setAttribute('aria-expanded', String(open))
 }
 
+let hasListeners = false
+
+// Al iniciar sesión: queda puesta hasta cerrarla. Si ya está puesta, no hace nada (la música sigue)
 export function setUpMusic() {
+  if (!musicSection.hidden) return
+  if (!hasListeners) addListeners()
+  settings = loadSettings()
   youtubeInput.value = settings.youtubeUrl
   setLofiVolume(settings.volume)
   showVolume()
   showRecommendations()
   render()
+  musicSection.hidden = false
+  play(false)
+}
 
+function addListeners() {
+  hasListeners = true
   toggleButton.addEventListener('click', () => setPanelOpen(toggleButton.getAttribute('aria-expanded') !== 'true'))
 
   for (const button of modeButtons) {
@@ -209,7 +221,12 @@ export function setUpMusic() {
     musicSection.style.visibility = 'hidden'
     window.setTimeout(() => (musicSection.style.visibility = ''), 50)
   })
+}
 
-  musicSection.hidden = false
-  play(false)
+// Al cerrar sesión la música se detiene y se esconde
+export function hideMusic() {
+  stopLofi()
+  showVideo(null, false)
+  setPanelOpen(false)
+  musicSection.hidden = true
 }

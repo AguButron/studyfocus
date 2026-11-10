@@ -63,11 +63,12 @@ function listNames(companions: Companion[]) {
   return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`
 }
 
-function renderChart(days: Stats['days']) {
+// Las barras de los últimos 7 días; también se usan en la página del perfil de otra persona
+export function renderChart(days: Stats['days'], target: HTMLElement = chart) {
   const max = Math.max(...days.map((day) => day.seconds), 1)
   const today = days[days.length - 1].date
 
-  chart.replaceChildren(
+  target.replaceChildren(
     ...days.map((day) => {
       const date = new Date(`${day.date}T00:00:00Z`)
       const column = document.createElement('div')

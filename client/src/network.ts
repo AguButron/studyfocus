@@ -70,13 +70,33 @@ export async function createRoom(kind: string) {
   return code
 }
 
-export async function joinRoom(code: string) {
-  const joined: boolean = await socket.emitWithAck('room:join', code, token)
-  if (joined) {
+// 'joined', 'duplicate' (tu cuenta ya está en esa sala desde otra ventana) o 'failed' (no existe o está llena).
+// Con takeOver, si ya estabas en ella, la otra ventana sale y entras desde esta
+export async function joinRoom(code: string, takeOver = false): Promise<'joined' | 'duplicate' | 'failed'> {
+  const result: boolean | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
+  if (result === true) {
     startSession(code)
+    return 'joined'
   }
-  return joined
+  return result === 'duplicate' ? 'duplicate' : 'failed'
 }
+
+// Otra ventana de tu cuenta entró a esta sala y te reemplazó: esta pestaña ya no está en ella
+let replacedListener = () => {}
+export function onSessionReplaced(listener: () => void) {
+  replacedListener = listener
+}
+
+socket.on('session:replaced', () => {
+  session = null
+  token = crypto.randomUUID()
+  try {
+    sessionStorage.removeItem(SESSION_KEY)
+  } catch {
+    // Sin almacenamiento no había nada guardado
+  }
+  replacedListener()
+})
 
 // Espera la respuesta para que el aviso alcance a salir antes de recargar la página
 export async function leaveRoom() {
@@ -147,7 +167,7 @@ socket.on('connect', async () => {
 
   // Tardó demasiado en volver: el servidor ya liberó su lugar
   seatLostListener()
-  const joined = await joinRoom(session.code)
+  const joined = (await joinRoom(session.code)) === 'joined'
   if (!joined) {
     window.location.href = window.location.pathname
   }
@@ -190,3 +210,22 @@ export async function takeSeat(seatId: number) {
 export function leaveSeat() {
   socket.emit('seat:leave')
 }
+// "En línea" o "Ausente": la página avisa que la estás usando (un clic, una tecla, volver a la pestaña),
+// como mucho una vez por minuto. Sin avisos por 10 minutos, tus amigos te ven como Ausente
+const ACTIVE_INTERVAL = 60_000 // milisegundos
+let lastActiveSent = 0
+
+function reportActivity() {
+  if (document.visibilityState !== 'visible') return
+  const now = Date.now()
+  if (now - lastActiveSent < ACTIVE_INTERVAL) return
+  lastActiveSent = now
+  socket.emit('presence:active')
+}
+
+for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const) {
+  window.addEventListener(type, reportActivity, { passive: true })
+}
+document.addEventListener('visibilitychange', reportActivity)
+// Al reconectar, el servidor parte contando desde ese momento
+socket.on('connect', () => (lastActiveSent = Date.now()))

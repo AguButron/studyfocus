@@ -30,12 +30,34 @@
         <span id="room-code" class="sf-hud-code"></span>
         <button id="copy-link" class="sf-btn sf-btn--sm" type="button">Copiar link</button>
         <button id="leave-room" class="sf-btn sf-btn--sm" type="button">Salir</button>
+        <button class="sf-btn sf-btn--sm room-friends" type="button" aria-controls="friends-drawer" title="Tus amigos y el chat">
+          Amigos <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
+        </button>
       </div>
       <div class="sf-hud-group">
         <span id="mini-period" class="sf-badge sf-badge--period"></span>
         <span id="mini-time" class="sf-hud-clock"></span>
       </div>
     </header>
+
+    <!-- La misma cuenta ya está en la sala desde otra ventana -->
+    <dialog id="duplicate-confirm" class="leave-confirm sf-card" aria-labelledby="duplicate-confirm-title">
+      <h2 id="duplicate-confirm-title">Parece que ya estás en esta sala</h2>
+      <p id="duplicate-confirm-text">Tu cuenta está en esta sala desde otra ventana. ¿Cambiar la sesión a esta ventana? La otra volverá al menú.</p>
+      <div class="sf-timer-actions">
+        <button id="duplicate-confirm-yes" class="sf-btn sf-btn--primary" type="button">Sí, cambiar acá</button>
+        <button id="duplicate-confirm-no" class="sf-btn" type="button" autofocus>No</button>
+      </div>
+    </dialog>
+
+    <!-- En la ventana que quedó atrás -->
+    <dialog id="replaced-notice" class="leave-confirm sf-card" aria-labelledby="replaced-notice-title">
+      <h2 id="replaced-notice-title">Seguiste en otra ventana</h2>
+      <p>Entraste a esta sala desde otra ventana, así que aquí se cerró. Puedes seguir estudiando allá.</p>
+      <div class="sf-timer-actions">
+        <button id="replaced-notice-ok" class="sf-btn sf-btn--primary" type="button" autofocus>Entendido</button>
+      </div>
+    </dialog>
 
     <dialog id="leave-confirm" class="leave-confirm sf-card" aria-labelledby="leave-confirm-title">
       <h2 id="leave-confirm-title">¿Salir de la sesión?</h2>
@@ -49,6 +71,10 @@
     <p id="hint" class="sf-tip" hidden></p>
 
     <section id="study" aria-label="Sesión de estudio" hidden>
+      <!-- Sentado o estudiando solo, la barra de arriba no está: el botón de Amigos va en la esquina -->
+      <button class="sf-btn sf-btn--sm sf-card--float room-friends study-friends" type="button" aria-controls="friends-drawer" title="Tus amigos y el chat">
+        Amigos <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
+      </button>
       <div id="study-panel" class="sf-timer">
         <button class="sf-wordmark room-logo study-panel-logo" type="button" title="Volver al menú">StudyFocus</button>
         <div class="sf-timer-head">
@@ -100,22 +126,20 @@
         </div>
       </div>
 
-      <div id="camera-panel" class="sf-card sf-card--float" hidden>
-        <h2>Cámara <kbd class="sf-kbd">C</kbd></h2>
-        <div class="sf-seg">
-          <button data-camera="desk" type="button">Escritorio</button>
-          <button data-camera="table" type="button">Mesa</button>
-          <button data-camera="room" type="button">Sala</button>
-        </div>
-      </div>
+      <!-- Un aviso discreto: la tecla C (o un clic aquí) pasa a la cámara siguiente -->
+      <button id="camera-panel" class="camera-hint" type="button" title="Pasa a la cámara siguiente" hidden>
+        <kbd class="sf-kbd">C</kbd> Cambiar cámara · <span id="camera-name"></span>
+      </button>
     </section>
 
     <div id="player-card" class="sf-player" role="status" hidden>
       <div class="player-card-head">
         <img id="player-card-photo" class="character-photo character-photo--card" alt="" />
-        <strong id="player-card-name" class="sf-player-name"></strong>
+        <!-- Su nombre abre su perfil en otra pestaña, para no salir de la sala -->
+        <a id="player-card-name" class="sf-player-name player-card-name" target="_blank" rel="noopener" title="Ver su perfil en otra pestaña"></a>
       </div>
       <span id="player-card-status" class="sf-presence"></span>
+      <span id="player-card-subject" class="player-card-subject" hidden></span>
       <span id="player-card-activity" class="sf-row-detail"></span>
       <span id="player-card-studies" class="player-card-about" hidden></span>
       <span id="player-card-bio" class="player-card-bio" hidden></span>
@@ -683,6 +707,55 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
             </div>
           </section>
 
+          <!-- El perfil de otra persona (o el tuyo, como lo ven los demás): se abre con /?perfil=usuario -->
+          <section class="menu-panel sf-panel person-page" data-panel="person" aria-labelledby="person-name" hidden>
+            <p id="person-status" class="sf-row-detail" role="status"></p>
+            <div id="person-content" class="person-content" hidden>
+              <header class="person-head sf-card">
+                <div id="person-photo" class="person-photo"></div>
+                <div class="person-head-text">
+                  <h2 id="person-name"></h2>
+                  <span id="person-username" class="person-username"></span>
+                  <span id="person-presence" class="sf-presence" hidden></span>
+                  <span id="person-since" class="sf-row-detail"></span>
+                </div>
+                <div class="person-actions">
+                  <button id="person-friend" class="sf-btn sf-btn--primary" type="button"></button>
+                  <button id="person-friend-cancel" class="sf-btn" type="button" hidden>Cancelar solicitud</button>
+                  <button id="person-join" class="sf-btn" type="button" hidden>Entrar a su sala</button>
+                </div>
+              </header>
+              <p id="person-message" class="form-message" role="status"></p>
+
+              <div class="sf-section">
+                <h3 id="person-about-title" class="sf-section-title">Sobre</h3>
+                <p id="person-studies" class="person-studies" hidden></p>
+                <p id="person-bio" class="person-bio" hidden></p>
+                <p id="person-about-empty" class="sf-row-detail" hidden>Aún no ha contado nada sobre sí.</p>
+              </div>
+
+              <div class="stat-cards person-stats">
+                <div class="stat-card sf-card">
+                  <span class="stat-label">Últimos 7 días</span>
+                  <strong id="person-week">–</strong>
+                </div>
+                <div class="stat-card sf-card">
+                  <span class="stat-label">Racha</span>
+                  <strong id="person-streak">–</strong>
+                </div>
+                <div class="stat-card sf-card">
+                  <span class="stat-label">En total</span>
+                  <strong id="person-total">–</strong>
+                </div>
+              </div>
+
+              <div class="sf-section">
+                <h3 class="sf-section-title">Su semana</h3>
+                <div id="person-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
+              </div>
+            </div>
+          </section>
+
           <section class="menu-panel sf-panel" data-panel="shop" aria-labelledby="shop-title" hidden>
             <header class="sf-panel-head">
               <h2 id="shop-title">Tienda</h2>
@@ -774,16 +847,47 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           <button id="friends-drawer-toggle" class="friends-drawer-toggle" type="button" aria-expanded="true" aria-controls="friends-drawer-body">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
             <span class="friends-drawer-label">Amigos</span>
-            <span id="friends-drawer-count" class="sf-badge friends-drawer-count" hidden></span>
+            <span id="friends-drawer-count" class="sf-badge friends-drawer-count" title="Amigos en línea" hidden></span>
+            <span id="friends-drawer-unread" class="sf-badge sf-badge--count friends-drawer-unread" hidden></span>
             <svg class="friends-drawer-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
           </button>
+          <button id="friends-drawer-close" class="sf-btn sf-btn--sm sf-btn--quiet friends-drawer-close" type="button" aria-label="Cerrar" title="Cerrar">✕</button>
           <ul id="drawer-online-photos" class="drawer-online-photos" aria-label="Amigos en línea"></ul>
           <div id="friends-drawer-body" class="friends-drawer-body">
-            <p id="drawer-empty" class="sf-row-detail">Aún no tienes amigos. Agrégalos desde Amigos.</p>
-            <h3 id="drawer-online-title" class="sf-section-title" hidden></h3>
-            <ul id="drawer-online" class="drawer-list"></ul>
-            <h3 id="drawer-offline-title" class="sf-section-title" hidden></h3>
-            <ul id="drawer-offline" class="drawer-list"></ul>
+            <div id="drawer-lists" class="drawer-lists">
+              <p id="drawer-empty" class="sf-row-detail">Aún no tienes amigos. Agrégalos desde Amigos.</p>
+              <h3 id="drawer-online-title" class="sf-section-title" hidden></h3>
+              <ul id="drawer-online" class="drawer-list"></ul>
+              <h3 id="drawer-offline-title" class="sf-section-title" hidden></h3>
+              <ul id="drawer-offline" class="drawer-list"></ul>
+              <h3 id="drawer-past-title" class="sf-section-title" hidden>Conversaciones anteriores</h3>
+              <ul id="drawer-past" class="drawer-list"></ul>
+            </div>
+
+            <!-- El chat con un amigo: reemplaza a la lista mientras está abierto -->
+            <section id="chat" class="chat" aria-labelledby="chat-name" hidden>
+              <header class="chat-head">
+                <button id="chat-back" class="sf-btn sf-btn--sm sf-btn--quiet chat-back" type="button" aria-label="Volver a tus amigos" title="Volver a tus amigos">‹</button>
+                <span id="chat-photo" class="chat-photo"></span>
+                <span class="chat-head-text">
+                  <a id="chat-name" class="chat-name" title="Ver su perfil"></a>
+                  <span id="chat-presence" class="sf-presence"></span>
+                </span>
+              </header>
+              <div id="chat-scroll" class="chat-scroll">
+                <p id="chat-status" class="sf-row-detail chat-status" role="status"></p>
+                <ol id="chat-messages" class="chat-messages" aria-label="Mensajes"></ol>
+              </div>
+              <p id="chat-typing" class="chat-typing" aria-live="polite" hidden>Escribiendo…</p>
+              <p id="chat-closed" class="sf-row-detail chat-closed" hidden>Ya no son amigos: puedes leer la conversación, pero no escribir.</p>
+              <form id="chat-form" class="chat-form">
+                <textarea id="chat-input" class="sf-input chat-input" rows="1" maxlength="1000" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
+                <button id="chat-send" class="sf-btn sf-btn--primary chat-send" type="submit" aria-label="Enviar" title="Enviar (Enter)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                </button>
+              </form>
+              <p id="chat-error" class="sf-error chat-error" role="alert"></p>
+            </section>
           </div>
         </aside>
       </div>

@@ -1,9 +1,10 @@
 import { randomInt } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { requireAccount } from './accounts.ts'
+import { parseUsername, requireAccount } from './accounts.ts'
 import { describeCharacter } from './character.ts'
 import { hasDatabase, query } from './database.ts'
-import { getPresence } from './presence.ts'
+import { countUnread } from './chat.ts'
+import { getPresence, isConnected } from './presence.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
 const CODE_LENGTH = 8
@@ -59,7 +60,7 @@ async function listPeople(sql: string, accountId: string) {
 }
 
 async function loadFriends(accountId: string) {
-  const [code, friends, received, sent] = await Promise.all([
+  const [code, friends, received, sent, pastChats, unread, lastSeen] = await Promise.all([
     getFriendCode(accountId),
     listPeople(
       `SELECT users.id, users.name, users.username, users.character_look FROM friendships JOIN users ON users.id = friendships.friend_id
@@ -76,13 +77,35 @@ async function loadFriends(accountId: string) {
        WHERE friend_requests.from_id = $1 ORDER BY friend_requests.created_at`,
       accountId,
     ),
+    // Las conversaciones con quienes ya no son amigos: se pueden leer, pero no escribirles
+    listPeople(
+      `SELECT users.id, users.name, users.username, users.character_look FROM users
+       WHERE users.id IN (SELECT CASE WHEN from_id = $1 THEN to_id ELSE from_id END FROM messages WHERE from_id = $1 OR to_id = $1)
+         AND NOT EXISTS (SELECT 1 FROM friendships WHERE user_id = $1 AND friend_id = users.id)
+       ORDER BY lower(users.name)`,
+      accountId,
+    ),
+    countUnread(accountId),
+    // Cuándo se fue cada amigo, para "Activo hace 2 h"
+    query<{ id: string; lastSeen: string | null }>(
+      `SELECT users.id::text, users.last_seen_at AS "lastSeen" FROM friendships JOIN users ON users.id = friendships.friend_id
+       WHERE friendships.user_id = $1`,
+      [accountId],
+    ),
   ])
+  const seen = new Map(lastSeen.rows.map((row) => [row.id, row.lastSeen]))
 
   return {
     code,
-    friends: friends.map((friend) => ({ ...friend, presence: getPresence(friend.id) })),
+    friends: friends.map((friend) => ({
+      ...friend,
+      presence: getPresence(friend.id),
+      lastSeen: isConnected(friend.id) ? null : (seen.get(String(friend.id)) ?? null),
+      unread: unread.get(String(friend.id)) ?? 0,
+    })),
     received,
     sent,
+    pastChats: pastChats.map((person) => ({ ...person, unread: unread.get(String(person.id)) ?? 0 })),
   }
 }
 
@@ -110,13 +133,23 @@ async function sendRequest(accountId: string, body: Record<string, unknown>) {
     throw new RequestError(429, 'Demasiados intentos. Prueba de nuevo en unos minutos.')
   }
 
-  const code = parseFriendCode(body.code)
-  if (!code) throw new RequestError(400, `El código de amigo tiene ${CODE_LENGTH} caracteres.`)
+  // Con su código de amigo, o con su nombre de usuario desde la página de su perfil
+  let friendId: string | undefined
+  if (typeof body.username === 'string') {
+    const username = parseUsername(body.username)
+    const { rows } = username ? await query<{ id: string }>('SELECT id FROM users WHERE username = $1', [username]) : { rows: [] }
+    friendId = rows[0]?.id
+    if (!friendId) throw new RequestError(404, 'No hay nadie con ese nombre de usuario.')
+    if (friendId === accountId) throw new RequestError(400, 'No puedes agregarte a ti.')
+  } else {
+    const code = parseFriendCode(body.code)
+    if (!code) throw new RequestError(400, `El código de amigo tiene ${CODE_LENGTH} caracteres.`)
 
-  const { rows } = await query<{ id: string }>('SELECT id FROM users WHERE friend_code = $1', [code])
-  const friendId = rows[0]?.id
-  if (!friendId) throw new RequestError(404, 'No hay nadie con ese código.')
-  if (friendId === accountId) throw new RequestError(400, 'Ese es tu propio código.')
+    const { rows } = await query<{ id: string }>('SELECT id FROM users WHERE friend_code = $1', [code])
+    friendId = rows[0]?.id
+    if (!friendId) throw new RequestError(404, 'No hay nadie con ese código.')
+    if (friendId === accountId) throw new RequestError(400, 'Ese es tu propio código.')
+  }
 
   const isFriend = await query('SELECT 1 FROM friendships WHERE user_id = $1 AND friend_id = $2', [accountId, friendId])
   if (isFriend.rows.length > 0) throw new RequestError(409, 'Ya son amigos.')

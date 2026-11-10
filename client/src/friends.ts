@@ -9,9 +9,25 @@ interface Person {
   character: Character
 }
 
+// Dónde está: en una sala, estudiando solo (sin código: se ve que estudia, pero no se puede entrar),
+// con StudyFocus abierto ("online"), o abierto sin usarlo hace un rato ("away"). Nulo: desconectada
+export interface Presence {
+  status: 'room' | 'solo' | 'online' | 'away'
+  code: string | null
+  isSolo: boolean
+  period: 'study' | 'break' | null
+  isRunning: boolean
+}
+
 export interface Friend extends Person {
-  // Estudiando solo no hay código: se ve que estudia, pero no se puede entrar
-  presence: { code: string | null; isSolo: boolean; period: 'study' | 'break'; isRunning: boolean } | null
+  presence: Presence | null
+  lastSeen: string | null // cuándo cerró StudyFocus, si no está conectada
+  unread: number // mensajes suyos sin leer
+}
+
+// Alguien con quien hubo una conversación, pero que ya no es amigo: se lee, pero no se le escribe
+export interface PastChat extends Person {
+  unread: number
 }
 
 interface FriendsState {
@@ -19,6 +35,7 @@ interface FriendsState {
   friends: Friend[]
   received: Person[]
   sent: Person[]
+  pastChats: PastChat[]
 }
 
 const POLL_INTERVAL = 10_000 // milisegundos: lo justo para ver quién entra a estudiar
@@ -39,11 +56,42 @@ const sentList = document.querySelector<HTMLUListElement>('#sent-list')!
 const badge = document.querySelector<HTMLSpanElement>('#friends-badge')!
 
 let state: FriendsState | null = null
-const friendsListeners: ((friends: Friend[]) => void)[] = []
+const friendsListeners: ((friends: Friend[], pastChats: PastChat[]) => void)[] = []
+let openChat: (person: Person) => void = () => {}
 
-// Inicio y la pestaña de la derecha muestran a los amigos y qué están haciendo
-export function onFriendsChange(listener: (friends: Friend[]) => void) {
+// Inicio y la pestaña de la derecha muestran a los amigos, qué están haciendo y sus mensajes sin leer
+export function onFriendsChange(listener: (friends: Friend[], pastChats: PastChat[]) => void) {
   friendsListeners.push(listener)
+}
+
+// El chat se abre desde aquí (el botón "Escribir"), pero vive en la pestaña de la derecha
+export function setChatOpener(open: (person: Person) => void) {
+  openChat = open
+}
+
+export type { Person }
+
+// Un amigo, o alguien con quien hubo una conversación
+export function findPerson(id: string): Friend | PastChat | null {
+  return state?.friends.find((friend) => friend.id === id) ?? state?.pastChats.find((person) => person.id === id) ?? null
+}
+
+export function getUnreadTotal() {
+  if (!state) return 0
+  return [...state.friends, ...state.pastChats].reduce((sum, person) => sum + person.unread, 0)
+}
+
+// Llegó un mensaje (count + 1) o se leyó la conversación (0): se muestra al tiro, sin esperar a la próxima consulta
+export function setUnread(personId: string, count: (current: number) => number) {
+  const person = findPerson(personId)
+  if (!person) {
+    refresh() // alguien nuevo en la lista, como un amigo recién aceptado
+    return
+  }
+  const next = Math.max(0, count(person.unread))
+  if (next === person.unread) return
+  person.unread = next
+  render()
 }
 let pollTimer: number | null = null
 let joinRoom: (code: string) => void = () => {}
@@ -88,8 +136,23 @@ async function request(path: string, body?: unknown): Promise<FriendsState | nul
   }
 }
 
-export function describePresence({ presence }: Friend) {
-  if (!presence) return { text: 'Sin conectar', kind: 'offline' }
+const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })
+
+// "hace 5 minutos", "hace 2 horas", "ayer", "hace 3 días"
+export function describeLastSeen(lastSeen: string) {
+  const minutes = Math.max(1, Math.round((Date.now() - Date.parse(lastSeen)) / 60_000))
+  if (minutes < 60) return relativeFormat.format(-minutes, 'minute')
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return relativeFormat.format(-hours, 'hour')
+  const days = Math.round(hours / 24)
+  if (days < 30) return relativeFormat.format(-days, 'day')
+  return relativeFormat.format(-Math.round(days / 30), 'month')
+}
+
+export function describePresence({ presence, lastSeen }: Pick<Friend, 'presence' | 'lastSeen'>) {
+  if (!presence) return { text: lastSeen ? `Activo ${describeLastSeen(lastSeen)}` : 'Sin conectar', kind: 'offline' }
+  if (presence.status === 'online') return { text: 'En línea', kind: 'online' }
+  if (presence.status === 'away') return { text: 'Ausente', kind: 'away' }
   if (presence.isSolo) {
     if (!presence.isRunning) return { text: 'Estudiando solo, en pausa', kind: 'room' }
     if (presence.period === 'break') return { text: 'Estudiando solo, en descanso', kind: 'break' }
@@ -185,12 +248,18 @@ function createRemoveButton(friend: Friend) {
 
 function render() {
   if (!state) return
-  for (const listener of friendsListeners) listener(state.friends)
+  for (const listener of friendsListeners) listener(state.friends, state.pastChats)
 
   showCode(state.code)
 
-  badge.hidden = state.received.length === 0
-  badge.textContent = String(state.received.length)
+  // Las solicitudes y los mensajes sin leer
+  const pending = state.received.length + getUnreadTotal()
+  badge.hidden = pending === 0
+  badge.textContent = String(pending)
+  badge.title = [
+    state.received.length > 0 ? `${state.received.length} ${state.received.length === 1 ? 'solicitud' : 'solicitudes'}` : '',
+    getUnreadTotal() > 0 ? `${getUnreadTotal()} sin leer` : '',
+  ].filter(Boolean).join(' · ')
 
   receivedSection.hidden = state.received.length === 0
   receivedList.replaceChildren(
@@ -207,6 +276,7 @@ function render() {
     ...state.friends.map((friend) => {
       const presence = describePresence(friend)
       const buttons = [createRemoveButton(friend)]
+      buttons.unshift(createButton(friend.unread > 0 ? `Escribir · ${friend.unread}` : 'Escribir', null, () => openChat(friend)))
       const code = friend.presence?.code
       if (code) {
         buttons.unshift(createButton('Entrar', null, () => joinRoom(code)))
@@ -278,7 +348,7 @@ export function setUpFriends(onJoinRoom: (code: string) => void) {
   })
 }
 
-// Mientras se ve el menú, la lista se actualiza sola para mostrar quién está estudiando
+// Con la sesión iniciada (en el menú y en la sala), la lista se actualiza sola: quién está conectado y qué hace
 export function startFriends() {
   refresh()
   if (pollTimer !== null) return

@@ -8,10 +8,12 @@ import { createAccountsHandler, findAccount, type Account } from './accounts.ts'
 import { describeCharacter, type Character } from './character.ts'
 import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from './activeSessions.ts'
 import { createAgendaHandler } from './agenda.ts'
-import { createSpacesHandler } from './spaces.ts'
+import { createSpacesHandler, findSubject, type Subject } from './spaces.ts'
 import { createSyllabusHandler } from './syllabus.ts'
 import { createFriendsHandler } from './friends.ts'
-import { clearPresence, setPresence } from './presence.ts'
+import { addConnection, clearPresence, markActive, removeConnection, setPresence } from './presence.ts'
+import { accountRoom, createChatHandler, setUpChatSocket } from './chat.ts'
+import { createProfilesHandler } from './profiles.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
 import { deleteAbandonedRooms, deleteSavedRoom, saveRoom, touchSavedRoom } from './savedRooms.ts'
 import { startTestPeople } from './testPeople.ts'
@@ -62,6 +64,7 @@ interface PlayerState extends PlayerStatus {
   seatId: number | null
   x: number
   z: number
+  subject?: Subject | null // el ramo que está estudiando, si lo eligió: lo ven los demás al hacer clic en la persona
 }
 
 type Room = Map<string, PlayerState>
@@ -73,6 +76,7 @@ interface Session {
   player: PlayerState
   code: string
   kind: string // el tipo de sala
+  kick?: () => void // la saca de la sala desde la pestaña que la tiene: otra ventana de la misma cuenta tomó su lugar
   socket: Socket | null // sin conexión mientras se espera que vuelva
   leaveTimer: NodeJS.Timeout | null
   joinedAt: number
@@ -221,6 +225,8 @@ function createPageHandler(): RequestListener {
 const handleAccounts = createAccountsHandler()
 const handleFriends = createFriendsHandler()
 const handleStats = createStatsHandler()
+const handleProfiles = createProfilesHandler()
+const handleChat = createChatHandler()
 const handleAgenda = createAgendaHandler()
 const handleSpaces = createSpacesHandler()
 const handleSyllabus = createSyllabusHandler()
@@ -231,6 +237,10 @@ const httpServer = createServer((request, response) => {
     handleFriends(request, response)
   } else if (request.url?.startsWith('/api/stats')) {
     handleStats(request, response)
+  } else if (request.url?.startsWith('/api/perfil')) {
+    handleProfiles(request, response)
+  } else if (request.url?.startsWith('/api/chat')) {
+    handleChat(request, response)
   } else if (request.url?.startsWith('/api/agenda')) {
     handleAgenda(request, response)
   } else if (request.url?.startsWith('/api/espacios') || request.url?.startsWith('/api/apartados')) {
@@ -386,6 +396,17 @@ function describeAccountCharacter(account: Account) {
 io.on('connection', (socket) => {
   console.log(`Conectado: ${socket.id}`)
 
+  // Con la sesión iniciada, la pestaña cuenta para "En línea" y recibe los mensajes del chat
+  const connectedAccountId: string | null = socket.data.account?.id ?? null
+  if (connectedAccountId) {
+    socket.join(accountRoom(connectedAccountId))
+    addConnection(connectedAccountId, socket.id)
+    setUpChatSocket(io, socket, connectedAccountId)
+    // La página avisa cada tanto que la persona la está usando; sin avisos por un rato, pasa a "Ausente"
+    socket.on('presence:active', () => markActive(connectedAccountId))
+    socket.on('disconnect', () => removeConnection(connectedAccountId, socket.id))
+  }
+
   let player: PlayerState = {
     id: socket.id,
     nickname: '',
@@ -404,6 +425,7 @@ io.on('connection', (socket) => {
   let isEntering = false // crear o unirse esperan a la base de datos: evita entrar dos veces
   let lastPeriodId: string | null = null // el estado puede llegar antes de entrar a la sala
   let lastStatus: StatusMessage | null = null
+  let subjectSectionId: string | null = null // el apartado del que ya se buscó el nombre
 
   // Tras un reinicio, la sesión ya no está en la memoria, pero sí en la base: se arma de nuevo
   async function restoreSession(token: string): Promise<Session | null> {
@@ -453,6 +475,28 @@ io.on('connection', (socket) => {
     return restored
   }
 
+  // Otra ventana de la misma cuenta tomó tu lugar en la sala: esta sale y su página vuelve al menú
+  function kickHere() {
+    const leaving = session
+    if (!leaving) return
+    if (leaving.leaveTimer) {
+      clearTimeout(leaving.leaveTimer)
+      leaving.leaveTimer = null
+    }
+    removeFromRoom(leaving)
+    socket.leave(leaving.code)
+    session = null
+    currentCode = null
+    player = { ...player, id: socket.id, seatId: null, x: 0, z: 0 }
+    socket.emit('session:replaced')
+  }
+
+  // Las sesiones de esta cuenta que ya están en esa sala, desde otra ventana
+  function findOwnSessions(code: string) {
+    const accountId = socket.data.account?.id
+    return [...sessions.values()].filter((other) => other.accountId === accountId && other.code === code && other !== session)
+  }
+
   function enterRoom(code: string, room: Room, token: string) {
     socket.emit('players:init', [...room.values()])
     room.set(player.id, player)
@@ -477,6 +521,7 @@ io.on('connection', (socket) => {
       lastSave: Promise.resolve(),
       saveTimer: null,
       lastPersist: Promise.resolve(),
+      kick: kickHere,
     }
     sessions.set(token, session)
     setPresence(session.accountId, session)
@@ -510,7 +555,9 @@ io.on('connection', (socket) => {
     reply(code)
   })
 
-  socket.on('room:join', async (code: unknown, token: unknown, reply: unknown) => {
+  // takeOver: si la misma cuenta ya está en la sala desde otra ventana, la saca y entra desde esta.
+  // Sin takeOver, en ese caso responde 'duplicate' para que la página pregunte
+  socket.on('room:join', async (code: unknown, token: unknown, takeOver: unknown, reply: unknown) => {
     if (typeof reply !== 'function' || currentCode || isEntering) return
 
     const account = socket.data.account
@@ -524,9 +571,17 @@ io.on('connection', (socket) => {
     isEntering = false
     if (!socket.connected || !isNewToken(token)) return
 
-    // A una sala de estudio solitario no entra nadie más, ni con su código
-    if (!room || room.size >= MAX_PLAYERS_PER_ROOM || getRoomKind(code) === SOLO_KIND) {
+    // A una sala de estudio solitario no entra nadie más, ni con su código.
+    // Si la misma cuenta ya está adentro desde otra ventana y se cambia a esta, ese lugar se libera
+    const own = room ? findOwnSessions(code) : []
+    const freed = takeOver === true ? own.length : 0
+    if (!room || room.size - freed >= MAX_PLAYERS_PER_ROOM || getRoomKind(code) === SOLO_KIND) {
       reply(false)
+      return
+    }
+
+    if (own.length > 0 && takeOver !== true) {
+      reply('duplicate')
       return
     }
 
@@ -534,6 +589,11 @@ io.on('connection', (socket) => {
     player.username = account.username
     player.character = describeAccountCharacter(account)
     enterRoom(code, room, token)
+    // La otra ventana sale después de entrar esta: así la sala nunca queda vacía, que la borraría
+    for (const other of own) {
+      if (other.kick) other.kick()
+      else removeFromRoom(other)
+    }
     reply(true)
   })
 
@@ -590,6 +650,7 @@ io.on('connection', (socket) => {
     // Al recargar, la conexión nueva puede llegar antes de que se note el cierre de la anterior
     const previousSocket = existing.socket
     existing.socket = socket
+    existing.kick = kickHere
     previousSocket?.disconnect(true)
 
     session = existing
@@ -654,7 +715,7 @@ socket.on('seat:leave', () => {
   })
 
   // Se guarda aunque aún no esté en una sala: al reconectar, puede llegar antes de volver a entrar
-  socket.on('player:status', (status: unknown) => {
+  socket.on('player:status', async (status: unknown) => {
     if (!isValidStatus(status)) return
 
     // Un periodo nuevo: lo estudiado hasta ahora es del anterior, que terminó si ahora toca descanso
@@ -674,6 +735,18 @@ socket.on('seat:leave', () => {
     if (session) {
       updateStudyClock(session)
       persist(session)
+    }
+    // Si cambió el ramo, se busca su nombre; solo se muestra uno de la misma cuenta
+    const sectionId = status.sectionId ?? null
+    const accountId = socket.data.account?.id as string | undefined
+    if (sectionId !== subjectSectionId) {
+      subjectSectionId = sectionId
+      try {
+        player.subject = sectionId && accountId ? await findSubject(accountId, sectionId) : null
+      } catch (error) {
+        console.error('No se pudo leer el ramo:', error)
+        player.subject = null
+      }
     }
     if (currentCode) {
       socket.to(currentCode).emit('player:status', player)

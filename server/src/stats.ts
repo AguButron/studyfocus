@@ -8,7 +8,7 @@ const MAX_STREAK_DAYS = 400
 const MAX_COMPANIONS = 5
 const MIN_SEGMENT = 1000 // milisegundos: menos que esto no vale la pena guardarlo
 const DAY = 24 * 60 * 60 * 1000 // milisegundos
-const TIME_ZONES = new Set([...Intl.supportedValuesOf('timeZone'), 'UTC'])
+export const TIME_ZONES = new Set([...Intl.supportedValuesOf('timeZone'), 'UTC'])
 
 // Un tramo estudiado: el servidor lo mide con su propio reloj, no con lo que diga la página
 // El apartado solo se anota si es de la misma cuenta
@@ -64,7 +64,7 @@ function countStreak(daysWithStudy: Set<string>, today: string) {
 }
 
 // Los días se cuentan en la zona horaria de la persona: estudiar a las 23:30 es de ese día, no del siguiente
-async function loadStats(accountId: string, timeZone: string) {
+export async function loadStats(accountId: string, timeZone: string) {
   const [todayResult, daysResult, totalResult, companions] = await Promise.all([
     query<{ today: string }>('SELECT (now() AT TIME ZONE $1)::date::text AS today', [timeZone]),
     query<{ day: string; seconds: number }>(

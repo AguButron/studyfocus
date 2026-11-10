@@ -11,7 +11,7 @@ Se quiere que cada persona pueda estudiar con música, ya sea la que trae StudyF
 ## Decisión
 
 - La música es de cada persona: nadie más la escucha, y la elección se guarda en el navegador.
-- Hay dos opciones, en un control abajo a la derecha de la sala:
+- Hay dos opciones, en un control abajo a la derecha de la sala (desde el 2026-11-09, también en el menú: [0024](0024-musica-en-todo-momento.md)):
   - **StudyFocus:** un lofi que se arma en el navegador con Web Audio (acordes, bajo, melodía, bombo y ruido de disco). No usa archivos ni tiene derechos de terceros. Es un ejemplo para probar, que se puede cambiar después por música propia.
   - **YouTube:** se pega un link y el video se reproduce en el reproductor oficial de YouTube, en el modo de privacidad (`youtube-nocookie.com`). Se respeta el segundo de inicio del link.
 - El reproductor de YouTube siempre se ve mientras suena, y mide 356 × 200 px, sobre el mínimo de 200 × 200 que exigen las [reglas de YouTube](https://developers.google.com/youtube/terms/required-minimum-functionality). Esas reglas prohíben separar el audio del video y usar un reproductor que no se vea. Para dejar de escucharlo se elige "Sin música".

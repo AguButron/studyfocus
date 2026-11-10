@@ -239,6 +239,18 @@ async function listSpaces(accountId: string) {
   }))
 }
 
+// Lo que ven los demás en la sala del apartado que alguien estudia: su nombre, su sigla y su color
+export interface Subject {
+  name: string
+  code: string | null
+  color: string
+}
+
+export async function findSubject(accountId: string, sectionId: string): Promise<Subject | null> {
+  const { rows } = await query<Subject>('SELECT name, code, color FROM sections WHERE id = $1 AND user_id = $2', [sectionId, accountId])
+  return rows[0] ?? null
+}
+
 // El apartado si es de esta cuenta, con su escala de notas
 export async function findSection(accountId: string, sectionId: string) {
   const { rows } = await query<SectionRow>(`SELECT ${SECTION_COLUMNS} FROM sections WHERE id = $1 AND user_id = $2`, [

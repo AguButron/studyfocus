@@ -107,7 +107,7 @@ function describeAccount(account: Account) {
   }
 }
 
-function parseUsername(value: unknown) {
+export function parseUsername(value: unknown) {
   if (typeof value !== 'string') return null
 
   const username = value.trim().replace(/^@/, '').toLowerCase()

@@ -1,10 +1,10 @@
 const pressedKeys = new Set<string>()
 
 function isTextField(target: EventTarget | null) {
-  return target instanceof HTMLInputElement && target.type !== 'range'
+  return (target instanceof HTMLInputElement && target.type !== 'range') || target instanceof HTMLTextAreaElement
 }
 
-// Escribir en un campo, como el link de la música, no mueve al personaje
+// Escribir en un campo, como el link de la música o el chat, no mueve al personaje
 window.addEventListener('keydown', (event) => {
   if (!isTextField(event.target)) pressedKeys.add(event.code)
 })

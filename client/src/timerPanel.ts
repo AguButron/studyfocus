@@ -1,5 +1,5 @@
 import { getActivity, setActivity, type ActivityKind } from './activity'
-import { chooseCamera, chooseNextCamera, getChosenCamera, type CameraKind } from './cameraView'
+import { chooseNextCamera, getChosenCamera, type CameraKind } from './cameraView'
 import { onKeyPress } from './input'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import {
@@ -38,7 +38,8 @@ const standUpHint = document.querySelector<HTMLParagraphElement>('#stand-up-hint
 const activityButtons = document.querySelectorAll<HTMLButtonElement>('[data-activity]')
 const activitySection = document.querySelector<HTMLElement>('#activity-section')!
 const cameraPanel = document.querySelector<HTMLElement>('#camera-panel')!
-const cameraButtons = document.querySelectorAll<HTMLButtonElement>('[data-camera]')
+const cameraName = document.querySelector<HTMLSpanElement>('#camera-name')!
+const CAMERA_NAMES: Record<CameraKind, string> = { desk: 'Escritorio', table: 'Mesa', room: 'Sala' }
 const miniPeriod = document.querySelector<HTMLSpanElement>('#mini-period')!
 const miniTime = document.querySelector<HTMLSpanElement>('#mini-time')!
 const sectionField = document.querySelector<HTMLDivElement>('#study-section-field')!
@@ -170,10 +171,7 @@ function renderActivity(activity: ActivityKind) {
 }
 
 function renderCamera() {
-  const camera = getChosenCamera()
-  for (const button of cameraButtons) {
-    button.setAttribute('aria-pressed', String(button.dataset.camera === camera))
-  }
+  cameraName.textContent = CAMERA_NAMES[getChosenCamera()]
 }
 
 export function setUpTimerPanel(onStandUp: () => void) {
@@ -224,12 +222,10 @@ export function setUpTimerPanel(onStandUp: () => void) {
     })
   }
 
-  for (const button of cameraButtons) {
-    button.addEventListener('click', () => {
-      chooseCamera(button.dataset.camera as CameraKind)
-      renderCamera()
-    })
-  }
+  cameraPanel.addEventListener('click', () => {
+    chooseNextCamera()
+    renderCamera()
+  })
 
   onKeyPress('KeyC', () => {
     if (studyScreen.hidden || isTimerIdle()) return

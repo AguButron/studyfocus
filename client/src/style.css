@@ -29,6 +29,7 @@
   --danger: #c4320a;
   --danger-wash: #fde6dd;
   --ok-ink: #1f7a4f; /* texto de algo cumplido o creado */
+  --online: #30a46c; /* con StudyFocus abierto */
   --focus: #0b5fff;
   --lift-1: 0 1px 2px #16181b14;
   --lift-2: 0 1px 2px #16181b0f, 0 4px 12px -2px #16181b1a;
@@ -55,6 +56,7 @@
   --danger: #ff7d5c;
   --danger-wash: #3a1a11;
   --ok-ink: #5fd39a;
+  --online: #3dd68c;
   --focus: #7cc4ff;
   --lift-1: 0 1px 2px #00000066;
   --lift-2: 0 1px 2px #00000066, 0 4px 12px -2px #00000080;
@@ -402,6 +404,8 @@ body {
 .sf-presence[data-presence="study"]::before { background: var(--study); border-color: var(--study); }
 .sf-presence[data-presence="break"]::before { background: var(--break); border-color: var(--break); }
 .sf-presence[data-presence="room"]::before { background: var(--ink-soft); border-color: var(--ink-soft); }
+.sf-presence[data-presence="online"]::before { background: var(--online); border-color: var(--online); }
+.sf-presence[data-presence="away"]::before { border-color: var(--online); }
 
 /* ── Navigation ───────────────────────────────────── */
 
@@ -1070,6 +1074,8 @@ body {
 }
 .drawer-online-photo[data-presence="study"]::after { background: var(--study); }
 .drawer-online-photo[data-presence="break"]::after { background: var(--break); }
+.drawer-online-photo[data-presence="online"]::after { background: var(--online); }
+.drawer-online-photo[data-presence="away"]::after { border-color: var(--online); background: var(--card); }
 .friends-drawer[data-open="false"] .friends-drawer-chevron { transform: rotate(180deg); }
 
 .friends-drawer-body {
@@ -1114,6 +1120,124 @@ body {
 .drawer-friend-text .sf-presence { font-size: 12px; line-height: 16px; }
 
 .character-photo--small { width: 32px; height: 32px; }
+
+/* Mensajes sin leer: en cada amigo, en su foto con la pestaña cerrada y en el encabezado */
+.drawer-friend .drawer-unread { flex: none; margin-left: auto; background: var(--online); color: #fff; }
+.drawer-friend[data-unread] strong { font-weight: 700; }
+.drawer-online-photo .drawer-unread {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+  background: var(--online);
+  color: #fff;
+}
+.friends-drawer-unread { background: var(--online); color: #fff; }
+#drawer-past .drawer-friend { opacity: 0.6; }
+#drawer-past .drawer-friend:hover { opacity: 1; }
+.drawer-lists { display: flex; flex-direction: column; gap: var(--cell-1); }
+
+/* Flotante (en la sala y en el celular): sobre todo lo demás, a la derecha, y se cierra con ✕ */
+.friends-drawer-close { display: none; }
+.friends-drawer[data-floating] {
+  position: fixed;
+  display: flex; /* también en el celular, donde la columna del menú no existe */
+  z-index: 40;
+  top: 0;
+  right: 0;
+  width: min(360px, 100vw);
+  height: 100vh;
+  height: 100dvh;
+  box-shadow: var(--lift-3);
+}
+.friends-drawer[data-floating] .friends-drawer-chevron { display: none; }
+.friends-drawer[data-floating] .friends-drawer-toggle { padding-right: 56px; cursor: default; }
+.friends-drawer[data-floating] .friends-drawer-toggle:hover { background: none; }
+.friends-drawer[data-floating] .friends-drawer-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  min-width: 32px;
+  padding: 0;
+}
+
+/* El chat ocupa la pestaña entera: arriba con quién, al medio los mensajes y abajo para escribir */
+.friends-drawer-body { flex: 1; min-height: 0; }
+.friends-drawer-body:has(> .chat:not([hidden])) { padding: 0; overflow: hidden; }
+.chat { display: flex; flex: 1; flex-direction: column; min-height: 0; height: 100%; }
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: var(--cell-1);
+  padding: var(--cell-1) var(--cell-1-5);
+  border-bottom: var(--stroke-1) solid var(--line);
+}
+.chat-back { min-width: 32px; padding: 0; font-size: 20px; }
+.chat-photo .character-photo { display: block; }
+.chat-head-text { display: flex; flex-direction: column; min-width: 0; }
+.chat-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-name[href]:hover { text-decoration: underline; text-underline-offset: 3px; }
+.chat-head-text .sf-presence { font-size: 12px; line-height: 16px; }
+.chat-scroll { flex: 1; min-height: 0; padding: var(--cell-1-5); overflow-y: auto; overscroll-behavior: contain; }
+.chat-status { margin: 0 0 var(--cell-1); text-align: center; font-size: 12px; }
+.chat-messages { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.chat-day {
+  align-self: center;
+  margin: var(--cell-1) 0 2px;
+  color: var(--ink-soft);
+  font: 600 11px/16px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.chat-message { display: flex; flex-direction: column; align-items: flex-start; max-width: 85%; }
+.chat-message--mine { align-self: flex-end; align-items: flex-end; }
+.chat-bubble {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-2);
+  border-bottom-left-radius: var(--radius-0);
+  background: var(--card-sunken);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-message--mine .chat-bubble {
+  border-bottom-left-radius: var(--radius-2);
+  border-bottom-right-radius: var(--radius-0);
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.chat-bubble a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.chat-message time,
+.chat-seen { color: var(--ink-soft); font-size: 11px; line-height: 14px; }
+.chat-seen { font-weight: 600; }
+.chat-typing { margin: 0; padding: 0 var(--cell-1-5) 4px; color: var(--ink-soft); font-size: 12px; font-style: italic; }
+.chat-closed { margin: 0; padding: var(--cell-1-5); border-top: var(--stroke-1) solid var(--line); text-align: center; }
+.chat-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--cell-1);
+  padding: var(--cell-1) var(--cell-1-5) var(--cell-1-5);
+  border-top: var(--stroke-1) solid var(--line);
+}
+.chat-input { flex: 1; min-width: 0; min-height: 40px; max-height: 120px; padding-block: 9px; resize: none; line-height: 20px; }
+.chat-send { flex: none; min-width: 40px; min-height: 40px; padding: 0; }
+.chat-send svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chat-error { margin: 0; padding: 0 var(--cell-1-5) var(--cell-1); }
+.chat-error:empty { display: none; }
 
 /* En la lista de Amigos, la foto y el nombre abren el perfil */
 .friend-open {
@@ -2550,6 +2674,16 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   pointer-events: none;
 }
 
+/* Amigos y el chat dentro de la sala: en la barra de arriba, o en la esquina al estar sentado */
+.room-friends { gap: 6px; }
+.room-friends-unread { background: var(--online); color: #fff; }
+.study-friends {
+  position: absolute;
+  top: var(--cell-2);
+  right: var(--cell-2);
+  pointer-events: auto;
+}
+
 #study-panel {
   position: absolute;
   top: 0;
@@ -2691,32 +2825,28 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   font-size: 12px;
 }
 
-#camera-panel {
+/* La cámara: un aviso chico abajo a la izquierda, que no tapa la escena */
+.camera-hint {
   position: absolute;
-  top: var(--cell-2);
-  right: var(--cell-2);
+  bottom: var(--cell-2);
+  left: var(--cell-2);
   display: flex;
   align-items: center;
-  gap: var(--cell-1-5);
-  padding: var(--cell-1) var(--cell-1) var(--cell-1) var(--cell-1-5);
-  pointer-events: auto;
-}
-
-#camera-panel h2 {
-  display: flex;
-  align-items: center;
-  gap: var(--cell-1);
-  margin: 0;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: var(--stroke-1) solid var(--line);
+  border-radius: var(--radius-1);
+  background: color-mix(in srgb, var(--card) 85%, transparent);
   color: var(--ink-soft);
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 600;
-  white-space: nowrap;
+  font: 500 12px/16px var(--font-sans);
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.8;
+  transition: opacity 160ms ease-out;
 }
-
-#camera-panel .sf-seg {
-  width: 260px;
-}
+.camera-hint:hover,
+.camera-hint:focus-visible { opacity: 1; color: var(--ink); }
+.camera-hint #camera-name { color: var(--ink); font-weight: 600; }
 
 /* Datos de otra persona, junto a ella: el zoom la deja al centro de la pantalla */
 #player-card {
@@ -2726,6 +2856,36 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   transform: translateY(-50%);
   max-width: 280px;
   pointer-events: none;
+}
+
+/* Su nombre es un link a su perfil: la tarjeta deja pasar los clics, salvo aquí */
+.player-card-name {
+  overflow: hidden;
+  color: var(--ink);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.player-card-name[href]:hover { text-decoration: underline; text-underline-offset: 3px; }
+.player-card-name[href]::after { content: " ↗"; color: var(--ink-soft); font-size: 13px; font-weight: 500; }
+.player-card-name:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-0); }
+
+/* El ramo que está estudiando, con un cuadrado de su color */
+.player-card-subject {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+  font-weight: 600;
+}
+.player-card-subject::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--section);
 }
 
 /* Lo que la persona cuenta de sí misma, bajo su estado */
@@ -2747,6 +2907,7 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 /* La música de cada persona, abajo a la derecha */
 #music {
   position: fixed;
+  z-index: 10; /* también sobre el menú, que va después en la página */
   right: var(--cell-2);
   bottom: var(--cell-2);
   display: flex;
@@ -2754,6 +2915,14 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   align-items: flex-end;
   gap: var(--cell-1);
   max-width: calc(100% - 32px);
+}
+
+/* En el menú, la música queda a la izquierda de la pestaña de Amigos, para no tapar el chat */
+body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="true"]) #music {
+  right: calc(280px + var(--cell-2));
+}
+body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="false"]) #music {
+  right: calc(56px + var(--cell-2));
 }
 
 .music-panel {
@@ -2895,11 +3064,9 @@ input.section-item-grade:invalid { border-color: var(--danger); }
     max-height: calc(100% - 80px);
   }
 
-  /* En pantallas angostas no caben los dos arriba */
-  #camera-panel {
-    top: auto;
-    right: var(--cell-1);
+  .camera-hint {
     bottom: var(--cell-1);
+    left: var(--cell-1);
   }
 
   #player-card {
@@ -2938,3 +3105,24 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 
 /* Perfil: el tema de la interfaz */
 .theme-picker { align-self: flex-start; width: max-content; max-width: 100%; }
+
+/* La página del perfil de otra persona */
+.person-content { display: flex; flex-direction: column; gap: var(--cell-3); }
+.person-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cell-2);
+  padding: var(--cell-3);
+}
+.person-head-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 180px; }
+.person-head-text h2 { margin: 0; font-size: 28px; line-height: 34px; letter-spacing: -0.02em; }
+.person-username { color: var(--ink-soft); font: 500 13px/18px var(--font-mono); }
+.person-head-text .sf-presence { margin-top: var(--cell-half); }
+.person-actions { display: flex; flex-wrap: wrap; gap: var(--cell-1); }
+.person-studies { margin: 0; font-weight: 600; }
+.person-bio { margin: var(--cell-half) 0 0; color: var(--ink-soft); white-space: pre-line; overflow-wrap: anywhere; }
+.person-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 520px) {
+  .person-stats { grid-template-columns: minmax(0, 1fr); }
+}

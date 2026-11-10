@@ -18,6 +18,7 @@ interface PlayerState {
   activity: ActivityKind
   period: Period
   isRunning: boolean
+  subject?: { name: string; code: string | null; color: string } | null // el ramo que estudia, si lo eligió
 }
 
 const SMOOTHING = 12 // cuanto mayor, más rápido alcanza la posición recibida

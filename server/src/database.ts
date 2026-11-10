@@ -175,6 +175,21 @@ const SCHEMA = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, friend_id)
   );
+
+  -- Cuándo cerró StudyFocus por última vez: sus amigos ven "Activo hace 2 h"
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+
+  -- El chat entre amigos: cada mensaje, y cuándo lo leyó quien lo recibió
+  CREATE TABLE IF NOT EXISTS messages (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    from_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    to_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    read_at TIMESTAMPTZ
+  );
+  CREATE INDEX IF NOT EXISTS messages_pair ON messages (from_id, to_id, id);
+  CREATE INDEX IF NOT EXISTS messages_unread ON messages (to_id, from_id) WHERE read_at IS NULL;
 `
 
 // Sin esta variable no hay cuentas, y sin cuenta no se puede entrar a una sala

@@ -16,7 +16,9 @@ La cámara depende de si el temporizador ya comenzó:
 - **Comenzado, incluso en pausa o en descanso:** se elige entre **Escritorio** (primera persona), **Mesa** (desde el costado de la mesa) y **Sala**, con botones o con la tecla C. La elección se recuerda para la próxima vez.
 - **Al abandonar la sesión, tras confirmarlo:** el temporizador vuelve a su inicio y se vuelve a la cámara de frente, todavía sentado. Reemplaza al botón **Reiniciar**.
 
-Al comenzar, el panel grande desaparece: queda uno pequeño arriba a la izquierda con el temporizador y sus controles, y las cámaras arriba a la derecha. La actividad se puede cambiar solo con el temporizador en pausa.
+Al comenzar, el panel grande desaparece: queda uno pequeño arriba a la izquierda con el temporizador y sus controles. La actividad se puede cambiar solo con el temporizador en pausa.
+
+**Desde el 2026-11-09** ya no hay un panel con las tres cámaras arriba a la derecha (ahí va el botón de Amigos). Queda un aviso pequeño abajo a la izquierda, "C Cambiar cámara · Escritorio": la tecla C, o un clic en el aviso, pasa a la cámara siguiente, en orden Escritorio → Mesa → Sala.
 
 ## Alternativas descartadas
 

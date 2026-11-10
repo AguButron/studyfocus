@@ -22,7 +22,6 @@ import {
 import { showHome } from './home'
 import { onKeyPress } from './input'
 import { createLabel } from './label'
-import { setUpMusic } from './music'
 import { sendPosition, sendStatus } from './network'
 import { isNearFreeSeat, onSeatChange, player, restorePlayer, setPlayerCharacter, toggleSit, updatePlayer } from './player'
 import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './playerCard'
@@ -48,6 +47,8 @@ let isFocusing = false
 let playerLabel: Object3D | null = null
 let studySeat: Seat | null = null
 let studyView: CameraView | null = null
+let isInRoom = false // al salir al menú, la sala deja de dibujarse
+let statusTimer = 0
 
 function enterStudyMode(seat: Seat) {
   studySeat = seat
@@ -108,6 +109,7 @@ function shareStatus() {
 }
 
 function loop(now: number) {
+  if (!isInRoom) return
   requestAnimationFrame(loop)
 
   // Con la pestaña oculta el navegador ya detiene este bucle; sentado, basta con dibujar menos
@@ -136,14 +138,23 @@ function loop(now: number) {
   renderer.render(scene, camera)
 }
 
-// Estudiar solo: solo el temporizador y la música, sin dibujar la sala
+// Estudiar solo: solo el temporizador, sin dibujar la sala. La música está siempre, también en el menú
 function startSoloStudy() {
   setUpTimerPanel(() => {})
-  setUpMusic()
   onPeriodChange(playPeriodSound)
   setStudyScreenVisible(true)
   shareStatus()
-  setInterval(shareStatus, STATUS_INTERVAL)
+  statusTimer = window.setInterval(shareStatus, STATUS_INTERVAL)
+}
+
+// Al volver al menú sin recargar, la sala se detiene y se esconde. No se vuelve a usar:
+// para entrar a otra sala la página se recarga
+function stopRoom() {
+  isInRoom = false
+  clearInterval(statusTimer)
+  closePlayerCard()
+  hint.hidden = true
+  setStudyScreenVisible(false)
 }
 
 showHome((nickname, character, resumed, isSolo) => {
@@ -160,7 +171,6 @@ showHome((nickname, character, resumed, isSolo) => {
   onKeyPress('KeyE', toggleSit)
   setUpTimerPanel(toggleSit)
   setUpPlayerCard()
-  setUpMusic()
   onPeriodChange(playPeriodSound)
   hint.hidden = false
   if (resumed) {
@@ -169,7 +179,8 @@ showHome((nickname, character, resumed, isSolo) => {
   }
   shareStatus()
   // Fuera del bucle de dibujo, que se detiene al estudiar con la pestaña oculta
-  setInterval(shareStatus, STATUS_INTERVAL)
+  statusTimer = window.setInterval(shareStatus, STATUS_INTERVAL)
+  isInRoom = true
   lastTime = performance.now()
   requestAnimationFrame(loop)
-})
+}, stopRoom)
