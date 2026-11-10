@@ -3141,15 +3141,6 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="fal
   border: 0;
 }
 
-/* Chrome en Windows a veces dibuja el video de YouTube en una capa aparte de la tarjeta gráfica que, sobre el
-   lienzo 3D, queda en otro lugar: un rectángulo negro que solo se va al quitar la música. Una capa propia
-   (transform) hace que el video se dibuje dentro de la página, en su lugar */
-.music-video,
-.music-video iframe {
-  transform: translateZ(0);
-  will-change: transform;
-}
-.music-video { isolation: isolate; }
 
 /* La portada del video mientras no suena: la miniatura y un botón ▶ al centro */
 .youtube-cover {
@@ -3269,3 +3260,22 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="fal
 @media (max-width: 520px) {
   .person-stats { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* El aviso de la sala cuando el navegador dibuja sin la tarjeta gráfica: arriba al centro, sin tapar la escena */
+.gpu-notice {
+  position: fixed;
+  z-index: 20;
+  top: 64px;
+  left: 50%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cell-1-5);
+  width: min(560px, calc(100vw - 32px));
+  padding: var(--cell-1-5) var(--cell-2);
+  border-left: 3px solid var(--marker);
+  transform: translateX(-50%);
+  font-size: 13px;
+  line-height: 19px;
+}
+.gpu-notice p { margin: 0; }
+.gpu-notice .sf-btn { flex: none; }

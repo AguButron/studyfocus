@@ -160,7 +160,7 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] [La cámara con la tecla C](decisiones/0004-camaras-al-estudiar.md): un aviso pequeño abajo a la izquierda en vez del panel de cámaras
 - [x] [Ahorrar memoria](decisiones/0026-ahorrar-memoria.md): YouTube con portada hasta apretar ▶, la escena 3D solo dentro de la sala y Three.js en un archivo aparte
 - [ ] Chat de sala
-- [ ] Que el video de YouTube no deje un cuadro negro al salir de su pantalla completa
+- [x] [Aviso sin aceleración por hardware](decisiones/0026-ahorrar-memoria.md): los cuadros negros con YouTube en la sala pasaban con la aceleración apagada; ahora la sala avisa cómo activarla
 - [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)
 - [ ] Agregar `GEMINI_API_KEY` en Render para la versión publicada
 - [x] Inicio en dos columnas: ¿Estudiamos? y tu carpeta más reciente con el punteo de sus ramos a la izquierda, y los próximos 7 días en una columna a la derecha

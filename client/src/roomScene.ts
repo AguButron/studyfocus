@@ -10,6 +10,7 @@ import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './p
 import { updateRemotePlayers } from './remotePlayers'
 import { setTallFrontWallVisible, type Seat } from './room'
 import { camera, getRenderer, scene, startRenderer, stopRenderer } from './scene'
+import { isSoftwareRendering } from './gpuCheck'
 import { getTimer, isTimerIdle } from './timer'
 import { setStudyPanelCompact, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
 
@@ -24,6 +25,32 @@ const SIT_HINT = 'Pulsa E para sentarte'
 
 const hud = document.querySelector<HTMLElement>('#hud')!
 const hint = document.querySelector<HTMLParagraphElement>('#hint')!
+const gpuNotice = document.querySelector<HTMLDivElement>('#gpu-notice')!
+const GPU_NOTICE_KEY = 'studyfocus.gpuNoticeSeen' // una vez por pestaña, para no repetirlo en cada sala
+
+// Sin la tarjeta gráfica la sala va lenta, y con YouTube encima salen cuadros negros: se avisa cómo arreglarlo
+function showGpuNotice() {
+  let seen = false
+  try {
+    seen = sessionStorage.getItem(GPU_NOTICE_KEY) === 'true'
+  } catch {
+    // Sin almacenamiento se muestra igual
+  }
+  if (seen || !isSoftwareRendering(getRenderer()?.getContext())) return
+  gpuNotice.hidden = false
+  document.querySelector('#gpu-notice-close')!.addEventListener(
+    'click',
+    () => {
+      gpuNotice.hidden = true
+      try {
+        sessionStorage.setItem(GPU_NOTICE_KEY, 'true')
+      } catch {
+        // Sin almacenamiento, vuelve a aparecer en la próxima sala
+      }
+    },
+    { once: true },
+  )
+}
 
 let lastTime = 0
 let isSceneMoving = false
@@ -105,7 +132,7 @@ function loop(now: number) {
   isSceneMoving = updateCameraView(delta) || isAnyoneMoving
 
   const { period, isRunning } = getTimer()
-  updateActivity(delta, poseFor(period, isRunning))
+  updateActivity(delta, poseFor(period, isRunning, !isTimerIdle()))
   poseBody(player, studySeat, getActivityLean())
 
   if (!studySeat) {
@@ -135,6 +162,7 @@ export function startRoom(nickname: string, character: Character, resumed: Resum
   isInRoom = true
   lastTime = performance.now()
   requestAnimationFrame(loop)
+  showGpuNotice()
 }
 
 // Al volver al menú: deja de dibujar y libera el lienzo y su memoria de video
@@ -142,6 +170,7 @@ export function stopRoom() {
   isInRoom = false
   closePlayerCard()
   hint.hidden = true
+  gpuNotice.hidden = true
   setStudyScreenVisible(false)
   stopRenderer()
 }

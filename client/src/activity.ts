@@ -8,7 +8,8 @@ import { getActivity, onActivityChange, type ActivityKind } from './choices'
 // La actividad elegida se guarda en choices.ts (sin Three.js); aquí está cómo se ve sobre la mesa
 export { getActivity, setActivity, type ActivityKind } from './choices'
 // Estudiando mueve las manos; descansando duerme sobre la mesa; detenido se queda quieto
-export type Pose = 'study' | 'rest' | 'idle'
+// 'waiting': sentado sin empezar el temporizador, todavía sin nada sobre la mesa; 'idle': en pausa, con sus cosas
+export type Pose = 'study' | 'rest' | 'idle' | 'waiting'
 
 const TABLE_TOP = 0.75
 const ITEM_Z = -0.86 // metros hacia la mesa desde la silla
@@ -29,7 +30,8 @@ interface Activity {
   update: (time: number, isActive: boolean) => void
 }
 
-export function poseFor(period: Period, isRunning: boolean): Pose {
+export function poseFor(period: Period, isRunning: boolean, isStarted = isRunning): Pose {
+  if (!isStarted) return 'waiting'
   if (!isRunning) return 'idle'
   return period === 'study' ? 'study' : 'rest'
 }
@@ -318,7 +320,7 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
     update(delta, pose) {
       if (!root.visible) return
 
-      isIdle = pose === 'idle'
+      isIdle = pose === 'waiting' // solo antes de empezar se esconde lo que hay sobre la mesa
       getModel(kind).group.visible = !isIdle
 
       const isActive = pose === 'study'

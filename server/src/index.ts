@@ -43,6 +43,9 @@ interface PlayerStatus {
   activity: string
   period: string
   isRunning: boolean
+  // Si ya empezó el temporizador: sentado y sin empezar no hay nada sobre la mesa; en pausa, sí.
+  // Las páginas de antes no lo mandan: se toma isRunning
+  isStarted?: boolean
 }
 
 // El estado que manda la página: además dice qué periodo es, para saber si terminó o se abandonó
@@ -180,13 +183,14 @@ function isValidPosition(value: unknown): value is { x: number; z: number } {
 function isValidStatus(value: unknown): value is StatusMessage {
   if (typeof value !== 'object' || value === null) return false
 
-  const { activity, period, isRunning, periodId, sectionId } = value as Record<string, unknown>
+  const { activity, period, isRunning, isStarted, periodId, sectionId } = value as Record<string, unknown>
   return (
     typeof activity === 'string' &&
     ACTIVITIES.includes(activity) &&
     typeof period === 'string' &&
     PERIODS.includes(period) &&
     typeof isRunning === 'boolean' &&
+    (isStarted === undefined || typeof isStarted === 'boolean') &&
     typeof periodId === 'string' &&
     periodId.length > 0 &&
     periodId.length <= MAX_PERIOD_ID_LENGTH &&
@@ -665,6 +669,7 @@ io.on('connection', (socket) => {
       player.activity = lastStatus.activity
       player.period = lastStatus.period
       player.isRunning = lastStatus.isRunning
+      player.isStarted = lastStatus.isStarted ?? lastStatus.isRunning
     }
     updateStudyClock(existing)
     persist(existing)
@@ -731,6 +736,7 @@ socket.on('seat:leave', () => {
     player.activity = status.activity
     player.period = status.period
     player.isRunning = status.isRunning
+    player.isStarted = status.isStarted ?? status.isRunning
     lastStatus = status
     if (session) {
       updateStudyClock(session)

@@ -19,6 +19,7 @@ interface PlayerState {
   activity: ActivityKind
   period: Period
   isRunning: boolean
+  isStarted?: boolean // si ya empezó su temporizador; las páginas de antes no lo mandan
   subject?: { name: string; code: string | null; color: string } | null // el ramo que estudia, si lo eligió
 }
 
@@ -67,7 +68,7 @@ function addRemotePlayer(state: PlayerState) {
     activity,
     state,
     seatId: state.seatId,
-    pose: poseFor(state.period, state.isRunning),
+    pose: poseFor(state.period, state.isRunning, state.isStarted ?? state.isRunning),
     targetX: state.x,
     targetZ: state.z,
   })
@@ -117,7 +118,7 @@ socket.on('player:status', (state: PlayerState) => {
   if (!remotePlayer) return
 
   remotePlayer.state = state
-  remotePlayer.pose = poseFor(state.period, state.isRunning)
+  remotePlayer.pose = poseFor(state.period, state.isRunning, state.isStarted ?? state.isRunning)
   remotePlayer.activity.setKind(state.activity)
 })
 

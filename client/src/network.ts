@@ -192,6 +192,7 @@ export function sendStatus(status: {
   activity: ActivityKind
   period: Period
   isRunning: boolean
+  isStarted: boolean // sentado sin empezar no hay nada sobre la mesa; en pausa, sí
   periodId: string
   sectionId: string | null
 }) {

@@ -3,7 +3,7 @@ import { getActivity } from './choices'
 import { showHome } from './home'
 import { sendStatus } from './network'
 import { playPeriodSound } from './sound'
-import { getTimer, onPeriodChange, updateTimer } from './timer'
+import { getTimer, isTimerIdle, onPeriodChange, updateTimer } from './timer'
 import { getStudySection, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
 
 // El arranque de la página. La sala 3D (Three.js) no se carga aquí: se descarga al entrar a una sala
@@ -17,7 +17,7 @@ let room: typeof import('./roomScene') | null = null
 function shareStatus() {
   updateTimer()
   const { period, isRunning, periodId } = getTimer()
-  sendStatus({ activity: getActivity(), period, isRunning, periodId, sectionId: getStudySection() })
+  sendStatus({ activity: getActivity(), period, isRunning, isStarted: !isTimerIdle(), periodId, sectionId: getStudySection() })
 }
 
 // Descarga la sala antes de entrar: el servidor manda quiénes están adentro justo al entrar,

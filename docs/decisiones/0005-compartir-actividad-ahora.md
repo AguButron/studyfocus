@@ -14,6 +14,8 @@ Se hace ahora, reutilizando los mismos modelos de computador, libro, cuaderno y 
 
 Cada persona envía al servidor su actividad, su periodo y si su temporizador está corriendo. El servidor valida esos datos y los reenvía a la sala, y quien entra después los recibe al llegar. Las manos de cada persona se animan en el navegador de quien mira, así que solo se envían los cambios y no cada movimiento.
 
+**Desde el 2026-11-10** también envía si su temporizador ya empezó (`isStarted`). Sentado y sin empezar, no hay nada sobre la mesa (ni computador, ni libro, ni cuaderno). En pausa, las cosas siguen ahí y la persona solo se queda quieta. Antes las dos situaciones se veían igual, y al pausar desaparecían las cosas.
+
 ## Alternativas descartadas
 
 - **Esperar a los avatares:** esos datos hacían falta de todas formas para la tarea de compartir el periodo y la actividad, y dibujarlos con los modelos actuales cuesta poco. Además, ayuda a la idea central del proyecto: ver que tus amigos también están trabajando.

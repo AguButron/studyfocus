@@ -72,6 +72,14 @@
 
     <p id="hint" class="sf-tip" hidden></p>
 
+    <!-- Si el navegador dibuja la sala sin la tarjeta gráfica (ver gpuCheck.ts) -->
+    <div id="gpu-notice" class="gpu-notice sf-card sf-card--float" role="status" hidden>
+      <p title="Configuración del navegador → Sistema → &quot;Usar aceleración por hardware cuando esté disponible&quot;, y reinícialo">
+        <strong>Aceleración por hardware desactivada:</strong> la sala puede ir lenta o verse con cuadros negros. Actívala en Configuración → Sistema.
+      </p>
+      <button id="gpu-notice-close" class="sf-btn sf-btn--sm" type="button">Entendido</button>
+    </div>
+
     <section id="study" aria-label="Sesión de estudio" hidden>
       <!-- Sentado o estudiando solo, la barra de arriba no está: el botón de Amigos va en la esquina -->
       <button class="sf-btn sf-btn--sm sf-card--float room-friends study-friends" type="button" aria-controls="friends-drawer" aria-expanded="false" title="Tus amigos y el chat">
