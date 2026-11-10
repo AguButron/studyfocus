@@ -1,4 +1,4 @@
-import { CHAIR_SIZE, seats, TABLE_DEPTH, TABLE_WIDTH } from './room'
+import { CHAIR_SIZE, seats, TABLE_DEPTH, TABLE_WIDTH } from './roomLayout'
 
 // Qué hace quien ocupa cada silla, por su número
 export type SeatState = 'study' | 'break'

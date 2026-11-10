@@ -1,12 +1,12 @@
 import * as THREE from 'three'
 import { loadProfile, type Profile } from './account'
-import type { ActivityKind } from './activity'
-import { getCharacterPhoto } from './character'
+import type { ActivityKind } from './choices'
+import { setCharacterPhoto } from './character'
 import { releaseCameraFocus } from './cameraView'
 import { onKeyPress } from './input'
 import { findRemotePlayerAt, getRemotePlayerPosition, getRemotePlayerState } from './remotePlayers'
 import { getCountryName, getFlag } from './countries'
-import { camera, renderer } from './scene'
+import { camera, getRenderer } from './scene'
 import { profileUrl } from './profilePage'
 
 const UPDATE_INTERVAL = 500 // milisegundos
@@ -32,6 +32,8 @@ let selectedId: string | null = null
 let profileRequest = 0 // descarta la respuesta si mientras tanto se eligió a otra persona
 
 function findPlayerUnderCursor(event: MouseEvent) {
+  const renderer = getRenderer()
+  if (!renderer) return null
   const canvas = renderer.domElement.getBoundingClientRect()
   pointer.set(
     ((event.clientX - canvas.left) / canvas.width) * 2 - 1,
@@ -63,8 +65,7 @@ function renderCard() {
   subjectText.style.setProperty('--section', subject?.color ?? 'transparent')
   subjectText.textContent = subject ? `${subject.name}${subject.code ? ` · ${subject.code}` : ''}` : ''
   subjectText.title = subject ? `Está estudiando ${subject.name}` : ''
-  const photoUrl = getCharacterPhoto(state.character)
-  if (photo.getAttribute('src') !== photoUrl) photo.src = photoUrl
+  setCharacterPhoto(photo, state.character)
   statusText.textContent = !state.isRunning ? 'Temporizador detenido' : state.period === 'study' ? 'Estudiando' : 'En descanso'
   activityText.textContent = state.seatId === null ? 'Caminando por la sala' : ACTIVITY_NAMES[state.activity]
 }
@@ -113,7 +114,7 @@ export function getSelectedPlayerPosition() {
 }
 
 export function setUpPlayerCard() {
-  const canvas = renderer.domElement
+  const canvas = getRenderer()!.domElement // se prepara al entrar a la sala, con el lienzo ya creado
 
   canvas.addEventListener('click', (event) => select(findPlayerUnderCursor(event)))
   onKeyPress('Escape', closePlayerCard)

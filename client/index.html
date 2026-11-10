@@ -30,8 +30,10 @@
         <span id="room-code" class="sf-hud-code"></span>
         <button id="copy-link" class="sf-btn sf-btn--sm" type="button">Copiar link</button>
         <button id="leave-room" class="sf-btn sf-btn--sm" type="button">Salir</button>
-        <button class="sf-btn sf-btn--sm room-friends" type="button" aria-controls="friends-drawer" title="Tus amigos y el chat">
-          Amigos <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
+        <button class="sf-btn sf-btn--sm room-friends" type="button" aria-controls="friends-drawer" aria-expanded="false" title="Tus amigos y el chat">
+          <span class="room-friends-faces" aria-hidden="true"></span>
+          <span class="room-friends-label">Amigos</span>
+          <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
         </button>
       </div>
       <div class="sf-hud-group">
@@ -72,8 +74,10 @@
 
     <section id="study" aria-label="Sesión de estudio" hidden>
       <!-- Sentado o estudiando solo, la barra de arriba no está: el botón de Amigos va en la esquina -->
-      <button class="sf-btn sf-btn--sm sf-card--float room-friends study-friends" type="button" aria-controls="friends-drawer" title="Tus amigos y el chat">
-        Amigos <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
+      <button class="sf-btn sf-btn--sm sf-card--float room-friends study-friends" type="button" aria-controls="friends-drawer" aria-expanded="false" title="Tus amigos y el chat">
+        <span class="room-friends-faces" aria-hidden="true"></span>
+        <span class="room-friends-label">Amigos</span>
+        <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
       </button>
       <div id="study-panel" class="sf-timer">
         <button class="sf-wordmark room-logo study-panel-logo" type="button" title="Volver al menú">StudyFocus</button>

@@ -1,33 +1,13 @@
 import * as THREE from 'three'
+import { CHAIR_SIZE, seats, TABLE_DEPTH, TABLE_POSITIONS, TABLE_WIDTH } from './roomLayout'
 import { scene } from './scene'
+
+// La sala 3D: el piso, las paredes, las mesas y las sillas. Dónde va cada cosa está en roomLayout
+export { CHAIR_SIZE, SEATED_Y, seats, STANDING_Y, TABLE_DEPTH, TABLE_WIDTH, type Seat } from './roomLayout'
 
 const WALL_COLOR = 0x585b70
 const TABLE_COLOR = 0xa6744f
 const CHAIR_COLOR = 0x74543a
-const TABLE_POSITIONS = [
-  { x: -3, z: -2.5 },
-  { x: 3, z: -2.5 },
-  { x: -3, z: 2.5 },
-  { x: 3, z: 2.5 },
-]
-const SEAT_OFFSET_X = 0.6
-const SEAT_OFFSET_Z = 1.2
-export const TABLE_WIDTH = 2.4
-export const TABLE_DEPTH = 1.2
-export const CHAIR_SIZE = 0.5
-export const STANDING_Y = 0.5
-export const SEATED_Y = 0.8
-
-export interface Seat {
-  id: number
-  x: number
-  z: number
-  facingZ: 1 | -1 // hacia dónde queda la mesa
-  tableX: number
-  tableZ: number
-}
-
-export const seats: Seat[] = []
 
 interface Obstacle {
   minX: number
@@ -88,13 +68,7 @@ export function setTallFrontWallVisible(visible: boolean) {
 
 for (const table of TABLE_POSITIONS) {
   addBox(TABLE_WIDTH, 0.75, TABLE_DEPTH, table.x, table.z, TABLE_COLOR)
-
-  for (const offsetX of [-SEAT_OFFSET_X, SEAT_OFFSET_X]) {
-    for (const offsetZ of [-SEAT_OFFSET_Z, SEAT_OFFSET_Z]) {
-      const x = table.x + offsetX
-      const z = table.z + offsetZ
-      addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, x, z, CHAIR_COLOR)
-      seats.push({ id: seats.length, x, z, facingZ: offsetZ < 0 ? 1 : -1, tableX: table.x, tableZ: table.z })
-    }
-  }
+}
+for (const seat of seats) {
+  addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, seat.x, seat.z, CHAIR_COLOR)
 }

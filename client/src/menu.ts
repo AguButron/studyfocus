@@ -6,7 +6,7 @@ import { refreshHomePanel, setUpHomePanel } from './homePanel'
 import { resetFriendsDrawer, setUpFriendsDrawer } from './friendsDrawer'
 import { clearProfileParam, openProfilePage, setUpProfilePage } from './profilePage'
 import { setUpProfileDialog } from './profileDialog'
-import { CHARACTER_COLORS, getCharacterPhoto, type Character } from './character'
+import { CHARACTER_COLORS, setCharacterPhoto, type Character } from './character'
 import { drawRoomPlan } from './roomPlan'
 import { COUNTRIES, getFlag } from './countries'
 import { ROOM_KINDS } from './roomKinds'
@@ -135,9 +135,8 @@ function showRoomKinds() {
 }
 
 function showCharacter(character: Character) {
-  const photo = getCharacterPhoto(character)
-  userPhoto.src = photo
-  characterPhoto.src = photo
+  setCharacterPhoto(userPhoto, character)
+  setCharacterPhoto(characterPhoto, character)
   for (const swatch of characterColors.querySelectorAll<HTMLButtonElement>('button')) {
     swatch.setAttribute('aria-pressed', String(swatch.dataset.color === character.color))
   }

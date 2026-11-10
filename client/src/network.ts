@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client'
-import type { ActivityKind } from './activity'
+import type { ActivityKind } from './choices'
 import type { Character } from './character'
 import type { StudySummary } from './stats'
 import type { Period } from './timer'

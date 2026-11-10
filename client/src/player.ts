@@ -1,4 +1,5 @@
-import { CHARACTER_COLORS, createCharacterModel, paintCharacterModel, type Character } from './character'
+import { CHARACTER_COLORS, type Character } from './character'
+import { createCharacterModel, paintCharacterModel } from './characterModel'
 import { isPressed } from './input'
 import { scene } from './scene'
 import { leaveSeat, onSeatLost, takeSeat, type ResumedPlayer } from './network'

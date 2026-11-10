@@ -25,6 +25,11 @@ const chatWindow = document.querySelector<HTMLElement>('#chat')!
 const CHAT_GAP = 12 // píxeles entre la pestaña y la ventana del chat
 
 let isInRoom = false // en la sala la pestaña flota sobre la escena
+// En la sala, la lista es una ventana que se despliega bajo el botón de Amigos que se apretó
+let roomAnchor: HTMLElement | null = null
+const roomButtons = [...document.querySelectorAll<HTMLButtonElement>('.room-friends')]
+const MAX_FACES = 3 // fotos de amigos en línea en el botón de la sala
+const POPOVER_GAP = 8 // píxeles entre el botón y la ventana
 let homeParent: HTMLElement | null = null // dónde vive en el menú, para devolverla al salir de la sala
 const unreadListeners: ((count: number) => void)[] = []
 let lastFriends: Friend[] = []
@@ -60,6 +65,7 @@ function applyLayout() {
   if (floating && drawer.parentElement !== document.body) document.body.append(drawer)
   if (!floating && homeParent && drawer.parentElement !== homeParent) homeParent.append(drawer)
   drawer.toggleAttribute('data-floating', floating)
+  drawer.toggleAttribute('data-popover', isInRoom)
   closeButton.hidden = !floating
   if (floating) {
     drawer.hidden = true
@@ -74,16 +80,58 @@ export function isDrawerVisible() {
   return !drawer.hidden && drawer.dataset.open === 'true'
 }
 
+// En la sala: la ventana queda bajo el botón, alineada a su borde derecho, y del alto justo para la lista
+function placePopover() {
+  if (!isInRoom || drawer.hidden) return
+  const anchor = roomButtons.find((button) => button === roomAnchor && button.offsetParent !== null)
+    ?? roomButtons.find((button) => button.offsetParent !== null)
+  if (!anchor) return
+  const rect = anchor.getBoundingClientRect()
+  drawer.style.setProperty('--popover-top', `${Math.round(rect.bottom + POPOVER_GAP)}px`)
+  drawer.style.setProperty('--popover-right', `${Math.round(window.innerWidth - rect.right)}px`)
+}
+
+function showRoomButtonsExpanded(expanded: boolean) {
+  for (const button of roomButtons) button.setAttribute('aria-expanded', String(expanded))
+}
+
 // El botón de Amigos en la sala, o "Escribir" en el celular
 export function showDrawer() {
   if (isFloating()) drawer.hidden = false
   else setOpen(true)
+  placePopover()
+  showRoomButtonsExpanded(isInRoom)
   markRead()
 }
 
 export function hideDrawer() {
   if (isFloating()) drawer.hidden = true
   else setOpen(false)
+  showRoomButtonsExpanded(false)
+  if (isInRoom) closeChat() // en la sala el chat sale de la lista: se cierran juntos
+}
+
+// El botón de la sala: las fotos de hasta 3 amigos en línea, "+2" si hay más, y los mensajes sin leer
+function renderRoomButtons(friends: Friend[], unread: number) {
+  const online = friends.filter((friend) => friend.presence)
+  for (const button of roomButtons) {
+    const faces = button.querySelector<HTMLSpanElement>('.room-friends-faces')!
+    const label = button.querySelector<HTMLSpanElement>('.room-friends-label')!
+    const badge = button.querySelector<HTMLSpanElement>('.room-friends-unread')!
+    faces.replaceChildren(...online.slice(0, MAX_FACES).map((friend) => createCharacterPhoto(friend.character, 'room-friends-face')))
+    faces.hidden = online.length === 0
+    // Sin nadie conectado dice "Amigos"; con más de 3, cuántos más hay
+    label.textContent = online.length === 0 ? 'Amigos' : online.length > MAX_FACES ? `+${online.length - MAX_FACES}` : ''
+    label.hidden = label.textContent === ''
+    badge.hidden = unread === 0
+    badge.textContent = String(unread)
+    const parts = [
+      online.length === 0 ? 'Ningún amigo en línea' : `${online.length} ${online.length === 1 ? 'amigo en línea' : 'amigos en línea'}`,
+      unread > 0 ? `${unread} ${unread === 1 ? 'mensaje sin leer' : 'mensajes sin leer'}` : '',
+    ].filter(Boolean)
+    button.title = `Amigos: ${parts.join(' · ')}`
+    button.setAttribute('aria-label', button.title)
+  }
 }
 
 export function toggleDrawer() {
@@ -91,9 +139,24 @@ export function toggleDrawer() {
   else showDrawer()
 }
 
-function showChat(person: Person) {
+// La altura (centro) del amigo que se apretó: la ventana del chat sale desde ahí. Nula: abajo, como siempre
+let anchorY: number | null = null
+const EDGE = 16 // píxeles de margen con el borde de la pantalla
+const ARROW_OFFSET = 36 // píxeles desde arriba de la ventana hasta la flecha que apunta al amigo
+
+function showChat(person: Person, anchor?: HTMLElement) {
   showDrawer()
+  if (anchor) {
+    const rect = anchor.getBoundingClientRect()
+    anchorY = rect.top + rect.height / 2
+  } else {
+    anchorY = null
+  }
   openChat(person)
+  // Que se note que sale del amigo: se vuelve a animar cada vez que se abre
+  chatWindow.removeAttribute('data-pop')
+  void chatWindow.offsetWidth
+  chatWindow.setAttribute('data-pop', '')
 }
 
 // Para el número de mensajes sin leer en el botón de Amigos de la sala
@@ -121,7 +184,7 @@ function createOnlinePhoto(friend: Friend) {
   button.setAttribute('aria-label', button.title)
   button.append(createCharacterPhoto(friend.character, 'character-photo--small'))
   if (friend.unread > 0) button.append(createUnreadBadge(friend.unread))
-  button.addEventListener('click', () => showChat(friend))
+  button.addEventListener('click', () => showChat(friend, button))
   item.append(button)
   return item
 }
@@ -151,7 +214,7 @@ function createRow(person: Friend | PastChat, detail: { text: string; kind: stri
   button.append(text)
   if (person.unread > 0) button.append(createUnreadBadge(person.unread))
 
-  button.addEventListener('click', () => showChat(person))
+  button.addEventListener('click', () => showChat(person, button))
   item.append(button)
   return item
 }
@@ -181,6 +244,7 @@ function render(friends: Friend[], pastChats: PastChat[]) {
   unreadCount.textContent = String(unread)
   unreadCount.title = `${unread} ${unread === 1 ? 'mensaje sin leer' : 'mensajes sin leer'}`
   for (const listener of unreadListeners) listener(unread)
+  renderRoomButtons(friends, unread)
   refreshChatHeader()
 }
 
@@ -191,16 +255,43 @@ export function setDrawerInRoom(inRoom: boolean) {
   applyLayout()
 }
 
-// La ventana del chat queda a la izquierda de la pestaña, con el ancho que tenga (abierta, cerrada o escondida)
+// La ventana del chat queda a la izquierda de la pestaña (o de la ventana de la sala), donde sea que esté,
+// y a la altura del amigo, sin salirse de la pantalla; la flecha sigue apuntándolo
 function placeChat() {
-  const width = drawer.hidden ? 0 : drawer.getBoundingClientRect().width
-  chatWindow.style.setProperty('--chat-right', `${Math.round(width) + CHAT_GAP}px`)
+  const left = drawer.hidden ? window.innerWidth : drawer.getBoundingClientRect().left
+  chatWindow.style.setProperty('--chat-right', `${Math.round(window.innerWidth - left) + CHAT_GAP}px`)
+  chatWindow.toggleAttribute('data-anchored', anchorY !== null)
+  if (anchorY === null) return
+  const height = chatWindow.getBoundingClientRect().height || Math.min(560, window.innerHeight - 80)
+  const top = Math.max(EDGE, Math.min(anchorY - ARROW_OFFSET, window.innerHeight - height - EDGE))
+  chatWindow.style.setProperty('--chat-top', `${Math.round(top)}px`)
+  chatWindow.style.setProperty('--chat-arrow', `${Math.round(Math.max(16, Math.min(anchorY - top, height - 16)))}px`)
 }
 
 export function setUpFriendsDrawer() {
   applyLayout()
   new ResizeObserver(placeChat).observe(drawer)
+  window.addEventListener('resize', () => {
+    placePopover()
+    placeChat()
+  })
   placeChat()
+
+  // Los botones de Amigos de la sala (arriba al caminar, en la esquina al estar sentado)
+  for (const button of roomButtons) {
+    button.addEventListener('click', () => {
+      roomAnchor = button
+      toggleDrawer()
+    })
+  }
+  // En la sala, un clic fuera de la ventana y del chat los cierra, como un menú desplegable
+  document.addEventListener('pointerdown', (event) => {
+    if (!isInRoom || drawer.hidden) return
+    const target = event.target as Node
+    if (drawer.contains(target) || chatWindow.contains(target) || roomButtons.some((button) => button.contains(target))) return
+    hideDrawer()
+    closeChat()
+  })
   // Al pasar de celular a escritorio (o al revés), solo si cambió el modo
   const relayout = () => {
     if (drawer.hasAttribute('data-floating') !== isFloating()) applyLayout()

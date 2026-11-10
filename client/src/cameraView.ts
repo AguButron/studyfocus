@@ -2,11 +2,11 @@ import * as THREE from 'three'
 import type { Seat } from './room'
 import { camera } from './scene'
 
-export type CameraKind = 'desk' | 'table' | 'room'
-export type CameraView = CameraKind | 'front'
+import type { CameraKind } from './choices'
 
-const STORAGE_KEY = 'studyfocus.camera'
-const CAMERAS: CameraKind[] = ['desk', 'table', 'room']
+// La cámara elegida se guarda en choices.ts (sin Three.js); aquí está cómo se mueve
+export { chooseCamera, chooseNextCamera, getChosenCamera, type CameraKind } from './choices'
+export type CameraView = CameraKind | 'front'
 
 const CAMERA_SPEED = 5 // cuanto mayor, más rápida la transición
 const SETTLED_DISTANCE = 0.005 // metros
@@ -129,34 +129,6 @@ export function jumpToCameraView() {
   camera.quaternion.copy(targetRotation)
 }
 
-function loadCamera(): CameraKind {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return CAMERAS.find((kind) => kind === saved) ?? 'desk'
-  } catch {
-    return 'desk'
-  }
-}
-
-let chosenCamera = loadCamera()
-
-export function getChosenCamera() {
-  return chosenCamera
-}
-
-export function chooseCamera(kind: CameraKind) {
-  chosenCamera = kind
-
-  try {
-    localStorage.setItem(STORAGE_KEY, kind)
-  } catch {
-    // Sin almacenamiento, la cámara elegida solo dura hasta recargar
-  }
-}
-
-export function chooseNextCamera() {
-  chooseCamera(CAMERAS[(CAMERAS.indexOf(chosenCamera) + 1) % CAMERAS.length])
-}
 
 viewRoom()
 jumpToCameraView()

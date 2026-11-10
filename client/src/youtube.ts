@@ -56,3 +56,23 @@ export function createYouTubePlayer({ id, start }: YouTubeVideo, autoplay: boole
   frame.allowFullscreen = true
   return frame
 }
+
+// Mientras no suena, solo la miniatura con un botón ▶: el reproductor de YouTube pesa unos 200 MB de memoria,
+// así que se carga recién al apretarlo. Las reglas de YouTube piden que el reproductor se vea mientras suena,
+// y una portada sin sonido no lo necesita.
+export function createYouTubeCover(video: YouTubeVideo, onPlay: () => void) {
+  const cover = document.createElement('button')
+  cover.type = 'button'
+  cover.className = 'youtube-cover'
+  cover.setAttribute('aria-label', 'Reproducir el video de YouTube')
+  cover.title = 'Reproducir'
+  const image = document.createElement('img')
+  image.alt = ''
+  image.src = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`
+  const play = document.createElement('span')
+  play.className = 'youtube-cover-play'
+  play.setAttribute('aria-hidden', 'true')
+  cover.append(image, play)
+  cover.addEventListener('click', onPlay)
+  return cover
+}

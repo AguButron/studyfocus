@@ -1177,15 +1177,38 @@ body {
   flex-direction: column;
   width: min(360px, calc(100vw - var(--chat-right, 16px) - var(--cell-2)));
   height: min(560px, calc(100vh - 80px));
-  overflow: hidden;
   border: var(--stroke-1) solid var(--line);
   border-radius: var(--radius-2);
   background: var(--card);
   box-shadow: var(--lift-3);
 }
+/* Abierto desde un amigo: a su altura, con una flecha que lo apunta */
+.chat[data-anchored] { top: var(--chat-top); bottom: auto; }
+.chat[data-anchored]::after {
+  content: "";
+  position: absolute;
+  top: var(--chat-arrow);
+  right: -7px;
+  width: 12px;
+  height: 12px;
+  border-top: var(--stroke-1) solid var(--line);
+  border-right: var(--stroke-1) solid var(--line);
+  background: var(--card);
+  transform: translateY(-50%) rotate(45deg);
+}
+/* Sale desde el amigo, deslizándose desde la pestaña */
+.chat[data-pop] { transform-origin: right var(--chat-arrow, 50%); animation: chat-pop 180ms ease-out; }
+@keyframes chat-pop {
+  from { opacity: 0; transform: translateX(16px) scale(0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat[data-pop] { animation: none; }
+}
 /* En el celular no cabe al lado: tapa la pantalla entera */
 @media (max-width: 720px) {
-  .chat { inset: 0; width: auto; height: auto; height: 100dvh; border: 0; border-radius: 0; }
+  .chat,
+  .chat[data-anchored] { inset: 0; width: auto; height: auto; height: 100dvh; border: 0; border-radius: 0; }
+  .chat[data-anchored]::after { display: none; }
 }
 .chat-head {
   display: flex;
@@ -2712,6 +2735,45 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 /* Amigos y el chat dentro de la sala: en la barra de arriba, o en la esquina al estar sentado */
 .room-friends { gap: 6px; }
 .room-friends-unread { background: var(--online); color: #fff; }
+/* Las fotos de los amigos en línea, superpuestas */
+.room-friends-faces { display: inline-flex; align-items: center; }
+.room-friends-face {
+  width: 22px;
+  height: 22px;
+  margin-left: -6px;
+  border: 2px solid var(--card);
+  border-radius: 6px;
+  background: var(--card-sunken);
+}
+.room-friends-face:first-child { margin-left: 0; }
+.room-friends-label { font-weight: 600; }
+.room-friends[aria-expanded="true"] { background: var(--card-sunken); }
+
+/* En la sala, la lista de amigos es una ventana que se despliega bajo el botón, semitransparente y del alto justo */
+.friends-drawer[data-popover] {
+  top: var(--popover-top, 64px);
+  right: var(--popover-right, 16px);
+  width: min(300px, calc(100vw - 32px));
+  height: auto;
+  max-height: min(480px, calc(100vh - var(--popover-top, 64px) - 16px));
+  border: var(--stroke-1) solid var(--line);
+  border-radius: var(--radius-2);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(10px);
+  animation: popover-in 140ms ease-out;
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .friends-drawer[data-popover] { animation: none; }
+}
+/* El botón ya dice quién está: la ventana muestra solo la lista */
+.friends-drawer[data-popover] .friends-drawer-toggle,
+.friends-drawer[data-popover] .friends-drawer-close,
+.friends-drawer[data-popover] .drawer-online-photos { display: none; }
+.friends-drawer[data-popover] .friends-drawer-body { padding: var(--cell-1-5); overflow-y: auto; }
+.friends-drawer[data-popover] .drawer-lists .sf-section-title:first-of-type { margin-top: 0; }
 .study-friends {
   position: absolute;
   top: var(--cell-2);
@@ -3078,6 +3140,52 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="fal
   height: 100%;
   border: 0;
 }
+
+/* Chrome en Windows a veces dibuja el video de YouTube en una capa aparte de la tarjeta gráfica que, sobre el
+   lienzo 3D, queda en otro lugar: un rectángulo negro que solo se va al quitar la música. Una capa propia
+   (transform) hace que el video se dibuje dentro de la página, en su lugar */
+.music-video,
+.music-video iframe {
+  transform: translateZ(0);
+  will-change: transform;
+}
+.music-video { isolation: isolate; }
+
+/* La portada del video mientras no suena: la miniatura y un botón ▶ al centro */
+.youtube-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: #000;
+  cursor: pointer;
+}
+.youtube-cover img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.youtube-cover-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ff0033;
+  transform: translate(-50%, -50%);
+  transition: transform 160ms ease-out;
+}
+.youtube-cover-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  border-top: 10px solid transparent;
+  border-bottom: 10px solid transparent;
+  border-left: 17px solid #fff;
+  transform: translate(-50%, -50%);
+}
+.youtube-cover:hover .youtube-cover-play { transform: translate(-50%, -50%) scale(1.08); }
+.youtube-cover:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 
 /* Mientras suena algo, la nota lleva el amarillo de la marca */
 #music[data-playing='true'] .music-toggle svg {

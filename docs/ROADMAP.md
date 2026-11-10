@@ -158,6 +158,7 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] [En línea y chat entre amigos](decisiones/0025-en-linea-y-chat.md): en línea con StudyFocus abierto (o ausente), "activo hace…", y chat con sin leer, visto y escribiendo, también dentro de la sala
 - [x] Una cuenta en la misma sala desde dos ventanas: pregunta si cambiar la sesión a la nueva, y la otra vuelve al menú
 - [x] [La cámara con la tecla C](decisiones/0004-camaras-al-estudiar.md): un aviso pequeño abajo a la izquierda en vez del panel de cámaras
+- [x] [Ahorrar memoria](decisiones/0026-ahorrar-memoria.md): YouTube con portada hasta apretar ▶, la escena 3D solo dentro de la sala y Three.js en un archivo aparte
 - [ ] Chat de sala
 - [ ] Que el video de YouTube no deje un cuadro negro al salir de su pantalla completa
 - [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)

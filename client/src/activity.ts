@@ -3,11 +3,13 @@ import { scene } from './scene'
 import { SEATED_Y, type Seat } from './room'
 import type { Period } from './timer'
 
-export type ActivityKind = 'computer' | 'reading' | 'writing'
+import { getActivity, onActivityChange, type ActivityKind } from './choices'
+
+// La actividad elegida se guarda en choices.ts (sin Three.js); aquí está cómo se ve sobre la mesa
+export { getActivity, setActivity, type ActivityKind } from './choices'
 // Estudiando mueve las manos; descansando duerme sobre la mesa; detenido se queda quieto
 export type Pose = 'study' | 'rest' | 'idle'
 
-const STORAGE_KEY = 'studyfocus.activity'
 const TABLE_TOP = 0.75
 const ITEM_Z = -0.86 // metros hacia la mesa desde la silla
 const HAND_Z = -0.76
@@ -352,40 +354,12 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
   }
 }
 
-function isActivityKind(value: unknown): value is ActivityKind {
-  return value === 'computer' || value === 'reading' || value === 'writing'
-}
-
-function loadActivity(): ActivityKind {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return isActivityKind(saved) ? saved : 'computer'
-  } catch {
-    return 'computer'
-  }
-}
-
-let current = loadActivity()
 let localView: ActivityView | null = null
+onActivityChange((activity) => localView?.setKind(activity))
 
 // Las mangas son del color del personaje, que se sabe al entrar a la sala
 export function setUpLocalActivity(sleeveColor: string) {
-  localView = createActivityView(current, sleeveColor)
-}
-
-export function getActivity() {
-  return current
-}
-
-export function setActivity(activity: ActivityKind) {
-  current = activity
-  localView?.setKind(activity)
-
-  try {
-    localStorage.setItem(STORAGE_KEY, activity)
-  } catch {
-    // Sin almacenamiento, la actividad elegida solo dura hasta recargar
-  }
+  localView = createActivityView(getActivity(), sleeveColor)
 }
 
 export function showActivityAt(seat: Seat) {

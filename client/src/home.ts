@@ -8,7 +8,7 @@ import { readProfileParam } from './profilePage'
 import { createRoom, joinRoom, leaveRoom, onSessionReplaced, reconnect, resumeSavedRoom, type ResumedPlayer } from './network'
 import { hideMusic, setUpMusic } from './music'
 import { startFriends } from './friends'
-import { onUnreadChange, setDrawerInRoom, toggleDrawer } from './friendsDrawer'
+import { setDrawerInRoom } from './friendsDrawer'
 import { saveSummary } from './stats'
 import { getTimer, isTimerIdle, resetTimer } from './timer'
 
@@ -104,23 +104,16 @@ export const SOLO_KIND = 'solo'
 export async function showHome(
   onEnter: (nickname: string, character: Character, resumed: ResumedPlayer | null, isSolo: boolean) => void,
   onLeave: () => void, // detiene la sala, que queda escondida
+  // Descarga la sala 3D antes de entrar a una (el servidor manda quiénes están adentro justo al entrar)
+  prepareRoom: () => Promise<boolean>,
 ) {
+  const ROOM_UNAVAILABLE = 'No se pudo cargar la sala. Revisa tu conexión y prueba de nuevo.'
   let hasEnteredRoom = false // la sala 3D se arma una vez por página
   // Un link de invitación lleva a esa sala después de iniciar sesión
   let pendingCode = new URLSearchParams(window.location.search).get('sala')?.toUpperCase() ?? null
   let account: Account | null = null
 
   copyLinkButton.addEventListener('click', copyLink)
-  // El botón de Amigos de la sala, con los mensajes sin leer
-  for (const button of document.querySelectorAll<HTMLButtonElement>('.room-friends')) {
-    button.addEventListener('click', toggleDrawer)
-  }
-  onUnreadChange((count) => {
-    for (const badge of document.querySelectorAll<HTMLSpanElement>('.room-friends-unread')) {
-      badge.hidden = count === 0
-      badge.textContent = String(count)
-    }
-  })
   leaveRoomButton.addEventListener('click', askToLeave)
   // Dentro de la sala o del temporizador, el logo también vuelve al menú
   for (const logo of document.querySelectorAll<HTMLButtonElement>('.room-logo')) {
@@ -207,6 +200,10 @@ export async function showHome(
 
   async function join(code: string) {
     showRoomsError('')
+    if (!(await prepareRoom())) {
+      showRoomsError(ROOM_UNAVAILABLE)
+      return
+    }
     let result = await joinRoom(code)
     // Ya estás en esa sala desde otra ventana: se pregunta si cambiar la sesión a esta
     if (result === 'duplicate') {
@@ -254,6 +251,10 @@ export async function showHome(
   setUpMenu({
     async createRoom(kind) {
       showRoomsError('')
+      if (!(await prepareRoom())) {
+        showRoomsError(ROOM_UNAVAILABLE)
+        return
+      }
       const code = await createRoom(kind)
       if (code) {
         enter(code, account!)
@@ -296,6 +297,7 @@ export async function showHome(
 
   // Al recargar dentro de una sala se vuelve a ella sin pasar por el menú
   if (pendingCode) {
+    await prepareRoom() // puede ser una sala 3D; si falla, al entrar se vuelve a intentar
     const resumed = await resumeSavedRoom(pendingCode)
     if (resumed) {
       account = info.account

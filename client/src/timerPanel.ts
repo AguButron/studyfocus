@@ -1,5 +1,4 @@
-import { getActivity, setActivity, type ActivityKind } from './activity'
-import { chooseNextCamera, getChosenCamera, type CameraKind } from './cameraView'
+import { chooseNextCamera, getActivity, getChosenCamera, setActivity, type ActivityKind, type CameraKind } from './choices'
 import { onKeyPress } from './input'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import {

@@ -2,7 +2,7 @@
 // Nadie más la escucha.
 import { setLofiVolume, startLofi, stopLofi } from './lofi'
 import { MUSIC_RECOMMENDATIONS } from './musicRecommendations'
-import { createYouTubePlayer, parseYouTubeLink } from './youtube'
+import { createYouTubeCover, createYouTubePlayer, parseYouTubeLink } from './youtube'
 
 type MusicMode = 'off' | 'studyfocus' | 'youtube'
 
@@ -64,10 +64,12 @@ function saveSettings() {
   }
 }
 
-// YouTube pide que su reproductor se vea mientras suena: sin video a la vista, no hay música de YouTube
+// YouTube pide que su reproductor se vea mientras suena: sin video a la vista, no hay música de YouTube.
+// Si no tiene que sonar al tiro (al abrir la página), va solo la portada: el reproductor se carga al apretar ▶
 function showVideo(url: string | null, autoplay: boolean) {
   const video = url ? parseYouTubeLink(url) : null
-  videoBox.replaceChildren(...(video ? [createYouTubePlayer(video, autoplay)] : []))
+  const content = !video ? [] : autoplay ? [createYouTubePlayer(video, true)] : [createYouTubeCover(video, () => showVideo(url, true))]
+  videoBox.replaceChildren(...content)
   videoBox.hidden = !video
 }
 
