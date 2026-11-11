@@ -5,12 +5,12 @@ import { chooseUsername, hideAuth, setUpAuth, showAuth } from './auth'
 import { hideLanding, setUpLanding, showLanding } from './landing'
 import { hideMenu, setUpMenu, showHomePanel, showMenu, showPersonPanel, showRoomsError } from './menu'
 import { readProfileParam } from './profilePage'
-import { createRoom, joinRoom, leaveRoom, onSessionReplaced, reconnect, resumeSavedRoom, type ResumedPlayer } from './network'
+import { createRoom, joinRoom, leaveRoom, onSessionReplaced, reconnect, resumeSavedRoom, socket, type ResumedPlayer } from './network'
 import { hideMusic, setUpMusic } from './music'
 import { startFriends } from './friends'
 import { setDrawerInRoom } from './friendsDrawer'
 import { saveSummary } from './stats'
-import { getTimer, isTimerIdle, resetTimer } from './timer'
+import { adoptTimer, getTimer, isTimerIdle, resetTimer } from './timer'
 
 const COPY_FEEDBACK_TIME = 2000 // milisegundos
 const UNAVAILABLE = 'StudyFocus no está disponible ahora. Prueba de nuevo en unos minutos.'
@@ -24,12 +24,16 @@ const copyLinkButton = document.querySelector<HTMLButtonElement>('#copy-link')!
 const leaveRoomButton = document.querySelector<HTMLButtonElement>('#leave-room')!
 const leaveConfirm = document.querySelector<HTMLDialogElement>('#leave-confirm')!
 const duplicateConfirm = document.querySelector<HTMLDialogElement>('#duplicate-confirm')!
+const duplicateTitle = document.querySelector<HTMLHeadingElement>('#duplicate-confirm-title')!
 const duplicateText = document.querySelector<HTMLParagraphElement>('#duplicate-confirm-text')!
 const replacedNotice = document.querySelector<HTMLDialogElement>('#replaced-notice')!
 
-// "¿Cambiar la sesión a esta ventana?": responde true si se acepta
-function askToTakeOver(code: string) {
-  duplicateText.textContent = `Tu cuenta está en la sala ${code} desde otra ventana. ¿Cambiar la sesión a esta ventana? La otra volverá al menú.`
+// "¿Cambiar la sesión a esta ventana?": responde true si se acepta. Sin código, es estudiando solo
+function askToTakeOver(code: string | null) {
+  duplicateTitle.textContent = code ? 'Parece que ya estás en esta sala' : 'Ya estás estudiando solo'
+  duplicateText.textContent = code
+    ? `Tu cuenta está en la sala ${code} desde otra ventana. ¿Cambiar la sesión a esta ventana? La otra volverá al menú.`
+    : 'Estás estudiando solo en otra ventana. ¿Cambiar la sesión a esta ventana? La otra volverá al menú.'
   return new Promise<boolean>((resolve) => {
     const yes = document.querySelector<HTMLButtonElement>('#duplicate-confirm-yes')!
     const no = document.querySelector<HTMLButtonElement>('#duplicate-confirm-no')!
@@ -112,6 +116,23 @@ export async function showHome(
   // Un link de invitación lleva a esa sala después de iniciar sesión
   let pendingCode = new URLSearchParams(window.location.search).get('sala')?.toUpperCase() ?? null
   let account: Account | null = null
+
+  // La sesión del navegador es la misma en todas las pestañas. Si en otra se entra con otra cuenta (o se
+  // sale), esta quedaría mostrando una cuenta y usando otra: el chat no marcaría como leído, por ejemplo.
+  const ACCOUNT_KEY = 'studyfocus.account'
+  const announceAccount = (next: Account | null) => {
+    try {
+      localStorage.setItem(ACCOUNT_KEY, next?.username ?? '')
+    } catch {
+      // Sin almacenamiento, igual se nota al reconectar
+    }
+  }
+  window.addEventListener('storage', (event) => {
+    if (event.key === ACCOUNT_KEY && account && (event.newValue ?? '') !== (account.username ?? '')) window.location.reload()
+  })
+  socket.on('account:hello', ({ username }: { username: string | null }) => {
+    if (account?.username && username !== account.username) window.location.reload()
+  })
 
   copyLinkButton.addEventListener('click', copyLink)
   leaveRoomButton.addEventListener('click', askToLeave)
@@ -210,7 +231,8 @@ export async function showHome(
       if (!(await askToTakeOver(code))) return
       result = await joinRoom(code, true)
     }
-    if (result === 'joined') {
+    if (typeof result === 'object') {
+      if (result.timer) adoptTimer(result.timer) // sigue con el temporizador de la otra ventana
       enter(code, account!)
     } else if (result === 'duplicate') {
       showRoomsError('No se pudo cambiar la sesión a esta ventana. Prueba de nuevo.')
@@ -221,7 +243,7 @@ export async function showHome(
 
   // La ventana que quedó atrás vuelve al menú y avisa por qué
   onSessionReplaced(() => {
-    if (hud.hidden) return
+    if (!home.hidden) return // ya estaba en el menú. (La barra de arriba no sirve: sentado o en el escritorio se esconde)
     resetTimer()
     saveCodeInUrl(null)
     showMenuAgain()
@@ -231,6 +253,7 @@ export async function showHome(
   async function signedIn(nextAccount: Account) {
     hideAuth()
     account = nextAccount.username ? nextAccount : await chooseUsername()
+    announceAccount(account)
     setUpMusic() // en el menú y en la sala, sin cortarse al pasar de uno a otro
 
     if (pendingCode) {
@@ -255,18 +278,24 @@ export async function showHome(
         showRoomsError(ROOM_UNAVAILABLE)
         return
       }
-      const code = await createRoom(kind)
-      if (code) {
-        enter(code, account!)
+      const created = await createRoom(kind)
+      if (created && created !== 'duplicate') {
+        enter(created.code, account!)
       } else {
         showRoomsError('No se pudo crear la sala. Prueba de nuevo.')
       }
     },
     async studySolo() {
       showRoomsError('')
-      const code = await createRoom(SOLO_KIND)
-      if (code) {
-        enter(code, account!, null, SOLO_KIND)
+      let created = await createRoom(SOLO_KIND)
+      // Ya estás estudiando solo en otra ventana: se pregunta si cambiar la sesión a esta
+      if (created === 'duplicate') {
+        if (!(await askToTakeOver(null))) return
+        created = await createRoom(SOLO_KIND, true)
+      }
+      if (created && created !== 'duplicate') {
+        if (created.timer) adoptTimer(created.timer) // sigue con el temporizador de la otra ventana
+        enter(created.code, account!, null, SOLO_KIND)
       } else {
         showRoomsError('No se pudo empezar. Prueba de nuevo.')
       }
@@ -275,6 +304,7 @@ export async function showHome(
     // El servidor lee la cuenta al conectarse: al cambiarla, hay que reconectar
     onAccountChange(nextAccount) {
       account = nextAccount
+      announceAccount(nextAccount)
       reconnect()
       if (!nextAccount) {
         hideMusic()

@@ -1,9 +1,25 @@
 // El panel de estadísticas y el resumen que aparece al volver de una sala
-import { getSpaces, loadSpaces } from './spaces'
+import { addDays, todayText } from './agenda'
+import { findSection, loadSpaces } from './spaces'
 
 interface Companion {
   name: string
   seconds: number
+}
+
+type Bucket = 'day' | 'week' | 'month' | 'year'
+
+// Lo de un período elegido: el total, las barras (por día, semana, mes o año), los apartados y la compañía
+interface RangeStats {
+  from: string
+  to: string
+  seconds: number
+  activeDays: number
+  dailyAverage: number
+  bucket: Bucket
+  bars: { date: string; seconds: number }[]
+  sections: { sectionId: string; seconds: number }[]
+  companions: Companion[]
 }
 
 interface Stats {
@@ -13,7 +29,20 @@ interface Stats {
   streak: number
   days: { date: string; seconds: number }[]
   companions: Companion[]
+  range?: RangeStats
 }
+
+// Los períodos que se pueden elegir; "custom" es entre dos fechas
+type RangeChoice = '7' | '30' | '90' | '365' | 'all' | 'custom'
+const RANGE_KEY = 'studyfocus.statsRange'
+const RANGE_LABELS: Record<Exclude<RangeChoice, 'custom'>, string> = {
+  '7': 'Últimos 7 días',
+  '30': 'Últimos 30 días',
+  '90': 'Últimos 90 días',
+  '365': 'Último año',
+  all: 'Desde siempre',
+}
+const BUCKET_TITLES: Record<Bucket, string> = { day: 'Por día', week: 'Por semana', month: 'Por mes', year: 'Por año' }
 
 export interface StudySummary {
   seconds: number
@@ -22,7 +51,7 @@ export interface StudySummary {
 
 const SUMMARY_KEY = 'studyfocus.summary'
 
-const todayText = document.querySelector<HTMLElement>('#stat-today')!
+const todayStat = document.querySelector<HTMLElement>('#stat-today')!
 const weekText = document.querySelector<HTMLElement>('#stat-week')!
 const streakText = document.querySelector<HTMLElement>('#stat-streak')!
 const totalText = document.querySelector<HTMLElement>('#stat-total')!
@@ -36,10 +65,25 @@ const summaryCard = document.querySelector<HTMLDivElement>('#session-summary')!
 const summaryText = document.querySelector<HTMLParagraphElement>('#session-summary-text')!
 const summaryStatsButton = document.querySelector<HTMLButtonElement>('#session-summary-stats')!
 const summaryCloseButton = document.querySelector<HTMLButtonElement>('#session-summary-close')!
+const rangeSelect = document.querySelector<HTMLSelectElement>('#stats-range')!
+const customForm = document.querySelector<HTMLFormElement>('#stats-custom')!
+const fromInput = document.querySelector<HTMLInputElement>('#stats-from')!
+const toInput = document.querySelector<HTMLInputElement>('#stats-to')!
+const rangeLabel = document.querySelector<HTMLElement>('#stat-range-label')!
+const rangeDetail = document.querySelector<HTMLElement>('#stat-range-detail')!
+const chartTitle = document.querySelector<HTMLElement>('#stat-chart-title')!
+const sectionTimeTitle = document.querySelector<HTMLElement>('#section-time-title')!
 
 // Los días llegan como fechas sin hora: se leen en UTC para que no cambien de día
 const weekdayFormat = new Intl.DateTimeFormat('es', { weekday: 'short', timeZone: 'UTC' })
 const longDateFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+const shortDateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const fullDateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+const monthFormat = new Intl.DateTimeFormat('es', { month: 'short', timeZone: 'UTC' })
+const monthYearFormat = new Intl.DateTimeFormat('es', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+const longMonthFormat = new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+const MAX_LABELS = 12 // con más barras, solo algunas llevan su etiqueta para que no se encimen
+const MAX_VALUES = 14 // con más barras, los minutos van solo en la descripción de cada una
 
 export function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60)
@@ -98,22 +142,103 @@ export function renderChart(days: Stats['days'], target: HTMLElement = chart) {
   )
 }
 
+// Las barras de un período: por día, por semana, por mes o por año
+function renderRangeChart(range: RangeStats) {
+  const { bars, bucket } = range
+  const max = Math.max(...bars.map((bar) => bar.seconds), 1)
+  const today = todayText()
+  const spansYears = bars.length > 0 && bars[0].date.slice(0, 4) !== bars[bars.length - 1].date.slice(0, 4)
+  const labelEvery = Math.ceil(bars.length / MAX_LABELS)
+
+  const describe = (date: Date) =>
+    bucket === 'day'
+      ? longDateFormat.format(date)
+      : bucket === 'week'
+        ? `Semana del ${shortDateFormat.format(date)}`
+        : bucket === 'month'
+          ? longMonthFormat.format(date)
+          : String(date.getUTCFullYear())
+  const label = (date: Date, isToday: boolean) => {
+    if (bucket === 'day') return isToday ? 'Hoy' : bars.length <= 7 ? weekdayFormat.format(date).replace('.', '') : String(date.getUTCDate())
+    if (bucket === 'week') return shortDateFormat.format(date).replace('.', '')
+    if (bucket === 'month') return (spansYears ? monthYearFormat : monthFormat).format(date).replace('.', '')
+    return String(date.getUTCFullYear())
+  }
+
+  chart.style.gridTemplateColumns = `repeat(${bars.length}, minmax(0, 1fr))`
+  chart.toggleAttribute('data-dense', bars.length > MAX_VALUES)
+  chart.replaceChildren(
+    ...bars.map((bar, index) => {
+      const date = new Date(`${bar.date}T00:00:00Z`)
+      const isToday = bucket === 'day' && bar.date === today
+      const column = document.createElement('div')
+      column.className = 'stat-column'
+      column.setAttribute('role', 'listitem')
+      column.setAttribute('aria-label', `${describe(date)}: ${formatDuration(bar.seconds)}`)
+      column.title = `${describe(date)}: ${formatDuration(bar.seconds)}`
+      if (isToday) column.classList.add('today')
+
+      const value = document.createElement('span')
+      value.className = 'stat-value'
+      value.textContent = bars.length <= MAX_VALUES && bar.seconds >= 60 ? formatShortDuration(bar.seconds) : ''
+
+      const track = document.createElement('div')
+      track.className = 'stat-track'
+      const fill = document.createElement('div')
+      fill.className = 'stat-bar'
+      fill.style.height = `${(bar.seconds / max) * 100}%`
+      track.append(fill)
+
+      const day = document.createElement('span')
+      day.className = 'stat-day'
+      // Con muchas barras, la etiqueta va cada tanto, contando desde la última (la más reciente)
+      day.textContent = (bars.length - 1 - index) % labelEvery === 0 ? label(date, isToday) : ''
+
+      column.append(value, track, day)
+      return column
+    }),
+  )
+}
+
 function showMessage(text: string, isError = false) {
   messageText.textContent = text
   messageText.classList.toggle('sf-error', isError)
 }
 
+function describeRange(range: RangeStats) {
+  const choice = readChoice()
+  if (choice !== 'custom') return RANGE_LABELS[choice]
+  return range.from === range.to
+    ? fullDateFormat.format(new Date(`${range.from}T00:00:00Z`))
+    : `${fullDateFormat.format(new Date(`${range.from}T00:00:00Z`))} – ${fullDateFormat.format(new Date(`${range.to}T00:00:00Z`))}`
+}
+
 function render(stats: Stats) {
-  todayText.textContent = formatDuration(stats.today)
-  weekText.textContent = formatDuration(stats.week)
+  todayStat.textContent = formatDuration(stats.today)
   streakText.textContent = stats.streak === 1 ? '1 día' : `${stats.streak} días`
   totalText.textContent = formatDuration(stats.total)
   showMessage(stats.total === 0 ? 'Todavía no hay tiempo registrado. Ve a Estudiar y comienza el temporizador.' : '')
-  renderChart(stats.days)
 
-  companionsEmpty.hidden = stats.companions.length > 0
+  const range = stats.range
+  if (range) {
+    weekText.textContent = formatDuration(range.seconds)
+    rangeLabel.textContent = describeRange(range)
+    rangeDetail.textContent =
+      range.seconds > 0
+        ? `${formatDuration(range.dailyAverage)} por día · ${range.activeDays === 1 ? '1 día' : `${range.activeDays} días`} con estudio`
+        : ''
+    chartTitle.textContent = BUCKET_TITLES[range.bucket]
+    renderRangeChart(range)
+    renderSectionTime(range)
+  } else {
+    weekText.textContent = formatDuration(stats.week)
+    renderChart(stats.days)
+  }
+
+  const companions = range?.companions ?? stats.companions
+  companionsEmpty.hidden = companions.length > 0
   companionsList.replaceChildren(
-    ...stats.companions.map((companion) => {
+    ...companions.map((companion) => {
       const item = document.createElement('li')
       item.className = 'sf-row'
       const text = document.createElement('div')
@@ -123,7 +248,7 @@ function render(stats: Stats) {
       name.textContent = companion.name
       const time = document.createElement('span')
       time.className = 'sf-row-detail'
-      time.textContent = `${formatDuration(companion.seconds)} juntos esta semana`
+      time.textContent = `${formatDuration(companion.seconds)} juntos`
       text.append(name, time)
       item.append(text)
       return item
@@ -131,11 +256,17 @@ function render(stats: Stats) {
   )
 }
 
-// Nulo si no se pudieron cargar; el error queda en el panel de estadísticas
-export async function loadStats(): Promise<Stats | null> {
+// Nulo si no se pudieron cargar; el error queda en el panel de estadísticas.
+// Con un período (from nulo: desde siempre), también trae sus números
+export async function loadStats(range?: { from: string | null; to: string }): Promise<Stats | null> {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const params = new URLSearchParams({ tz: timeZone })
+  if (range) {
+    params.set('desde', range.from ?? 'inicio')
+    params.set('hasta', range.to)
+  }
   try {
-    const response = await fetch(`/api/stats?tz=${encodeURIComponent(timeZone)}`)
+    const response = await fetch(`/api/stats?${params}`)
     const result = await response.json()
     if (!response.ok) {
       showMessage(result.error ?? 'No se pudieron cargar las estadísticas.', true)
@@ -148,18 +279,19 @@ export async function loadStats(): Promise<Stats | null> {
   }
 }
 
-// Las horas de cada apartado en los últimos 7 días, de mayor a menor
-async function renderSectionTime() {
+// Las horas de cada apartado en el período, de mayor a menor. Uno que ya se borró no aparece.
+async function renderSectionTime(range: RangeStats) {
   await loadSpaces()
-  const sections = getSpaces()
-    .flatMap((space) => space.sections.map((section) => ({ section, space })))
-    .filter(({ section }) => section.weekSeconds > 0)
-    .sort((a, b) => b.section.weekSeconds - a.section.weekSeconds)
-  const max = Math.max(1, ...sections.map(({ section }) => section.weekSeconds))
+  const sections = range.sections.flatMap(({ sectionId, seconds }) => {
+    const found = findSection(sectionId)
+    return found ? [{ ...found, seconds }] : []
+  })
+  const max = Math.max(1, ...sections.map(({ seconds }) => seconds))
+  sectionTimeTitle.textContent = `Por apartado · ${describeRange(range).toLowerCase()}`
 
   sectionTimeBox.hidden = sections.length === 0
   sectionTimeList.replaceChildren(
-    ...sections.map(({ section, space }) => {
+    ...sections.map(({ section, space, seconds }) => {
       const row = document.createElement('li')
       row.className = 'section-time'
       row.style.setProperty('--section', section.color)
@@ -170,21 +302,80 @@ async function renderSectionTime() {
       const bar = document.createElement('span')
       bar.className = 'section-time-bar'
       const fill = document.createElement('span')
-      fill.style.width = `${(section.weekSeconds / max) * 100}%`
+      fill.style.width = `${(seconds / max) * 100}%`
       bar.append(fill)
       const value = document.createElement('span')
       value.className = 'section-time-value'
-      value.textContent = formatDuration(section.weekSeconds)
+      value.textContent = formatDuration(seconds)
       row.append(name, bar, value)
       return row
     }),
   )
 }
 
+// El período elegido se recuerda en este navegador
+function readChoice(): RangeChoice {
+  const value = rangeSelect.value
+  return (['7', '30', '90', '365', 'all', 'custom'] as const).includes(value as RangeChoice) ? (value as RangeChoice) : '7'
+}
+
+function saveChoice() {
+  try {
+    localStorage.setItem(RANGE_KEY, JSON.stringify({ choice: readChoice(), from: fromInput.value, to: toInput.value }))
+  } catch {
+    // Sin almacenamiento, vuelve a los últimos 7 días
+  }
+}
+
+function restoreChoice() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(RANGE_KEY) ?? 'null')
+    if (saved?.choice) rangeSelect.value = saved.choice
+    if (typeof saved?.from === 'string') fromInput.value = saved.from
+    if (typeof saved?.to === 'string') toInput.value = saved.to
+  } catch {
+    // Se queda en los últimos 7 días
+  }
+  if (rangeSelect.selectedIndex < 0) rangeSelect.value = '7'
+}
+
+// Los días que abarca lo elegido, en el calendario de la persona
+function chosenRange(): { from: string | null; to: string } | null {
+  const today = todayText()
+  const choice = readChoice()
+  if (choice === 'all') return { from: null, to: today }
+  if (choice === 'custom') {
+    if (!fromInput.value || !toInput.value) return null
+    return fromInput.value <= toInput.value ? { from: fromInput.value, to: toInput.value } : { from: toInput.value, to: fromInput.value }
+  }
+  return { from: addDays(today, -(Number(choice) - 1)), to: today }
+}
+
+let statsRequest = 0 // descarta una respuesta vieja si mientras tanto se eligió otro período
+
 export async function refreshStats() {
-  renderSectionTime()
-  const stats = await loadStats()
-  if (stats) render(stats)
+  customForm.hidden = readChoice() !== 'custom'
+  const range = chosenRange()
+  if (!range) return // entre fechas, hasta que se elijan las dos
+  const current = ++statsRequest
+  const stats = await loadStats(range)
+  if (stats && current === statsRequest) render(stats)
+}
+
+export function setUpStatsRange() {
+  restoreChoice()
+  if (!toInput.value) toInput.value = todayText()
+  if (!fromInput.value) fromInput.value = addDays(todayText(), -29)
+  customForm.hidden = readChoice() !== 'custom'
+  rangeSelect.addEventListener('change', () => {
+    saveChoice()
+    refreshStats()
+  })
+  customForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    saveChoice()
+    refreshStats()
+  })
 }
 
 // La página se recarga al salir de la sala: el resumen se guarda para mostrarlo en el menú

@@ -85,10 +85,11 @@ function saveState() {
 }
 
 const state = loadState()
-let periodListener: (period: Period) => void = () => {}
+// Varios a la vez: el sonido del cambio de periodo y las barras de los objetivos, por ejemplo
+const periodListeners: ((period: Period) => void)[] = []
 
 export function onPeriodChange(listener: (period: Period) => void) {
-  periodListener = listener
+  periodListeners.push(listener)
 }
 
 function periodDuration(period: Period) {
@@ -120,7 +121,7 @@ export function updateTimer() {
 
   if (changed) {
     saveState()
-    periodListener(state.period)
+    for (const listener of periodListeners) listener(state.period)
   }
 }
 
@@ -145,6 +146,29 @@ export function isTimerIdle() {
 export function isStudyRunning() {
   updateTimer()
   return state.isRunning && state.period === 'study'
+}
+
+// El temporizador que el servidor manda al cambiar la sesión desde otra ventana: se sigue desde ahí
+export interface HandedTimer {
+  studyMinutes: number
+  breakMinutes: number
+  period: Period
+  isRunning: boolean
+  remainingMs: number
+  periodId: string
+}
+
+export function adoptTimer(handed: HandedTimer) {
+  const adopted = { ...handed, endsAt: handed.isRunning ? Date.now() + handed.remainingMs : 0 }
+  if (!isValidState(adopted) || typeof handed.periodId !== 'string') return
+  state.studyMinutes = adopted.studyMinutes
+  state.breakMinutes = adopted.breakMinutes
+  state.period = adopted.period
+  state.isRunning = adopted.isRunning
+  state.endsAt = adopted.endsAt
+  state.remainingMs = Math.min(adopted.remainingMs, periodDuration(adopted.period))
+  state.periodId = adopted.periodId
+  saveState()
 }
 
 export function toggleTimer() {

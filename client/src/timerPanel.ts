@@ -1,11 +1,13 @@
 import { chooseNextCamera, getActivity, getChosenCamera, setActivity, type ActivityKind, type CameraKind } from './choices'
 import { onKeyPress } from './input'
+import { loadGoals, renderAll as renderGoals, setCurrentSection, setLiveStudy, showGoalsIn } from './goals'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import {
   BREAK_MINUTES,
   getTimer,
   isStudyRunning,
   isTimerIdle,
+  onPeriodChange,
   resetTimer,
   setMinutes,
   STUDY_MINUTES,
@@ -38,7 +40,8 @@ const activityButtons = document.querySelectorAll<HTMLButtonElement>('[data-acti
 const activitySection = document.querySelector<HTMLElement>('#activity-section')!
 const cameraPanel = document.querySelector<HTMLElement>('#camera-panel')!
 const cameraName = document.querySelector<HTMLSpanElement>('#camera-name')!
-const CAMERA_NAMES: Record<CameraKind, string> = { desk: 'Escritorio', table: 'Mesa', room: 'Sala' }
+const ROOM_CAMERA_NAMES: Record<CameraKind, string> = { desk: 'Escritorio', table: 'Mesa', room: 'Sala' }
+let cameraNames = ROOM_CAMERA_NAMES
 const miniPeriod = document.querySelector<HTMLSpanElement>('#mini-period')!
 const miniTime = document.querySelector<HTMLSpanElement>('#mini-time')!
 const sectionField = document.querySelector<HTMLDivElement>('#study-section-field')!
@@ -170,10 +173,36 @@ function renderActivity(activity: ActivityKind) {
 }
 
 function renderCamera() {
-  cameraName.textContent = CAMERA_NAMES[getChosenCamera()]
+  cameraName.textContent = cameraNames[getChosenCamera()]
+}
+
+// El escritorio propio tiene las mismas tres cámaras, pero con otro nombre. Sin nombres, vuelven los de la sala
+export function setCameraNames(names: Record<CameraKind, string> | null) {
+  cameraNames = names ?? ROOM_CAMERA_NAMES
+  renderCamera()
+}
+
+const GOALS_LIVE_INTERVAL = 5000 // milisegundos: cada cuánto avanzan las barras mientras se estudia
+const GOALS_SAVED_DELAY = 2000 // milisegundos: al terminar un periodo, el servidor ya lo guardó
+
+// Las barras de los objetivos en el temporizador: suman lo que va del periodo de estudio, que se guarda al terminarlo
+function setUpStudyGoals() {
+  showGoalsIn(document.querySelector('#study-goals')!, document.querySelector('#study-goals-empty'), true)
+  setCurrentSection(getStudySection)
+  setLiveStudy(() => {
+    const timer = getTimer()
+    if (timer.period !== 'study' || isTimerIdle()) return null
+    return { sectionId: getStudySection(), seconds: Math.max(0, (timer.durationMs - timer.remainingMs) / 1000) }
+  })
+  loadGoals()
+  window.setInterval(() => {
+    if (isStudyRunning()) renderGoals()
+  }, GOALS_LIVE_INTERVAL)
+  onPeriodChange(() => window.setTimeout(loadGoals, GOALS_SAVED_DELAY))
 }
 
 export function setUpTimerPanel(onStandUp: () => void) {
+  setUpStudyGoals()
   const timer = getTimer()
   setUpSlider(studyInput, STUDY_MINUTES, timer.studyMinutes)
   setUpSlider(breakInput, BREAK_MINUTES, timer.breakMinutes)

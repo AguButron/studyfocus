@@ -2,7 +2,7 @@ import { io } from 'socket.io-client'
 import type { ActivityKind } from './choices'
 import type { Character } from './character'
 import type { StudySummary } from './stats'
-import type { Period } from './timer'
+import type { HandedTimer, Period } from './timer'
 
 const SEND_INTERVAL = 66 // milisegundos, unas 15 veces por segundo
 const SESSION_KEY = 'studyfocus.session'
@@ -61,22 +61,36 @@ function startSession(code: string) {
   }
 }
 
-// El apodo en la sala es el nombre de la cuenta: el servidor lo toma de ella
-export async function createRoom(kind: string) {
-  const code: string | null = await socket.emitWithAck('room:create', kind, token)
-  if (code) {
-    startSession(code)
-  }
-  return code
+// El apodo en la sala es el nombre de la cuenta: el servidor lo toma de ella. Responde el código, null si
+// falló, o 'duplicate' si al estudiar solo tu cuenta ya lo hace en otra ventana. Con takeOver, esa sale y
+// llega su temporizador, para seguir desde donde iba
+export async function createRoom(
+  kind: string,
+  takeOver = false,
+): Promise<{ code: string; timer: HandedTimer | null } | 'duplicate' | null> {
+  const result: string | { code: string; timer: HandedTimer } | 'duplicate' | null = await socket.emitWithAck(
+    'room:create',
+    kind,
+    token,
+    takeOver,
+  )
+  if (!result) return null
+  if (result === 'duplicate') return 'duplicate'
+  const created = typeof result === 'string' ? { code: result, timer: null } : result
+  startSession(created.code)
+  return created
 }
 
 // 'joined', 'duplicate' (tu cuenta ya está en esa sala desde otra ventana) o 'failed' (no existe o está llena).
 // Con takeOver, si ya estabas en ella, la otra ventana sale y entras desde esta
-export async function joinRoom(code: string, takeOver = false): Promise<'joined' | 'duplicate' | 'failed'> {
-  const result: boolean | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
-  if (result === true) {
+export async function joinRoom(
+  code: string,
+  takeOver = false,
+): Promise<{ timer: HandedTimer | null } | 'duplicate' | 'failed'> {
+  const result: boolean | { timer: HandedTimer } | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
+  if (result === true || (typeof result === 'object' && result !== null)) {
     startSession(code)
-    return 'joined'
+    return { timer: result === true ? null : result.timer }
   }
   return result === 'duplicate' ? 'duplicate' : 'failed'
 }
@@ -167,7 +181,7 @@ socket.on('connect', async () => {
 
   // Tardó demasiado en volver: el servidor ya liberó su lugar
   seatLostListener()
-  const joined = (await joinRoom(session.code)) === 'joined'
+  const joined = typeof (await joinRoom(session.code)) === 'object'
   if (!joined) {
     window.location.href = window.location.pathname
   }
@@ -195,8 +209,14 @@ export function sendStatus(status: {
   isStarted: boolean // sentado sin empezar no hay nada sobre la mesa; en pausa, sí
   periodId: string
   sectionId: string | null
+  // El temporizador completo, para seguir con él si la cuenta se cambia a otra ventana
+  studyMinutes: number
+  breakMinutes: number
+  remainingMs: number
 }) {
-  const serialized = JSON.stringify(status)
+  // Corriendo, lo que falta cambia a cada rato: se manda solo cuando cambia otra cosa, y el servidor
+  // descuenta lo que pasó desde entonces
+  const serialized = JSON.stringify(status.isRunning ? { ...status, remainingMs: undefined } : status)
   if (serialized === lastStatus) return
 
   lastStatus = serialized

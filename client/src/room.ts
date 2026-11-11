@@ -9,25 +9,12 @@ const WALL_COLOR = 0x585b70
 const TABLE_COLOR = 0xa6744f
 const CHAIR_COLOR = 0x74543a
 
-interface Obstacle {
-  minX: number
-  maxX: number
-  minZ: number
-  maxZ: number
-}
+// Las sillas libres se iluminan mientras se elige asiento; la que está bajo el mouse, más
+const FREE_CHAIR_GLOW = 0x2f9e5f
+const FREE_CHAIR_INTENSITY = 0.35
+const HOVERED_CHAIR_INTENSITY = 0.9
 
-const obstacles: Obstacle[] = []
-
-function addBox(width: number, height: number, depth: number, x: number, z: number, color: number, solid = true) {
-  if (solid) {
-    obstacles.push({
-      minX: x - width / 2,
-      maxX: x + width / 2,
-      minZ: z - depth / 2,
-      maxZ: z + depth / 2,
-    })
-  }
-
+function addBox(width: number, height: number, depth: number, x: number, z: number, color: number) {
   const box = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
     new THREE.MeshStandardMaterial({ color }),
@@ -37,14 +24,6 @@ function addBox(width: number, height: number, depth: number, x: number, z: numb
   return box
 }
 
-export function collides(x: number, z: number, halfSize: number) {
-  return obstacles.some((obstacle) =>
-    x + halfSize > obstacle.minX &&
-    x - halfSize < obstacle.maxX &&
-    z + halfSize > obstacle.minZ &&
-    z - halfSize < obstacle.maxZ,
-  )
-}
 
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(12, 12),
@@ -59,7 +38,7 @@ addBox(0.3, 2.5, 12, 6, 0, WALL_COLOR)
 addBox(12, 0.3, 0.3, 0, 6, WALL_COLOR)
 
 // Desde arriba, una pared alta taparía la sala; solo hace falta en primera persona
-const tallFrontWall = addBox(12, 2.5, 0.3, 0, 6, WALL_COLOR, false)
+const tallFrontWall = addBox(12, 2.5, 0.3, 0, 6, WALL_COLOR)
 tallFrontWall.visible = false
 
 export function setTallFrontWallVisible(visible: boolean) {
@@ -69,6 +48,21 @@ export function setTallFrontWallVisible(visible: boolean) {
 for (const table of TABLE_POSITIONS) {
   addBox(TABLE_WIDTH, 0.75, TABLE_DEPTH, table.x, table.z, TABLE_COLOR)
 }
-for (const seat of seats) {
-  addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, seat.x, seat.z, CHAIR_COLOR)
+// Una silla por asiento, en el mismo orden que seats: el número de silla es su posición
+const chairs = seats.map((seat) => addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, seat.x, seat.z, CHAIR_COLOR))
+
+// La silla bajo el rayo del mouse, si hay alguna
+export function findChairAt(raycaster: THREE.Raycaster) {
+  const [hit] = raycaster.intersectObjects(chairs, false)
+  return hit ? seats[chairs.findIndex((chair) => chair === hit.object)] ?? null : null
+}
+
+// Marca las sillas libres mientras se elige asiento; sin elegir, todas se ven normales
+export function highlightChairs(freeSeatIds: Set<number> | null, hoveredSeatId: number | null) {
+  chairs.forEach((chair, id) => {
+    const material = chair.material as THREE.MeshStandardMaterial
+    const isFree = freeSeatIds?.has(id) ?? false
+    material.emissive.setHex(isFree ? FREE_CHAIR_GLOW : 0x000000)
+    material.emissiveIntensity = !isFree ? 0 : id === hoveredSeatId ? HOVERED_CHAIR_INTENSITY : FREE_CHAIR_INTENSITY
+  })
 }

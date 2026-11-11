@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { scene } from './scene'
-import { SEATED_Y, type Seat } from './room'
+import { SEATED_Y, type Seat } from './roomLayout' // no './room': ese arma la sala completa, y el escritorio propio no la usa
 import type { Period } from './timer'
 
 import { getActivity, onActivityChange, type ActivityKind } from './choices'
@@ -262,10 +262,14 @@ export function poseBody(body: THREE.Object3D, seat: Seat | null, lean: number) 
 }
 
 // Lo que un personaje tiene sobre la mesa y sus manos. Cada modelo se construye al usarlo por primera vez
-export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE.ColorRepresentation): ActivityView {
+export function createActivityView(
+  initialKind: ActivityKind,
+  sleeveColor: THREE.ColorRepresentation,
+  parent: THREE.Object3D = scene,
+): ActivityView {
   const root = new THREE.Group()
   root.visible = false
-  scene.add(root)
+  parent.add(root)
 
   const models: Partial<Record<ActivityKind, Activity>> = {}
   let kind = initialKind
@@ -343,7 +347,7 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
       return lean
     },
     dispose() {
-      scene.remove(root)
+      root.removeFromParent()
       root.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose()
@@ -359,9 +363,11 @@ export function createActivityView(initialKind: ActivityKind, sleeveColor: THREE
 let localView: ActivityView | null = null
 onActivityChange((activity) => localView?.setKind(activity))
 
-// Las mangas son del color del personaje, que se sabe al entrar a la sala
-export function setUpLocalActivity(sleeveColor: string) {
-  localView = createActivityView(getActivity(), sleeveColor)
+// Las mangas son del color del personaje, que se sabe al entrar a la sala. El escritorio propio tiene
+// su propia escena, y la pasa como parent. Al volver a entrar, las manos anteriores se desarman
+export function setUpLocalActivity(sleeveColor: string, parent?: THREE.Object3D) {
+  localView?.dispose()
+  localView = createActivityView(getActivity(), sleeveColor, parent)
 }
 
 export function showActivityAt(seat: Seat) {

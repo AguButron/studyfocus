@@ -27,6 +27,16 @@ export function showUndo(message: string, onUndo: () => Promise<string | null>) 
   hideTimer = window.setTimeout(hide, VISIBLE_TIME)
 }
 
+// Un aviso sin nada que deshacer, por ejemplo al cumplir un objetivo
+export function showNotice(message: string) {
+  clearTimeout(hideTimer)
+  undo = null
+  text.textContent = message
+  button.hidden = true
+  toast.hidden = false
+  hideTimer = window.setTimeout(hide, VISIBLE_TIME)
+}
+
 export function setUpUndoToast() {
   button.addEventListener('click', async () => {
     if (!undo) return

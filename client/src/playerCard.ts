@@ -67,7 +67,7 @@ function renderCard() {
   subjectText.title = subject ? `Está estudiando ${subject.name}` : ''
   setCharacterPhoto(photo, state.character)
   statusText.textContent = !state.isRunning ? 'Temporizador detenido' : state.period === 'study' ? 'Estudiando' : 'En descanso'
-  activityText.textContent = state.seatId === null ? 'Caminando por la sala' : ACTIVITY_NAMES[state.activity]
+  activityText.textContent = state.seatId === null ? 'Eligiendo asiento' : ACTIVITY_NAMES[state.activity]
 }
 
 // "Ingeniería en la Universidad de Chile · 🇨🇱 Chile"

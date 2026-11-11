@@ -128,7 +128,8 @@ El inicio de sesión con Google quedó pospuesto: el código está, pero el bot�
 StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma donde se organiza y se hace todo el estudio. Las salas con amigos siguen, como una de sus funciones. Ver la [decisión](decisiones/0016-plataforma-de-estudio.md).
 
 - [x] Estudiar solo en una pantalla simple, sin 3D, con el temporizador y la música
-- [ ] Estudiar solo en tu pieza: una sala 3D con una mesa y una silla, solo tuya
+- [x] [Estudiar solo en tu escritorio](decisiones/0029-tu-escritorio.md): un rincón 3D con tu personaje ya sentado, haciendo lo que elijas, con el mismo panel de la sala
+- [ ] Armar tu propio escritorio: elegir qué hay en el rincón y dónde
 - [x] Mostrar a los amigos "Estudiando solo"
 - [x] Inicio como menú principal con la sesión iniciada: hoy, racha, últimos 7 días y las opciones. El logo lleva a Inicio, y la portada queda solo para quien no ha entrado
 - [x] Pestaña de amigos a la derecha del menú, con los conectados primero, y el perfil de cada amigo en una ventana, también desde Amigos
@@ -140,7 +141,7 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] [Agenda y calendario](decisiones/0017-agenda-y-calendario.md): pruebas, tareas, trabajos, presentaciones y recordatorios, con hora, notas y aviso; marcar como hecho; el calendario por semana, mes o año en su propia sección, e Inicio con lo de los próximos 7 días
 - [x] Vincular la agenda a un apartado, con su color en el calendario
 - [x] Notas con porcentaje, escala y exigencia por apartado, el promedio y la nota que falta para aprobar
-- [ ] Completar Inicio: meta diaria
+- [x] [Objetivos de estudio](decisiones/0028-objetivos-de-estudio.md) en vez de una meta diaria: "8 h de Cálculo antes del viernes", desde Inicio o mientras se estudia, con una barra que avanza en vivo
 - [x] Reordenar el menú: Inicio, Calendario, Estudiar, Amigos, Estadísticas, Tienda, Carpetas y Perfil
 - [x] Carpetas en tres pasos: la lista de carpetas, una carpeta con sus ramos, y el detalle de un ramo
 - [x] [Leer los programas con IA](decisiones/0019-programas-con-ia.md): subir varios PDF, revisar lo que sacó y crear los ramos con sus evaluaciones, fechas, porcentajes y requisitos
@@ -158,6 +159,8 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] [En línea y chat entre amigos](decisiones/0025-en-linea-y-chat.md): en línea con StudyFocus abierto (o ausente), "activo hace…", y chat con sin leer, visto y escribiendo, también dentro de la sala
 - [x] Una cuenta en la misma sala desde dos ventanas: pregunta si cambiar la sesión a la nueva, y la otra vuelve al menú
 - [x] [La cámara con la tecla C](decisiones/0004-camaras-al-estudiar.md): un aviso pequeño abajo a la izquierda en vez del panel de cámaras
+- [x] Estadísticas por período: últimos 7, 30 o 90 días, último año, desde siempre o entre dos fechas. Cambian el total (con el promedio por día y los días con estudio), las barras (por día, semana, mes o año según el largo), los apartados y con quién estudiaste; Hoy, Racha y En total no cambian
+- [x] [Elegir el asiento con un clic](decisiones/0027-elegir-asiento-con-un-clic.md): la sala se ve desde arriba con las sillas libres iluminadas, y "Cambiar de asiento" reemplaza a caminar con WASD y sentarse con E
 - [x] [Ahorrar memoria](decisiones/0026-ahorrar-memoria.md): YouTube con portada hasta apretar ▶, la escena 3D solo dentro de la sala y Three.js en un archivo aparte
 - [ ] Chat de sala
 - [x] [Aviso sin aceleración por hardware](decisiones/0026-ahorrar-memoria.md): los cuadros negros con YouTube en la sala pasaban con la aceleración apagada; ahora la sala avisa cómo activarla

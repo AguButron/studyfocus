@@ -2,6 +2,7 @@
 import { onAgendaChange, setUpAgendaDialog } from './agendaDialog'
 import { describeToday, refreshCalendar, setUpCalendar } from './calendar'
 import { formatDuration, loadStats } from './stats'
+import { loadGoals, setUpGoals, showGoalsIn } from './goals'
 import { refreshUpcoming, setUpUpcoming } from './upcoming'
 
 const greeting = document.querySelector<HTMLHeadingElement>('#home-title')!
@@ -20,6 +21,8 @@ function refreshAgenda() {
 
 export function setUpHomePanel() {
   setUpAgendaDialog()
+  setUpGoals()
+  showGoalsIn(document.querySelector('#home-goals')!, document.querySelector('#home-goals-empty'))
   onAgendaChange(refreshAgenda)
   setUpUpcoming(refreshAgenda)
   setUpCalendar()
@@ -29,6 +32,7 @@ export async function refreshHomePanel(name: string) {
   greeting.textContent = `Hola, ${name}`
   dateText.textContent = describeToday()
   refreshUpcoming()
+  loadGoals()
 
   const current = ++request
   const stats = await loadStats()

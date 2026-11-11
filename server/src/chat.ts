@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Server, Socket } from 'socket.io'
 import { requireAccount } from './accounts.ts'
 import { hasDatabase, query } from './database.ts'
-import { allowAttempt, createJsonHandler, RequestError, sendJson } from './requests.ts'
+import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
 // El chat entre amigos. Los mensajes se guardan en la base y llegan al instante por la conexión de cada
 // pestaña: cada cuenta tiene su propio grupo en Socket.IO, así le llegan a todas sus pestañas abiertas.
@@ -59,18 +59,50 @@ async function loadConversation(accountId: string, otherId: string, before: stri
   const { rows } = await query<Message>(
     `SELECT ${MESSAGE_COLUMNS} FROM messages
      WHERE ((from_id = $1 AND to_id = $2) OR (from_id = $2 AND to_id = $1)) AND ($3::bigint IS NULL OR id < $3)
-     ORDER BY id DESC LIMIT $4`,
+     ORDER BY messages.id DESC LIMIT $4`, // messages.id: "id" solo sería la columna de texto de arriba, y "9" quedaría después de "51"
     [accountId, otherId, before, PAGE_SIZE + 1],
   )
   const hasMore = rows.length > PAGE_SIZE
   return { messages: rows.slice(0, PAGE_SIZE).reverse(), hasMore }
 }
 
-async function handleRequest(request: IncomingMessage, response: ServerResponse) {
+// Leíste la conversación hasta un mensaje: se marca lo que te llegó hasta ahí, se quita el número de sin leer
+// en tus otras pestañas, y a la otra persona le aparece el "Visto". Devuelve cuántos te siguen sin leer de ella
+async function markRead(io: Server, accountId: string, otherId: string, lastId: string) {
+  const { rowCount } = await query(
+    'UPDATE messages SET read_at = now() WHERE from_id = $1 AND to_id = $2 AND id <= $3 AND read_at IS NULL',
+    [otherId, accountId, lastId],
+  )
+  const { rows } = await query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM messages WHERE from_id = $1 AND to_id = $2 AND read_at IS NULL',
+    [otherId, accountId],
+  )
+  const unread = rows[0].count
+  io.to(accountRoom(accountId)).emit('chat:unread', { from: otherId, count: unread })
+  if (rowCount) {
+    const readUpTo = await findReadUpTo(otherId, accountId)
+    io.to(accountRoom(otherId)).emit('chat:read', { by: accountId, upTo: readUpTo })
+  }
+  return unread
+}
+
+async function handleRequest(io: () => Server, request: IncomingMessage, response: ServerResponse) {
   const url = new URL(request.url ?? '/', 'http://localhost')
-  if (request.method !== 'GET' || url.pathname !== '/api/chat') throw new RequestError(404, 'No encontrado.')
   if (!hasDatabase()) throw new RequestError(503, 'El chat no está disponible ahora.')
 
+  // Se marca por aquí y no por la conexión en vivo: así vale la misma cuenta con que se cargó la conversación,
+  // y la página sabe si quedó guardado
+  if (request.method === 'POST' && url.pathname === '/api/chat/leido') {
+    const account = await requireAccount(request)
+    const body = await readBody(request)
+    const otherId = parseId(body.con)
+    const lastId = parseId(body.hasta)
+    if (!otherId || !lastId) throw new RequestError(400, 'Faltan datos.')
+    sendJson(response, 200, { unread: await markRead(io(), account.id, otherId, lastId) })
+    return
+  }
+
+  if (request.method !== 'GET' || url.pathname !== '/api/chat') throw new RequestError(404, 'No encontrado.')
   const account = await requireAccount(request)
   const otherId = parseId(url.searchParams.get('con'))
   if (!otherId) throw new RequestError(404, 'No encontrado.')
@@ -84,8 +116,9 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   sendJson(response, 200, { ...conversation, canWrite, readUpTo })
 }
 
-export function createChatHandler() {
-  return createJsonHandler('el chat', handleRequest, 'El chat no está disponible ahora.')
+// io: el servidor de Socket.IO, que se crea después que las rutas
+export function createChatHandler(io: () => Server) {
+  return createJsonHandler('el chat', (request, response) => handleRequest(io, request, response), 'El chat no está disponible ahora.')
 }
 
 // Los avisos del chat de una pestaña con la sesión iniciada
@@ -114,28 +147,6 @@ export function setUpChatSocket(io: Server, socket: Socket, accountId: string) {
     } catch (error) {
       console.error('No se pudo guardar el mensaje:', error)
       reply({ error: 'No se pudo enviar. Prueba de nuevo.' })
-    }
-  })
-
-  // Leíste la conversación hasta un mensaje: a la otra persona le aparece el "Visto"
-  socket.on('chat:read', async (raw: unknown) => {
-    const { with: other, upTo } = (raw ?? {}) as Record<string, unknown>
-    const otherId = parseId(other)
-    const lastId = parseId(upTo)
-    if (!otherId || !lastId) return
-    try {
-      const { rowCount } = await query(
-        'UPDATE messages SET read_at = now() WHERE from_id = $1 AND to_id = $2 AND id <= $3 AND read_at IS NULL',
-        [otherId, accountId, lastId],
-      )
-      // Tus otras pestañas también quitan el número de sin leer
-      io.to(accountRoom(accountId)).emit('chat:unread', { from: otherId, count: 0 })
-      if (rowCount) {
-        const readUpTo = await findReadUpTo(otherId, accountId)
-        io.to(accountRoom(otherId)).emit('chat:read', { by: accountId, upTo: readUpTo })
-      }
-    } catch (error) {
-      console.error('No se pudo marcar como leído:', error)
     }
   })
 

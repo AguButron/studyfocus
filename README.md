@@ -18,7 +18,7 @@ Publicada en <https://studyfocus-yukw.onrender.com/>. Con el plan gratis se duer
 
 ## Objetivo del MVP
 
-Creo una sala, le paso un link a un amigo, ambos caminamos con nuestro personaje, nos sentamos en la misma mesa y cada uno estudia a su ritmo con su propio temporizador.
+Creo una sala, le paso un link a un amigo, cada uno elige con un clic una silla de la misma mesa y cada uno estudia a su ritmo con su propio temporizador.
 
 ## Tecnologías previstas
 

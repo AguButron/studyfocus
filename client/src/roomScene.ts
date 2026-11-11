@@ -2,13 +2,13 @@ import type { Object3D } from 'three'
 import { getActivityLean, hideActivity, poseBody, poseFor, setUpLocalActivity, showActivityAt, updateActivity } from './activity'
 import { focusCameraOn, getChosenCamera, jumpToCameraView, releaseCameraFocus, setCameraView, updateCameraView, type CameraView } from './cameraView'
 import type { Character } from './character'
-import { onKeyPress } from './input'
+import * as THREE from 'three'
 import { createLabel } from './label'
-import { sendPosition, type ResumedPlayer } from './network'
-import { isNearFreeSeat, onSeatChange, player, restorePlayer, setPlayerCharacter, toggleSit, updatePlayer } from './player'
+import type { ResumedPlayer } from './network'
+import { changeSeat, isSeated, onSeatChange, pickSeat, player, restorePlayer, setPlayerCharacter } from './player'
 import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './playerCard'
-import { updateRemotePlayers } from './remotePlayers'
-import { setTallFrontWallVisible, type Seat } from './room'
+import { isSeatTaken, updateRemotePlayers } from './remotePlayers'
+import { findChairAt, highlightChairs, seats, setTallFrontWallVisible, type Seat } from './room'
 import { camera, getRenderer, scene, startRenderer, stopRenderer } from './scene'
 import { isSoftwareRendering } from './gpuCheck'
 import { getTimer, isTimerIdle } from './timer'
@@ -20,8 +20,8 @@ import { setStudyPanelCompact, setStudyScreenVisible, setUpTimerPanel } from './
 
 const MAX_DELTA = 100 // milisegundos
 const SEATED_FRAME_TIME = 1000 / 12 // milisegundos: alcanza para que las manos se vean moverse
-const MOVE_HINT = 'Muévete con WASD o las flechas y acércate a una silla'
-const SIT_HINT = 'Pulsa E para sentarte'
+const CHOOSE_HINT = 'Haz clic en una silla libre para sentarte'
+const FULL_HINT = 'No quedan sillas libres en esta sala'
 
 const hud = document.querySelector<HTMLElement>('#hud')!
 const hint = document.querySelector<HTMLParagraphElement>('#hint')!
@@ -59,6 +59,49 @@ let playerLabel: Object3D | null = null
 let studySeat: Seat | null = null
 let studyView: CameraView | null = null
 let isInRoom = false
+let hoveredSeatId: number | null = null
+
+const raycaster = new THREE.Raycaster()
+const pointer = new THREE.Vector2()
+
+// La silla libre bajo el mouse, mientras se está eligiendo asiento
+function findFreeSeatUnderCursor(event: MouseEvent) {
+  const renderer = getRenderer()
+  if (!renderer || isSeated()) return null
+  const canvas = renderer.domElement.getBoundingClientRect()
+  pointer.set(((event.clientX - canvas.left) / canvas.width) * 2 - 1, -((event.clientY - canvas.top) / canvas.height) * 2 + 1)
+  raycaster.setFromCamera(pointer, camera)
+  const seat = findChairAt(raycaster)
+  return seat && !isSeatTaken(seat.id) ? seat : null
+}
+
+function setUpSeatPicker() {
+  const canvas = getRenderer()!.domElement
+  canvas.addEventListener('pointermove', (event) => {
+    const seat = findFreeSeatUnderCursor(event)
+    hoveredSeatId = seat?.id ?? null
+    if (seat) canvas.style.cursor = 'pointer' // la tarjeta de personas deja el cursor normal si no hay nadie
+  })
+  canvas.addEventListener('pointerleave', () => (hoveredSeatId = null))
+  canvas.addEventListener('click', async (event) => {
+    const seat = findFreeSeatUnderCursor(event)
+    if (!seat) return
+    hoveredSeatId = null
+    if (!(await pickSeat(seat))) hint.textContent = 'Alguien tomó esa silla justo antes. Elige otra.'
+  })
+}
+
+// Mientras se elige, las sillas libres se iluminan y el aviso dice qué hacer
+function updateSeatChoice() {
+  if (studySeat) {
+    highlightChairs(null, null)
+    return
+  }
+  const free = new Set(seats.filter((seat) => !isSeatTaken(seat.id)).map((seat) => seat.id))
+  if (hoveredSeatId !== null && !free.has(hoveredSeatId)) hoveredSeatId = null
+  highlightChairs(free, hoveredSeatId)
+  if (!hint.textContent?.startsWith('Alguien') || free.size === 0) hint.textContent = free.size > 0 ? CHOOSE_HINT : FULL_HINT
+}
 
 function enterStudyMode(seat: Seat) {
   studySeat = seat
@@ -72,7 +115,7 @@ function enterStudyMode(seat: Seat) {
 function leaveStudyMode() {
   studySeat = null
   studyView = null
-  player.visible = true
+  player.visible = false // sin silla no se ve: se vuelve a elegir desde arriba
   playerLabel!.visible = true
   setTallFrontWallVisible(false)
   setStudyPanelCompact(false)
@@ -122,10 +165,7 @@ function loop(now: number) {
   const delta = Math.min(now - lastTime, MAX_DELTA)
   lastTime = now
 
-  if (!isFocusing) {
-    updatePlayer(delta)
-  }
-  sendPosition(player.position.x, player.position.z)
+  updateSeatChoice()
   const isAnyoneMoving = updateRemotePlayers(delta)
   updateStudyView()
   updateFocus()
@@ -134,10 +174,6 @@ function loop(now: number) {
   const { period, isRunning } = getTimer()
   updateActivity(delta, poseFor(period, isRunning, !isTimerIdle()))
   poseBody(player, studySeat, getActivityLean())
-
-  if (!studySeat) {
-    hint.textContent = isNearFreeSeat() ? SIT_HINT : MOVE_HINT
-  }
 
   getRenderer()?.render(scene, camera)
 }
@@ -149,11 +185,10 @@ export function startRoom(nickname: string, character: Character, resumed: Resum
   playerLabel = createLabel(nickname)
   player.add(playerLabel)
   onSeatChange((seat) => (seat ? enterStudyMode(seat) : leaveStudyMode()))
-  onKeyPress('KeyE', () => {
-    if (isInRoom) toggleSit()
-  })
-  setUpTimerPanel(toggleSit)
+  setUpTimerPanel(changeSeat)
   setUpPlayerCard()
+  setUpSeatPicker()
+  hint.textContent = CHOOSE_HINT
   hint.hidden = false
   if (resumed) {
     restorePlayer(resumed)

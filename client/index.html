@@ -55,7 +55,7 @@
     <!-- En la ventana que quedó atrás -->
     <dialog id="replaced-notice" class="leave-confirm sf-card" aria-labelledby="replaced-notice-title">
       <h2 id="replaced-notice-title">Seguiste en otra ventana</h2>
-      <p>Entraste a esta sala desde otra ventana, así que aquí se cerró. Puedes seguir estudiando allá.</p>
+      <p>Abriste esta sesión en otra ventana, así que aquí se cerró. Puedes seguir estudiando allá.</p>
       <div class="sf-timer-actions">
         <button id="replaced-notice-ok" class="sf-btn sf-btn--primary" type="button" autofocus>Entendido</button>
       </div>
@@ -91,7 +91,7 @@
         <button class="sf-wordmark room-logo study-panel-logo" type="button" title="Volver al menú">StudyFocus</button>
         <div class="sf-timer-head">
           <span id="timer-period" class="sf-badge sf-badge--period"></span>
-          <button id="stand-up" class="sf-btn sf-btn--sm" type="button">Levantarte <kbd class="sf-kbd">E</kbd></button>
+          <button id="stand-up" class="sf-btn sf-btn--sm" type="button" title="Vuelve a la vista de la sala para elegir otra silla">Cambiar de asiento</button>
         </div>
 
         <div id="timer-time" class="sf-timer-time"></div>
@@ -109,11 +109,20 @@
             <button id="abandon-no" class="sf-btn sf-btn--primary" type="button">Seguir</button>
           </div>
         </div>
-        <p id="stand-up-hint" class="muted" hidden>Pausa el temporizador para levantarte.</p>
+        <p id="stand-up-hint" class="muted" hidden>Pausa el temporizador para cambiarte de asiento.</p>
 
         <div id="study-section-field" class="sf-section" hidden>
           <h2 class="sf-section-title">¿Qué estás estudiando?</h2>
           <select id="study-section" class="sf-input"></select>
+        </div>
+
+        <div class="sf-section study-goals">
+          <div class="study-goals-head">
+            <h2 class="sf-section-title">Tus objetivos</h2>
+            <button class="sf-btn sf-btn--sm sf-btn--quiet" type="button" data-new-goal="study">+ Objetivo</button>
+          </div>
+          <ul id="study-goals" class="goals goals--compact"></ul>
+          <p id="study-goals-empty" class="sf-row-detail" hidden>¿Cuánto quieres estudiar, y para cuándo? Agrega un objetivo y verás cómo avanza.</p>
         </div>
 
         <div id="duration-section" class="sf-section">
@@ -271,7 +280,7 @@
             <li class="sf-card">
               <span class="landing-step-number">02</span>
               <strong>Siéntate a la mesa</strong>
-              <p>Camina con tu personaje hasta una silla libre, cerca de los demás.</p>
+              <p>Haz clic en una silla libre, cerca de los demás.</p>
             </li>
             <li class="sf-card">
               <span class="landing-step-number">03</span>
@@ -454,6 +463,15 @@
                 </span>
                 <span class="sf-btn sf-btn--primary" aria-hidden="true">Ir a estudiar</span>
               </button>
+
+              <div class="home-goals sf-card">
+                <div class="home-goals-head">
+                  <h3 class="sf-section-title">Tus objetivos</h3>
+                  <button class="sf-btn sf-btn--sm" type="button" data-new-goal="home">+ Nuevo objetivo</button>
+                </div>
+                <ul id="home-goals" class="goals"></ul>
+                <p id="home-goals-empty" class="sf-row-detail" hidden>Ponte un objetivo, por ejemplo 8 horas de Cálculo antes de la prueba, y ve cómo avanzas mientras estudias.</p>
+              </div>
 
               <div class="home-space">
                 <div class="home-space-head">
@@ -643,8 +661,8 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
               <h3 class="sf-section-title">Solo</h3>
               <div class="study-solo sf-card">
                 <div>
-                  <strong>Pantalla simple</strong>
-                  <p class="sf-row-detail">Tu temporizador y tu música, sin la sala 3D.</p>
+                  <strong>Tu escritorio</strong>
+                  <p class="sf-row-detail">Un rincón tranquilo para ti: tu personaje ya sentado, con tu temporizador y tu música.</p>
                 </div>
                 <button id="study-solo" class="sf-btn sf-btn--primary" type="button">Estudiar solo</button>
               </div>
@@ -705,9 +723,28 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           </section>
 
           <section class="menu-panel sf-panel" data-panel="stats" aria-labelledby="stats-title" hidden>
-            <header class="sf-panel-head">
-              <h2 id="stats-title">Estadísticas</h2>
-              <p>Se cuenta solo el tiempo con el temporizador corriendo en un periodo de estudio.</p>
+            <header class="sf-panel-head stats-head">
+              <div>
+                <h2 id="stats-title">Estadísticas</h2>
+                <p>Se cuenta solo el tiempo con el temporizador corriendo en un periodo de estudio.</p>
+              </div>
+              <!-- El período: cambia el total, las barras, los apartados y con quién estudiaste -->
+              <div class="stats-range">
+                <select id="stats-range" class="sf-input" aria-label="Período">
+                  <option value="7">Últimos 7 días</option>
+                  <option value="30">Últimos 30 días</option>
+                  <option value="90">Últimos 90 días</option>
+                  <option value="365">Último año</option>
+                  <option value="all">Desde siempre</option>
+                  <option value="custom">Entre fechas…</option>
+                </select>
+                <form id="stats-custom" class="stats-custom" hidden>
+                  <input id="stats-from" class="sf-input" type="date" aria-label="Desde" required />
+                  <span aria-hidden="true">a</span>
+                  <input id="stats-to" class="sf-input" type="date" aria-label="Hasta" required />
+                  <button class="sf-btn sf-btn--primary" type="submit">Ver</button>
+                </form>
+              </div>
             </header>
 
             <div class="stat-cards">
@@ -716,8 +753,9 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
                 <strong id="stat-today">–</strong>
               </div>
               <div class="stat-card sf-card">
-                <span class="stat-label">Últimos 7 días</span>
+                <span id="stat-range-label" class="stat-label">Últimos 7 días</span>
                 <strong id="stat-week">–</strong>
+                <span id="stat-range-detail" class="sf-row-detail"></span>
               </div>
               <div class="stat-card sf-card">
                 <span class="stat-label">Racha</span>
@@ -731,18 +769,18 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
             <p id="stats-message" class="form-message" role="status"></p>
 
             <div class="sf-section">
-              <h3 class="sf-section-title">Esta semana</h3>
+              <h3 id="stat-chart-title" class="sf-section-title">Por día</h3>
               <div id="stat-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
             </div>
 
             <div id="section-time-box" class="sf-section" hidden>
-              <h3 class="sf-section-title">Por apartado · últimos 7 días</h3>
+              <h3 id="section-time-title" class="sf-section-title">Por apartado</h3>
               <ul id="section-time-list" class="section-time-list"></ul>
             </div>
 
             <div class="sf-section">
               <h3 class="sf-section-title">Con quién estudiaste</h3>
-              <p id="companions-empty" class="sf-row-detail">Aún nadie.</p>
+              <p id="companions-empty" class="sf-row-detail">Nadie en este período.</p>
               <ul id="companions-list" class="sf-list"></ul>
             </div>
           </section>
@@ -1055,6 +1093,34 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           <button id="syllabus-skip" class="sf-btn" type="button" hidden>Descartar</button>
           <span class="agenda-form-spacer"></span>
           <button id="syllabus-cancel" class="sf-btn" type="button">Cerrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="goal-dialog" class="agenda-dialog sf-card" aria-labelledby="goal-dialog-title">
+      <form id="goal-form" class="agenda-form">
+        <h2 id="goal-dialog-title">Nuevo objetivo</h2>
+        <div class="agenda-form-row">
+          <label class="sf-field">
+            Quiero estudiar (horas)
+            <input id="goal-hours" class="sf-input" inputmode="decimal" autocomplete="off" placeholder="8" required />
+          </label>
+          <label class="sf-field">
+            Hasta el
+            <input id="goal-deadline" class="sf-input" type="date" required />
+          </label>
+        </div>
+        <label class="sf-field">
+          De qué
+          <select id="goal-section" class="sf-input"></select>
+          <span class="sf-field-hint">Si eliges un ramo, solo cuenta lo que estudies con ese ramo elegido en el temporizador. Cuenta desde ahora hasta el final del día límite.</span>
+        </label>
+        <p id="goal-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
+          <button id="goal-cancel" class="sf-btn" type="button">Cancelar</button>
+          <span class="agenda-form-spacer"></span>
+          <button id="goal-delete" class="sf-btn" type="button" hidden>Borrar</button>
         </div>
       </form>
     </dialog>

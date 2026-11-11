@@ -5,7 +5,7 @@ import { createActivityView, poseBody, poseFor, type ActivityKind, type Activity
 import type { Character } from './character'
 import { createCharacterModel, disposeCharacterModel } from './characterModel'
 import { createLabel, disposeLabel } from './label'
-import { SEATED_Y, seats, STANDING_Y } from './room'
+import { SEATED_Y, seats } from './room'
 import type { Period } from './timer'
 
 interface PlayerState {
@@ -39,8 +39,14 @@ interface RemotePlayer {
 
 const remotePlayers = new Map<string, RemotePlayer>()
 
-function heightFor(seatId: number | null) {
-  return seatId === null ? STANDING_Y : SEATED_Y
+// Ya nadie camina: quien tiene silla aparece sentado en ella, y quien aún está eligiendo no se ve
+function placeOnSeat(remote: { mesh: THREE.Mesh; targetX: number; targetZ: number }, seatId: number | null) {
+  const seat = seatId === null ? null : seats[seatId]
+  remote.mesh.visible = seat !== undefined && seat !== null
+  if (!seat) return
+  remote.mesh.position.set(seat.x, SEATED_Y, seat.z)
+  remote.targetX = seat.x
+  remote.targetZ = seat.z
 }
 
 
@@ -54,7 +60,6 @@ function showSeatedActivity(activity: ActivityView, seatId: number | null) {
 
 function addRemotePlayer(state: PlayerState) {
   const mesh = createCharacterModel(state.character)
-  mesh.position.set(state.x, heightFor(state.seatId), state.z)
   scene.add(mesh)
   const label = createLabel(state.nickname)
   mesh.add(label)
@@ -62,7 +67,7 @@ function addRemotePlayer(state: PlayerState) {
   const activity = createActivityView(state.activity, state.character.color)
   showSeatedActivity(activity, state.seatId)
 
-  remotePlayers.set(state.id, {
+  const remote: RemotePlayer = {
     mesh,
     label,
     activity,
@@ -71,7 +76,9 @@ function addRemotePlayer(state: PlayerState) {
     pose: poseFor(state.period, state.isRunning, state.isStarted ?? state.isRunning),
     targetX: state.x,
     targetZ: state.z,
-  })
+  }
+  placeOnSeat(remote, state.seatId)
+  remotePlayers.set(state.id, remote)
 }
 
 function removeRemotePlayer(id: string) {
@@ -95,13 +102,6 @@ socket.on('players:init', (players: PlayerState[]) => {
 socket.on('player:joined', addRemotePlayer)
 socket.on('player:left', removeRemotePlayer)
 
-socket.on('player:moved', (state: PlayerState) => {
-  const remotePlayer = remotePlayers.get(state.id)
-  if (!remotePlayer) return
-
-  remotePlayer.targetX = state.x
-  remotePlayer.targetZ = state.z
-})
 
 socket.on('player:seated', (state: PlayerState) => {
   const remotePlayer = remotePlayers.get(state.id)
@@ -109,7 +109,7 @@ socket.on('player:seated', (state: PlayerState) => {
 
   remotePlayer.state = state
   remotePlayer.seatId = state.seatId
-  remotePlayer.mesh.position.y = heightFor(state.seatId)
+  placeOnSeat(remotePlayer, state.seatId)
   showSeatedActivity(remotePlayer.activity, state.seatId)
 })
 
@@ -123,7 +123,8 @@ socket.on('player:status', (state: PlayerState) => {
 })
 
 export function findRemotePlayerAt(raycaster: THREE.Raycaster) {
-  const players = [...remotePlayers.entries()]
+  // Solo los que se ven: quien aún elige silla no tiene dónde apuntarle
+  const players = [...remotePlayers.entries()].filter(([, { mesh }]) => mesh.visible)
   const [hit] = raycaster.intersectObjects(players.map(([, { mesh }]) => mesh), false)
   return players.find(([, { mesh }]) => mesh === hit?.object)?.[0] ?? null
 }

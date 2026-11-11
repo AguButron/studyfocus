@@ -158,6 +158,19 @@ const SCHEMA = `
   -- Una evaluación puede no tener fecha todavía: queda en su apartado, fuera del calendario
   ALTER TABLE agenda_items ALTER COLUMN due_date DROP NOT NULL;
 
+  -- Los objetivos de estudio: cuántos minutos hasta qué día, de un ramo o en general.
+  -- Cuenta lo estudiado desde que se crea; si el ramo se borra, el objetivo también.
+  CREATE TABLE IF NOT EXISTS study_goals (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    section_id BIGINT REFERENCES sections (id) ON DELETE CASCADE,
+    minutes INTEGER NOT NULL,
+    deadline DATE NOT NULL,
+    starts_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS study_goals_user ON study_goals (user_id, deadline);
+
   -- Cada programa leído con IA, para el límite diario de cada persona
   CREATE TABLE IF NOT EXISTS syllabus_reads (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

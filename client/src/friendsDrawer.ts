@@ -242,6 +242,10 @@ function render(friends: Friend[], pastChats: PastChat[]) {
   offlineList.replaceChildren(...offline.map((friend) => createRow(friend, describePresence(friend))))
   pastList.replaceChildren(...pastChats.map((person) => createRow(person, { text: 'Ya no son amigos', kind: 'offline' })))
 
+  // Si la conversación abierta sigue con mensajes sin leer en el servidor, el aviso de leído no llegó: se manda de nuevo
+  const openId = getOpenChatId()
+  if (openId && [...friends, ...pastChats].some((person) => person.id === openId && person.unread > 0)) markRead(true)
+
   const unread = getUnreadTotal()
   unreadCount.hidden = unread === 0
   unreadCount.textContent = String(unread)

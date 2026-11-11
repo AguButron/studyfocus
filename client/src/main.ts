@@ -1,4 +1,5 @@
 import './style.css'
+import type { Character } from './character'
 import { getActivity } from './choices'
 import { showHome } from './home'
 import { sendStatus } from './network'
@@ -13,11 +14,22 @@ const STATUS_INTERVAL = 500 // milisegundos
 
 let statusTimer = 0
 let room: typeof import('./roomScene') | null = null
+let desk: typeof import('./deskScene') | null = null
 
 function shareStatus() {
   updateTimer()
-  const { period, isRunning, periodId } = getTimer()
-  sendStatus({ activity: getActivity(), period, isRunning, isStarted: !isTimerIdle(), periodId, sectionId: getStudySection() })
+  const { period, isRunning, periodId, studyMinutes, breakMinutes, remainingMs } = getTimer()
+  sendStatus({
+    activity: getActivity(),
+    period,
+    isRunning,
+    isStarted: !isTimerIdle(),
+    periodId,
+    sectionId: getStudySection(),
+    studyMinutes,
+    breakMinutes,
+    remainingMs: Math.round(remainingMs),
+  })
 }
 
 // Descarga la sala antes de entrar: el servidor manda quiénes están adentro justo al entrar,
@@ -32,10 +44,23 @@ async function prepareRoom() {
   }
 }
 
+// Estudiar solo: el escritorio también es Three.js, así que se descarga recién al entrar
+async function startDesk(character: Character) {
+  try {
+    desk ??= await import('./deskScene')
+    desk.startDesk(character)
+    return true
+  } catch (error) {
+    console.error('No se pudo cargar el escritorio:', error)
+    return false
+  }
+}
+
 // Al volver al menú sin recargar: deja de mandar el estado y, si había sala 3D, la libera
 function stopRoom() {
   clearInterval(statusTimer)
   room?.stopRoom()
+  desk?.stopDesk()
   setStudyScreenVisible(false)
 }
 
@@ -43,9 +68,12 @@ showHome(
   async (nickname, character, resumed, isSolo) => {
     onPeriodChange(playPeriodSound)
     if (isSolo) {
-      // Estudiar solo: solo el temporizador, sin la sala 3D. La música está siempre, también en el menú
-      setUpTimerPanel(() => {})
-      setStudyScreenVisible(true)
+      // Estudiar solo: tu escritorio en 3D, ya sentado. Si no se puede descargar, queda la pantalla simple
+      if (!(await startDesk(character))) {
+        document.documentElement.dataset.mode = 'simple'
+        setUpTimerPanel(() => {})
+        setStudyScreenVisible(true)
+      }
     } else {
       if (!(await prepareRoom())) {
         window.location.reload() // sin la sala no se puede seguir: al recargar se vuelve a ella

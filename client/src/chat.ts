@@ -45,7 +45,9 @@ let messages: Message[] = []
 let hasMore = false
 let isLoadingMore = false
 let readUpTo: string | null = null // tu último mensaje que la otra persona ya leyó
-let lastReadSent: string | null = null
+let lastReadSent: string | null = null // hasta dónde se pidió marcar como leído
+let lastReadSaved: string | null = null // hasta dónde el servidor confirmó que quedó guardado
+let isSendingRead = false
 let canWrite = false
 let request = 0 // descarta lo que llega de una conversación que ya se cerró
 let lastTypingSent = 0
@@ -167,17 +169,44 @@ function showWriting() {
 const isNearBottom = () => scrollBox.scrollHeight - scrollBox.scrollTop - scrollBox.clientHeight < 80
 const scrollToBottom = () => (scrollBox.scrollTop = scrollBox.scrollHeight)
 
-// Si la conversación está a la vista, lo que llegó de la otra persona queda leído
-export function markRead() {
+// Si la conversación está a la vista, lo que llegó de la otra persona queda leído. Se manda hasta el último
+// mensaje de la conversación: el servidor marca solo los que te llegaron a ti hasta ahí.
+// force: lo manda aunque ya se haya pedido, porque el servidor todavía cuenta mensajes sin leer
+export function markRead(force = false) {
   if (!person || chatBox.hidden || document.hidden || !isVisible()) return
-  const last = [...messages].reverse().find((message) => message.from === person!.id)
-  if (!last || (lastReadSent && compareIds(last.id, lastReadSent) <= 0)) {
-    setUnread(person.id, () => 0)
-    return
+  const last = messages.at(-1)
+  const otherId = person.id
+  setUnread(otherId, () => 0)
+  if (!last || isSendingRead) return
+  const alreadySent = lastReadSent && compareIds(last.id, lastReadSent) <= 0
+  const alreadySaved = lastReadSaved && compareIds(last.id, lastReadSaved) <= 0
+  if (alreadySaved || (alreadySent && !force)) return
+  sendRead(otherId, last.id)
+}
+
+async function sendRead(otherId: string, upTo: string) {
+  lastReadSent = upTo
+  isSendingRead = true
+  const current = request
+  try {
+    const response = await fetch('/api/chat/leido', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ con: otherId, hasta: upTo }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error)
+    if (current !== request) return
+    lastReadSaved = upTo
+    // Lo que diga el servidor: si llegó algo nuevo mientras tanto, se vuelve a marcar
+    setUnread(otherId, () => result.unread)
+  } catch (error) {
+    console.warn('No se pudo marcar la conversación como leída:', error)
+    if (current === request) lastReadSent = null // se vuelve a intentar con el próximo mensaje o al volver a la pestaña
+  } finally {
+    isSendingRead = false
   }
-  lastReadSent = last.id
-  socket.emit('chat:read', { with: person.id, upTo: last.id })
-  setUnread(person.id, () => 0)
+  if (current === request && messages.at(-1)?.id !== upTo) markRead()
 }
 
 export async function openChat(next: Person) {
@@ -186,6 +215,7 @@ export async function openChat(next: Person) {
   hasMore = false
   readUpTo = null
   lastReadSent = null
+  lastReadSaved = null
   canWrite = false
   errorText.textContent = ''
   typingText.hidden = true
@@ -341,7 +371,7 @@ export function setUpChat(options: { isVisible: () => boolean; onChange: () => v
   scrollBox.addEventListener('scroll', () => {
     if (scrollBox.scrollTop < LOAD_MORE_MARGIN) loadMore()
   })
-  document.addEventListener('visibilitychange', markRead)
+  document.addEventListener('visibilitychange', () => markRead())
 
   socket.on('chat:message', (message: Message) => {
     // Un mensaje es de la otra persona si viene de alguien de tu lista; si no, lo enviaste tú (desde otra pestaña)
@@ -360,7 +390,7 @@ export function setUpChat(options: { isVisible: () => boolean; onChange: () => v
     readUpTo = upTo
     render()
   })
-  socket.on('chat:unread', ({ from }: { from: string }) => setUnread(from, () => 0))
+  socket.on('chat:unread', ({ from, count }: { from: string; count?: number }) => setUnread(from, () => count ?? 0))
   socket.on('chat:typing', ({ from }: { from: string }) => {
     if (person?.id !== from || chatBox.hidden) return
     typingText.hidden = false

@@ -10,6 +10,7 @@ import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from
 import { createAgendaHandler } from './agenda.ts'
 import { createSpacesHandler, findSubject, type Subject } from './spaces.ts'
 import { createSyllabusHandler } from './syllabus.ts'
+import { createGoalsHandler } from './goals.ts'
 import { createFriendsHandler } from './friends.ts'
 import { addConnection, clearPresence, markActive, removeConnection, setPresence } from './presence.ts'
 import { accountRoom, createChatHandler, setUpChatSocket } from './chat.ts'
@@ -52,7 +53,25 @@ interface PlayerStatus {
 interface StatusMessage extends PlayerStatus {
   periodId: string
   sectionId?: string | null // el apartado que se está estudiando, si se eligió
+  // El temporizador de la pestaña, para pasarlo a otra ventana si la cuenta se cambia a ella.
+  // remainingMs es lo que faltaba al mandar el estado, que se manda solo cuando algo cambia
+  studyMinutes?: number
+  breakMinutes?: number
+  remainingMs?: number
 }
+
+// El temporizador de una pestaña tal como se pasa a otra ventana: "at" es cuándo se supo cuánto faltaba
+interface TimerSnapshot {
+  studyMinutes: number
+  breakMinutes: number
+  period: string
+  isRunning: boolean
+  remainingMs: number
+  periodId: string
+  at: number
+}
+
+const MAX_TIMER_MINUTES = 240
 
 interface StudySegment {
   start: number
@@ -89,6 +108,7 @@ interface Session {
   pendingSegments: StudySegment[] // lo estudiado en este periodo: se guarda solo si termina
   pendingMs: number
   studiedMs: number // lo estudiado en periodos terminados desde que entró a la sala
+  timer: TimerSnapshot | null // el último temporizador que mandó su pestaña
   lastSave: Promise<unknown>
   saveTimer: NodeJS.Timeout | null
   lastPersist: Promise<unknown> // las escrituras de la sesión van en orden, para que borrarla sea lo último
@@ -198,6 +218,52 @@ function isValidStatus(value: unknown): value is StatusMessage {
   )
 }
 
+const isTimerMinutes = (value: unknown) => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= MAX_TIMER_MINUTES
+
+// Solo si la página mandó su temporizador completo (una página de antes no lo manda)
+function readTimer(status: StatusMessage): TimerSnapshot | null {
+  const { studyMinutes, breakMinutes, remainingMs } = status
+  if (!isTimerMinutes(studyMinutes) || !isTimerMinutes(breakMinutes)) return null
+  if (typeof remainingMs !== 'number' || !Number.isFinite(remainingMs)) return null
+  const limit = (status.period === 'study' ? studyMinutes! : breakMinutes!) * 60_000
+  return {
+    studyMinutes: studyMinutes!,
+    breakMinutes: breakMinutes!,
+    period: status.period,
+    isRunning: status.isRunning,
+    remainingMs: Math.min(Math.max(0, remainingMs), limit),
+    periodId: status.periodId,
+    at: Date.now(),
+  }
+}
+
+// Otra ventana de la misma cuenta toma el lugar de esta sesión: se lleva el temporizador y lo estudiado en el
+// periodo en curso, que así no se pierde. Responde el temporizador para la página nueva, con lo que falta ahora
+function handOver(from: Session, to: Session) {
+  updateStudyClock(from, false)
+  to.pendingSegments = from.pendingSegments
+  to.pendingMs = from.pendingMs
+  to.studiedMs += from.studiedMs
+  to.joinedAt = Math.min(to.joinedAt, from.joinedAt)
+  to.periodId = from.periodId
+  to.sectionId = from.sectionId
+  to.timer = from.timer
+  to.player.period = from.player.period
+  to.player.isRunning = from.player.isRunning
+  to.player.isStarted = from.player.isStarted
+  // La que sale ya no tiene nada que abandonar
+  from.pendingSegments = []
+  from.pendingMs = 0
+  from.studiedMs = 0
+  updateStudyClock(to)
+  persist(to)
+
+  const timer = from.timer
+  if (!timer) return null
+  const elapsed = timer.isRunning ? Date.now() - timer.at : 0
+  return { ...timer, remainingMs: Math.max(0, timer.remainingMs - elapsed), at: undefined }
+}
+
 function isFreeSeat(room: Room, seatId: unknown): seatId is number {
   if (typeof seatId !== 'number' || !Number.isInteger(seatId)) return false
   if (seatId < 0 || seatId >= SEAT_COUNT) return false
@@ -230,10 +296,11 @@ const handleAccounts = createAccountsHandler()
 const handleFriends = createFriendsHandler()
 const handleStats = createStatsHandler()
 const handleProfiles = createProfilesHandler()
-const handleChat = createChatHandler()
+const handleChat = createChatHandler(() => io)
 const handleAgenda = createAgendaHandler()
 const handleSpaces = createSpacesHandler()
 const handleSyllabus = createSyllabusHandler()
+const handleGoals = createGoalsHandler()
 const handlePage = createPageHandler()
 
 const httpServer = createServer((request, response) => {
@@ -251,6 +318,8 @@ const httpServer = createServer((request, response) => {
     handleSpaces(request, response)
   } else if (request.url?.startsWith('/api/programas')) {
     handleSyllabus(request, response)
+  } else if (request.url?.startsWith('/api/objetivos')) {
+    handleGoals(request, response)
   } else if (request.url?.startsWith('/api/')) {
     handleAccounts(request, response)
   } else {
@@ -402,6 +471,8 @@ io.on('connection', (socket) => {
 
   // Con la sesión iniciada, la pestaña cuenta para "En línea" y recibe los mensajes del chat
   const connectedAccountId: string | null = socket.data.account?.id ?? null
+  // La página compara esta cuenta con la que muestra: si en otra pestaña se entró con otra, se recarga
+  socket.emit('account:hello', { username: socket.data.account?.username ?? null })
   if (connectedAccountId) {
     socket.join(accountRoom(connectedAccountId))
     addConnection(connectedAccountId, socket.id)
@@ -467,6 +538,7 @@ io.on('connection', (socket) => {
       pendingSegments: saved.pendingSegments,
       pendingMs: saved.pendingMs,
       studiedMs: saved.studiedMs,
+      timer: null, // llega con el próximo estado de su pestaña
       lastSave: Promise.resolve(),
       saveTimer: null,
       lastPersist: Promise.resolve(),
@@ -522,6 +594,7 @@ io.on('connection', (socket) => {
       pendingSegments: [],
       pendingMs: 0,
       studiedMs: 0,
+      timer: lastStatus ? readTimer(lastStatus) : null,
       lastSave: Promise.resolve(),
       saveTimer: null,
       lastPersist: Promise.resolve(),
@@ -533,13 +606,34 @@ io.on('connection', (socket) => {
     persist(session)
   }
 
-  // Para crear o unirse hace falta una cuenta, y el apodo es su nombre
-  socket.on('room:create', async (kind: unknown, token: unknown, reply: unknown) => {
+  // Las sesiones de esta cuenta que están estudiando solas desde otra ventana
+  function findOwnSoloSessions() {
+    const accountId = socket.data.account?.id
+    return [...sessions.values()].filter(
+      (other) => other.accountId === accountId && other !== session && getRoomKind(other.code) === SOLO_KIND,
+    )
+  }
+
+  // Para crear o unirse hace falta una cuenta, y el apodo es su nombre.
+  // takeOver, solo al estudiar solo: si la cuenta ya estudia sola en otra ventana, esa vuelve al menú.
+  // Sin takeOver, en ese caso responde 'duplicate' para que la página pregunte, como al unirse a una sala
+  socket.on('room:create', async (kind: unknown, token: unknown, takeOverOrReply: unknown, maybeReply?: unknown) => {
+    // Una página de antes de takeOver manda (kind, token, reply)
+    const reply = typeof takeOverOrReply === 'function' ? takeOverOrReply : maybeReply
+    const takeOver = takeOverOrReply === true
     if (typeof reply !== 'function' || currentCode || isEntering) return
 
     const account = socket.data.account
     if (!account || typeof kind !== 'string' || !ROOM_KINDS.includes(kind) || !isNewToken(token)) {
       reply(null)
+      return
+    }
+
+    // Una ventana que se cerró hace poco sigue esperando volver (RECONNECT_WAIT): esa no cuenta como duplicada
+    const ownSolo = kind === SOLO_KIND ? findOwnSoloSessions() : []
+    const openElsewhere = ownSolo.filter((other) => !other.leaveTimer)
+    if (openElsewhere.length > 0 && !takeOver) {
+      reply('duplicate')
       return
     }
 
@@ -555,8 +649,18 @@ io.on('connection', (socket) => {
     rooms.set(code, room)
     roomKinds.set(code, kind)
     enterRoom(code, room, token)
+    // Se sigue con el temporizador de la ventana que estaba abierta
+    const handedTimer = openElsewhere.length > 0 && session ? handOver(openElsewhere[0], session) : null
+    for (const other of ownSolo) {
+      if (other.leaveTimer) {
+        clearTimeout(other.leaveTimer)
+        other.leaveTimer = null
+        removeFromRoom(other)
+      } else if (other.kick) other.kick()
+      else removeFromRoom(other)
+    }
     console.log(`Sala creada: ${code}`)
-    reply(code)
+    reply(handedTimer ? { code, timer: handedTimer } : code)
   })
 
   // takeOver: si la misma cuenta ya está en la sala desde otra ventana, la saca y entra desde esta.
@@ -593,12 +697,14 @@ io.on('connection', (socket) => {
     player.username = account.username
     player.character = describeAccountCharacter(account)
     enterRoom(code, room, token)
+    // Se sigue con el temporizador de la otra ventana
+    const handedTimer = own.length > 0 && session ? handOver(own[0], session) : null
     // La otra ventana sale después de entrar esta: así la sala nunca queda vacía, que la borraría
     for (const other of own) {
       if (other.kick) other.kick()
       else removeFromRoom(other)
     }
-    reply(true)
+    reply(handedTimer ? { timer: handedTimer } : true)
   })
 
   // Al volver al menú: sale de inmediato, y responde cuánto estudió y con quién para el resumen
@@ -730,7 +836,10 @@ socket.on('seat:leave', () => {
       session.periodId = status.periodId
     }
     // El periodo se anota con el apartado que tenía mientras se estudiaba, así que se actualiza después
-    if (session) session.sectionId = status.sectionId ?? null
+    if (session) {
+      session.sectionId = status.sectionId ?? null
+      session.timer = readTimer(status)
+    }
     lastPeriodId = status.periodId
 
     player.activity = status.activity

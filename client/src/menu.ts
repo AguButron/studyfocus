@@ -10,7 +10,7 @@ import { CHARACTER_COLORS, setCharacterPhoto, type Character } from './character
 import { drawRoomPlan } from './roomPlan'
 import { COUNTRIES, getFlag } from './countries'
 import { ROOM_KINDS } from './roomKinds'
-import { refreshStats, setUpSummary, showSavedSummary } from './stats'
+import { refreshStats, setUpStatsRange, setUpSummary, showSavedSummary } from './stats'
 
 type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person'
 
@@ -253,6 +253,7 @@ export function setUpMenu(menuActions: MenuActions) {
   setUpNavToggle()
   setUpFriendsDrawer()
   setUpSummary(() => showPanel('stats'))
+  setUpStatsRange()
 
   joinForm.addEventListener('submit', (event) => {
     event.preventDefault()

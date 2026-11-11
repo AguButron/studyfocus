@@ -36,6 +36,23 @@ Un amigo solo se veía conectado si estaba en una sala o estudiando solo; con St
 
 Si entras a una sala en la que tu cuenta ya está desde otra ventana, aparece "Parece que ya estás en esta sala: ¿cambiar la sesión a esta ventana?". Si aceptas, la ventana nueva entra y la anterior vuelve al menú con el aviso "Seguiste en otra ventana". Antes, la misma persona aparecía dos veces en la sala.
 
+**Estudiando solo, igual (2026-11-11):**
+- Si ya estás estudiando solo en otra ventana y vuelves a apretar "Estudiar solo", aparece "Ya estás estudiando solo: ¿cambiar la sesión a esta ventana?".
+- Si aceptas, pasa lo mismo que en una sala: la ventana nueva empieza y la anterior vuelve al menú con el aviso.
+- Una ventana que se cerró hace poco y todavía espera volver no cuenta: esa sesión se cierra sin preguntar.
+- `room:create` recibe `takeOver` como tercer dato y puede responder `'duplicate'`.
+
+**El progreso se sigue en la ventana nueva (2026-11-11), en salas y estudiando solo:**
+- **El temporizador sigue donde iba:** si quedaban 4 minutos de estudio, la ventana nueva sigue con 4 minutos, corriendo o en pausa, con la misma duración elegida.
+- **Lo estudiado en el periodo en curso también pasa:** al terminar el periodo cuenta completo. Antes, cambiar de ventana era abandonar el periodo.
+- **Funciona entre dispositivos,** porque va por el servidor:
+  - Cada pestaña manda en su estado su temporizador: la duración del estudio y del descanso, y cuánto falta.
+  - Mientras corre, lo que falta se manda solo cuando cambia otra cosa, y el servidor descuenta el tiempo que pasó desde entonces.
+  - Al cambiarse, el servidor pasa a la sesión nueva el periodo, lo estudiado y el temporizador, y se lo responde a la página nueva.
+- **El ramo** que se estudiaba sigue el de la ventana nueva. En el mismo navegador es el mismo, porque se guarda para todo el navegador.
+
+**Un arreglo de esa misma fecha:** la ventana que quedaba atrás solo volvía al menú si se veía la barra de arriba. Sentado en la sala, o en tu escritorio, esa barra se esconde, así que esa ventana seguía igual. Ahora se fija en si está fuera del menú.
+
 ## Alternativas descartadas
 
 - **Escribirle a cualquiera, o con solicitud:** necesitaría bloquear y denunciar desde el comienzo.
@@ -48,8 +65,12 @@ Si entras a una sala en la que tu cuenta ya está desde otra ventana, aparece "P
 - **Base de datos:** `users.last_seen_at` y una tabla nueva, `messages` (de quién, para quién, el texto, cuándo y cuándo se leyó).
 - **Rutas y avisos:**
   - `GET /api/chat?con=…&antes=…` carga una conversación por páginas.
-  - Por Socket.IO van `chat:send`, `chat:read`, `chat:typing` y `presence:active`. El servidor responde con `chat:message`, `chat:read`, `chat:unread`, `chat:typing` y `session:replaced`.
+  - `POST /api/chat/leido {con, hasta}` marca como leído lo que te llegó hasta ese mensaje y responde cuántos siguen sin leer. Va por HTTP y no por Socket.IO: así cuenta la misma cuenta con que se cargó la conversación, y la página sabe si quedó guardado.
+  - Por Socket.IO van `chat:send`, `chat:typing` y `presence:active`. El servidor responde con `chat:message`, `chat:read`, `chat:unread`, `chat:typing` y `session:replaced`.
   - `room:join` recibe un tercer dato, `takeOver`.
 - **`GET /api/friends`** suma, por amigo, `lastSeen` y `unread`, y la lista `pastChats`. La presencia ahora dice su `status`: `room`, `solo`, `online` o `away`.
+- **Una cuenta por navegador a la vez:** la sesión es la misma en todas las pestañas. Si en una se entra con otra cuenta, las demás se recargan con esa cuenta, porque antes seguían mostrando la anterior mientras su conexión ya era de la nueva, y lo que marcaban como leído no contaba. El servidor también avisa con qué cuenta se conectó cada pestaña (`account:hello`). Para usar dos cuentas a la vez hay que abrir una ventana de incógnito u otro navegador.
+- **Si el aviso de leído no llega**, la próxima vez que la lista de amigos dice que la conversación abierta tiene mensajes sin leer, la página lo manda de nuevo.
+- **El orden de los mensajes** va por el número del mensaje (`messages.id`), no por su texto. Hasta el 2026-11-10 se ordenaba sin querer como texto, y "9" quedaba después de "51". Así la página tomaba un mensaje viejo como el último, marcaba como leído solo hasta ahí, y el número de sin leer volvía al recargar.
 - **El chat de sala**, para más adelante, puede usar el mismo mecanismo con el grupo de Socket.IO de cada sala.
 - **Las cuentas de prueba** se volvieron a crear el 2026-11-09 tras borrar las cuentas viejas de la base. Solo quedaron `@tevan` (antes `@prueba`) y `@joo`.

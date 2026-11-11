@@ -21,6 +21,6 @@ export const MUSIC_RECOMMENDATIONS: MusicRecommendation[] = [
   {
     title: 'relax, everything will be okay',
     channel: 'BeforePhantoms',
-    url: 'https://www.youtube.com/watch?v=8k5vqajrHVw&list=RD8k5vqajrHVw&start_radio=1',
+    url: 'https://www.youtube.com/watch?v=u1cV6nmXOsY&list=RDu1cV6nmXOsY&start_radio=1',
   },
 ]

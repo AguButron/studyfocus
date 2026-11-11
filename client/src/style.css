@@ -2174,6 +2174,40 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .week-now { position: absolute; right: 0; left: 0; z-index: 0; height: 2px; background: var(--danger); pointer-events: none; }
 .week-now::before { content: ''; position: absolute; top: -3px; left: -4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 
+/* Los objetivos de estudio: cada uno con su barra */
+.home-goals { display: flex; flex-direction: column; gap: var(--cell-1-5); padding: var(--cell-2); }
+.home-goals-head, .study-goals-head { display: flex; align-items: center; justify-content: space-between; gap: var(--cell-1); }
+.home-goals-head .sf-section-title, .study-goals-head .sf-section-title { margin: 0; }
+.goals { display: flex; flex-direction: column; gap: var(--cell-1); margin: 0; padding: 0; list-style: none; }
+.goals:empty { display: none; }
+.goal-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: var(--cell-1) var(--cell-1-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-1);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.goal-open:hover { border-color: var(--edge); }
+.goal-open:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.goal-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--cell-1); }
+.goal-head strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goal-when, .goal-detail { color: var(--ink-soft); font-size: 13px; line-height: 18px; }
+.goal-when { flex: none; }
+.goal-bar { display: block; height: 10px; overflow: hidden; border-radius: 5px; background: var(--card-sunken); }
+.goal-bar span { display: block; height: 100%; border-radius: inherit; background: var(--goal); transition: width 0.6s ease; }
+.goal[data-done] .goal-detail { color: #1f7a4f; font-weight: 600; }
+.goal[data-missed] { opacity: 0.7; }
+.goals--compact .goal-open { padding: 6px var(--cell-1); }
+.goals--compact .goal-head strong { font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .goal-bar span { transition: none; } }
+
 /* Los requisitos de un ramo y cómo va cada uno */
 /* La nota que avisa que el promedio supone que te eximes */
 .section-exemption {
@@ -2244,6 +2278,17 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .home-option--soon:hover { border-color: var(--line); box-shadow: none; }
 
 /* Estadísticas */
+
+/* El período de las estadísticas, a la derecha del título */
+.stats-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--cell-2); }
+.stats-range { display: flex; flex-direction: column; align-items: flex-end; gap: var(--cell-1); }
+.stats-range select { min-width: 190px; }
+.stats-custom { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cell-1); }
+.stats-custom .sf-input { width: auto; }
+/* Con muchas barras, más juntas y sin el valor encima */
+.stat-chart[data-dense] { gap: 3px; }
+.stat-chart[data-dense] .stat-value { display: none; }
+.stat-chart[data-dense] .stat-day { font-size: 11px; white-space: nowrap; overflow: visible; }
 
 .stat-cards {
   display: grid;
@@ -2808,19 +2853,25 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .leave-confirm h2 { margin: 0 0 var(--cell-1); font-size: 18px; line-height: 24px; }
 .leave-confirm p { margin: 0 0 var(--cell-2); color: var(--ink-soft); font-size: 14px; line-height: 20px; }
 
-/* Estudiar solo: sin sala 3D, el temporizador queda al centro */
-
-[data-mode="solo"] #app,
+/* Estudiar solo: tu escritorio en 3D, con el panel como en la sala. No hay otra silla a la que cambiarse */
 [data-mode="solo"] #hint,
-[data-mode="solo"] #room-code,
-[data-mode="solo"] #copy-link,
-[data-mode="solo"] #mini-period,
-[data-mode="solo"] #mini-time,
 [data-mode="solo"] #stand-up,
-[data-mode="solo"] #stand-up-hint,
-[data-mode="solo"] #activity-section,
-[data-mode="solo"] #camera-panel,
-[data-mode="solo"] .study-panel-logo {
+[data-mode="solo"] #stand-up-hint {
+  display: none;
+}
+
+/* Si el escritorio no se pudo cargar: sin 3D, el temporizador queda al centro */
+[data-mode="simple"] #app,
+[data-mode="simple"] #hint,
+[data-mode="simple"] #room-code,
+[data-mode="simple"] #copy-link,
+[data-mode="simple"] #mini-period,
+[data-mode="simple"] #mini-time,
+[data-mode="simple"] #stand-up,
+[data-mode="simple"] #stand-up-hint,
+[data-mode="simple"] #activity-section,
+[data-mode="simple"] #camera-panel,
+[data-mode="simple"] .study-panel-logo {
   display: none;
 }
 
@@ -2830,11 +2881,11 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   font-size: 16px;
 }
 
-[data-mode="solo"] body {
+[data-mode="simple"] body {
   background: var(--paper);
 }
 
-[data-mode="solo"] #study-panel {
+[data-mode="simple"] #study-panel {
   top: 50%;
   bottom: auto;
   left: 50%;
