@@ -7,8 +7,8 @@ import { createLabel } from './label'
 import type { ResumedPlayer } from './network'
 import { changeSeat, isSeated, onSeatChange, pickSeat, player, restorePlayer, setPlayerCharacter } from './player'
 import { closePlayerCard, getSelectedPlayerPosition, setUpPlayerCard } from './playerCard'
-import { isSeatTaken, updateRemotePlayers } from './remotePlayers'
-import { findChairAt, highlightChairs, seats, setTallFrontWallVisible, type Seat } from './room'
+import { isSeatTaken, reseatRemotePlayers, updateRemotePlayers } from './remotePlayers'
+import { buildRoom, findChairAt, highlightChairs, seats, setTallFrontWallVisible, type Seat } from './room'
 import { camera, getRenderer, scene, startRenderer, stopRenderer } from './scene'
 import { isSoftwareRendering } from './gpuCheck'
 import { getTimer, isTimerIdle } from './timer'
@@ -178,7 +178,12 @@ function loop(now: number) {
   getRenderer()?.render(scene, camera)
 }
 
-export function startRoom(nickname: string, character: Character, resumed: ResumedPlayer | null) {
+// kind: el tipo de sala, que decide su tamaño, sus mesas y su decoración
+export function startRoom(nickname: string, character: Character, resumed: ResumedPlayer | null, kind: string) {
+  buildRoom(kind)
+  reseatRemotePlayers()
+  setCameraView('room', null)
+  jumpToCameraView()
   startRenderer()
   setPlayerCharacter(character)
   setUpLocalActivity(character.color)

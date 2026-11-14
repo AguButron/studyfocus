@@ -23,22 +23,33 @@
   <body>
     <div id="app"></div>
 
-    <header id="hud" class="sf-hud" hidden>
-      <button class="sf-wordmark room-logo" type="button" title="Volver al menú">StudyFocus</button>
-      <div class="sf-hud-group">
-        <span id="hud-room-label" class="sf-hud-label">Sala</span>
-        <span id="room-code" class="sf-hud-code"></span>
-        <button id="copy-link" class="sf-btn sf-btn--sm" type="button">Copiar link</button>
-        <button id="leave-room" class="sf-btn sf-btn--sm" type="button">Salir</button>
+    <!-- La barra de la sala: a la izquierda cuál sala es, al centro el reloj, y a la derecha el chat, los amigos y salir -->
+    <header id="hud" class="sf-hud room-hud" hidden>
+      <div class="sf-hud-group room-hud-start">
+        <button class="sf-wordmark room-logo" type="button" title="Volver al menú">StudyFocus</button>
+        <span class="room-hud-divider" aria-hidden="true"></span>
+        <span class="room-hud-room">
+          <span id="hud-room-label" class="sf-hud-label">Sala</span>
+          <span id="room-code" class="sf-hud-code"></span>
+        </span>
+        <button id="copy-link" class="sf-btn sf-btn--sm sf-btn--quiet" type="button">Copiar link</button>
+      </div>
+      <div class="sf-hud-group room-hud-clock">
+        <span id="mini-period" class="sf-badge sf-badge--period"></span>
+        <span id="mini-time" class="sf-hud-clock"></span>
+      </div>
+      <div class="sf-hud-group room-hud-end">
+        <button class="sf-btn sf-btn--sm room-chat-button" type="button" aria-controls="room-chat" aria-expanded="false" title="El chat de la sala">
+          <span class="room-chat-label">Chat</span>
+          <span class="sf-badge sf-badge--count room-chat-unread" hidden></span>
+        </button>
         <button class="sf-btn sf-btn--sm room-friends" type="button" aria-controls="friends-drawer" aria-expanded="false" title="Tus amigos y el chat">
           <span class="room-friends-faces" aria-hidden="true"></span>
           <span class="room-friends-label">Amigos</span>
           <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
         </button>
-      </div>
-      <div class="sf-hud-group">
-        <span id="mini-period" class="sf-badge sf-badge--period"></span>
-        <span id="mini-time" class="sf-hud-clock"></span>
+        <span class="room-hud-divider" aria-hidden="true"></span>
+        <button id="leave-room" class="sf-btn sf-btn--sm sf-btn--quiet" type="button">Salir</button>
       </div>
     </header>
 
@@ -81,12 +92,18 @@
     </div>
 
     <section id="study" aria-label="Sesión de estudio" hidden>
-      <!-- Sentado o estudiando solo, la barra de arriba no está: el botón de Amigos va en la esquina -->
-      <button class="sf-btn sf-btn--sm sf-card--float room-friends study-friends" type="button" aria-controls="friends-drawer" aria-expanded="false" title="Tus amigos y el chat">
-        <span class="room-friends-faces" aria-hidden="true"></span>
-        <span class="room-friends-label">Amigos</span>
-        <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
-      </button>
+      <!-- Sentado o estudiando solo, la barra de arriba no está: los botones de Amigos y del chat van en la esquina -->
+      <div class="study-corner">
+        <button class="sf-btn sf-btn--sm sf-card--float room-chat-button" type="button" aria-controls="room-chat" aria-expanded="false" title="El chat de la sala">
+          <span class="room-chat-label">Chat</span>
+          <span class="sf-badge sf-badge--count room-chat-unread" hidden></span>
+        </button>
+        <button class="sf-btn sf-btn--sm sf-card--float room-friends" type="button" aria-controls="friends-drawer" aria-expanded="false" title="Tus amigos y el chat">
+          <span class="room-friends-faces" aria-hidden="true"></span>
+          <span class="room-friends-label">Amigos</span>
+          <span class="sf-badge sf-badge--count room-friends-unread" hidden></span>
+        </button>
+      </div>
       <div id="study-panel" class="sf-timer">
         <button class="sf-wordmark room-logo study-panel-logo" type="button" title="Volver al menú">StudyFocus</button>
         <div class="sf-timer-head">
@@ -234,6 +251,29 @@
         </button>
       </form>
       <p id="chat-error" class="sf-error chat-error" role="alert"></p>
+    </section>
+
+    <!-- El chat de la sala: se despliega bajo su botón. Mientras estudias está bloqueado, y solo cuenta los mensajes nuevos -->
+    <section id="room-chat" class="chat room-chat" aria-labelledby="room-chat-title" hidden>
+      <header class="chat-head">
+        <span class="chat-head-text">
+          <span id="room-chat-title" class="chat-name">Chat de la sala</span>
+        </span>
+        <button id="room-chat-close" class="sf-btn sf-btn--sm sf-btn--quiet chat-close" type="button" aria-label="Cerrar el chat de la sala" title="Cerrar el chat de la sala">✕</button>
+      </header>
+      <div id="room-chat-scroll" class="chat-scroll">
+        <p id="room-chat-status" class="sf-row-detail chat-status" role="status"></p>
+        <ol id="room-chat-messages" class="chat-messages" aria-label="Mensajes de la sala"></ol>
+      </div>
+      <p id="room-chat-locked" class="sf-row-detail room-chat-locked" hidden></p>
+      <p id="room-chat-typing" class="chat-typing" aria-live="polite" hidden></p>
+      <form id="room-chat-form" class="chat-form">
+        <textarea id="room-chat-input" class="sf-input chat-input" rows="1" maxlength="1000" placeholder="Escribe a la sala" aria-label="Mensaje para la sala"></textarea>
+        <button id="room-chat-send" class="sf-btn sf-btn--primary chat-send" type="submit" aria-label="Enviar" title="Enviar (Enter)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+      </form>
+      <p id="room-chat-error" class="sf-error chat-error" role="alert"></p>
     </section>
 
     <main id="home" class="sf-paper">
@@ -459,7 +499,7 @@
               <button class="home-study sf-card" type="button" data-open-panel="rooms">
                 <span class="home-study-text">
                   <strong>¿Estudiamos?</strong>
-                  <span class="sf-row-detail">Solo o con tus amigos, en una sala.</span>
+                  <span class="sf-row-detail">En tu estudio individual o con tus amigos, en una sala.</span>
                 </span>
                 <span class="sf-btn sf-btn--primary" aria-hidden="true">Ir a estudiar</span>
               </button>
@@ -643,7 +683,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           <section class="menu-panel sf-panel" data-panel="rooms" aria-labelledby="rooms-title">
             <header class="sf-panel-head">
               <h2 id="rooms-title">Estudiar</h2>
-              <p>Estudia solo o arma una sala y comparte el link con tus amigos.</p>
+              <p>Elige tu estudio individual, o arma una sala y comparte el link con tus amigos.</p>
             </header>
 
             <div id="session-summary" class="session-summary sf-card" role="status" hidden>
@@ -657,18 +697,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
               </div>
             </div>
 
-            <div class="sf-section">
-              <h3 class="sf-section-title">Solo</h3>
-              <div class="study-solo sf-card">
-                <div>
-                  <strong>Tu escritorio</strong>
-                  <p class="sf-row-detail">Un rincón tranquilo para ti: tu personaje ya sentado, con tu temporizador y tu música.</p>
-                </div>
-                <button id="study-solo" class="sf-btn sf-btn--primary" type="button">Estudiar solo</button>
-              </div>
-            </div>
-
-            <h3 class="sf-section-title">Con amigos</h3>
+            <h3 class="sf-section-title">Elige una sala</h3>
             <div id="room-kinds" class="sf-rooms"></div>
             <div class="panel-actions">
               <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>

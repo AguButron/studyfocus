@@ -7,7 +7,7 @@ import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } fro
 // El chat entre amigos. Los mensajes se guardan en la base y llegan al instante por la conexión de cada
 // pestaña: cada cuenta tiene su propio grupo en Socket.IO, así le llegan a todas sus pestañas abiertas.
 // Solo se escribe a un amigo; si dejan de serlo, la conversación queda para leerla, pero no para escribir.
-// Más adelante puede haber un chat por sala, con otro grupo de Socket.IO.
+// El chat de sala está en roomChat.ts.
 
 export const MAX_MESSAGE_LENGTH = 1000
 const PAGE_SIZE = 50 // mensajes por vez al abrir una conversación o subir a ver los anteriores

@@ -15,6 +15,7 @@ import { createFriendsHandler } from './friends.ts'
 import { addConnection, clearPresence, markActive, removeConnection, setPresence } from './presence.ts'
 import { accountRoom, createChatHandler, setUpChatSocket } from './chat.ts'
 import { createProfilesHandler } from './profiles.ts'
+import { forgetRoomChat, setUpRoomChatSocket } from './roomChat.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
 import { deleteAbandonedRooms, deleteSavedRoom, saveRoom, touchSavedRoom } from './savedRooms.ts'
 import { startTestPeople } from './testPeople.ts'
@@ -22,15 +23,19 @@ import { startTestPeople } from './testPeople.ts'
 const PORT = Number(process.env.PORT) || 3000 // el hosting indica el puerto con esta variable
 const CLIENT_DIR = fileURLToPath(new URL('../../client/dist', import.meta.url))
 const CODE_LENGTH = 6
-const MAX_PLAYERS_PER_ROOM = 12
 const ROOM_HALF_SIZE = 6
 const MIN_MOVE_INTERVAL = 30 // milisegundos
-const MAX_MESSAGE_SIZE = 1024 // bytes
+// bytes por aviso de Socket.IO: uno más grande corta la conexión. Un mensaje de chat de 1000 caracteres, con tildes
+// o emojis, ocupa hasta 4000 bytes (más que los 1024 de antes, que desconectaban a quien lo enviaba)
+const MAX_MESSAGE_SIZE = 8 * 1024
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // sin letras y números fáciles de confundir
-const SEAT_COUNT = 16
 const ACTIVITIES = ['computer', 'reading', 'writing']
 const PERIODS = ['study', 'break']
-const ROOM_KINDS = ['study', 'solo']
+// Los tipos de sala y cuántas sillas tiene cada uno: caben tantas personas como sillas. 'study' es el de siempre,
+// el salón de 16. Cómo se ve cada uno lo decide la página (client/src/roomLayout.ts)
+const ROOM_SEATS: Record<string, number> = { duo: 2, group: 4, cafe: 8, library: 12, study: 16, solo: 1 }
+const ROOM_KINDS = Object.keys(ROOM_SEATS)
+const DEFAULT_KIND = 'study'
 const SOLO_KIND = 'solo' // estudiar solo: una sala privada, que nadie más puede unirse
 const MAX_TOKEN_LENGTH = 64
 const RECONNECT_WAIT = 15_000 // milisegundos que se guarda el lugar de quien se desconecta
@@ -118,12 +123,13 @@ const rooms = new Map<string, Room>()
 const roomKinds = new Map<string, string>()
 
 function getRoomKind(code: string) {
-  return roomKinds.get(code) ?? ROOM_KINDS[0]
+  return roomKinds.get(code) ?? DEFAULT_KIND
 }
 
 function forgetRoom(code: string) {
   rooms.delete(code)
   roomKinds.delete(code)
+  forgetRoomChat(code)
 }
 const sessions = new Map<string, Session>()
 
@@ -264,9 +270,14 @@ function handOver(from: Session, to: Session) {
   return { ...timer, remainingMs: Math.max(0, timer.remainingMs - elapsed), at: undefined }
 }
 
-function isFreeSeat(room: Room, seatId: unknown): seatId is number {
+// Cuántas personas caben en una sala: una por silla
+function maxPlayers(code: string) {
+  return ROOM_SEATS[getRoomKind(code)] ?? ROOM_SEATS[DEFAULT_KIND]
+}
+
+function isFreeSeat(code: string, room: Room, seatId: unknown): seatId is number {
   if (typeof seatId !== 'number' || !Number.isInteger(seatId)) return false
-  if (seatId < 0 || seatId >= SEAT_COUNT) return false
+  if (seatId < 0 || seatId >= maxPlayers(code)) return false
 
   for (const other of room.values()) {
     if (other.seatId === seatId) return false
@@ -509,14 +520,14 @@ io.on('connection', (socket) => {
     if (!saved || saved.accountId !== account.id) return null
 
     const room = await findRoom(saved.code)
-    if (!room || room.size >= MAX_PLAYERS_PER_ROOM) return null
+    if (!room || room.size >= maxPlayers(saved.code)) return null
 
     const restoredPlayer: PlayerState = {
       id: socket.id,
       nickname: account.name,
       username: account.username,
       character: describeAccountCharacter(account),
-      seatId: isFreeSeat(room, saved.seatId) ? saved.seatId : null,
+      seatId: isFreeSeat(saved.code, room, saved.seatId) ? saved.seatId : null,
       x: saved.x,
       z: saved.z,
       activity: saved.activity,
@@ -683,7 +694,7 @@ io.on('connection', (socket) => {
     // Si la misma cuenta ya está adentro desde otra ventana y se cambia a esta, ese lugar se libera
     const own = room ? findOwnSessions(code) : []
     const freed = takeOver === true ? own.length : 0
-    if (!room || room.size - freed >= MAX_PLAYERS_PER_ROOM || getRoomKind(code) === SOLO_KIND) {
+    if (!room || room.size - freed >= maxPlayers(code) || getRoomKind(code) === SOLO_KIND) {
       reply(false)
       return
     }
@@ -704,7 +715,8 @@ io.on('connection', (socket) => {
       if (other.kick) other.kick()
       else removeFromRoom(other)
     }
-    reply(handedTimer ? { timer: handedTimer } : true)
+    // El tipo de sala decide cómo la arma la página
+    reply({ kind: getRoomKind(code), timer: handedTimer ?? undefined })
   })
 
   // Al volver al menú: sale de inmediato, y responde cuánto estudió y con quién para el resumen
@@ -790,11 +802,25 @@ io.on('connection', (socket) => {
     })
   })
 
+  // El chat de sala: solo para quien está en una sala con otros, y bloqueado mientras estudia
+  setUpRoomChatSocket(io, socket, () => {
+    if (!session || !currentCode) return null
+    return {
+      code: currentCode,
+      accountId: session.accountId,
+      isSolo: getRoomKind(currentCode) === SOLO_KIND,
+      isStudying: player.period === 'study' && player.isRunning,
+      name: player.nickname,
+      username: player.username,
+      character: player.character,
+    }
+  })
+
   socket.on('seat:take', (seatId: unknown, reply: unknown) => {
   if (typeof reply !== 'function') return
 
   const room = currentCode ? rooms.get(currentCode) : undefined
-  if (!room || player.seatId !== null || !isFreeSeat(room, seatId)) {
+  if (!room || player.seatId !== null || !isFreeSeat(currentCode!, room, seatId)) {
     reply(false)
     return
   }

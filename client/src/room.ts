@@ -1,13 +1,14 @@
 import * as THREE from 'three'
-import { CHAIR_SIZE, seats, TABLE_DEPTH, TABLE_POSITIONS, TABLE_WIDTH } from './roomLayout'
+import { buildDecor } from './roomDecor'
+import { CHAIR_SIZE, getCurrentLayout, seats, TABLE_DEPTH, tableWidth, useRoomLayout } from './roomLayout'
 import { scene } from './scene'
 
-// La sala 3D: el piso, las paredes, las mesas y las sillas. Dónde va cada cosa está en roomLayout
-export { CHAIR_SIZE, SEATED_Y, seats, STANDING_Y, TABLE_DEPTH, TABLE_WIDTH, type Seat } from './roomLayout'
+// La sala 3D: el piso, las paredes, las mesas, las sillas y la decoración. Cómo es cada tipo de sala está en
+// roomLayout. Se arma una sola vez por página, al entrar (para ir a otra sala la página se recarga)
+export { CHAIR_SIZE, SEATED_Y, seats, STANDING_Y, TABLE_DEPTH, type Seat } from './roomLayout'
 
-const WALL_COLOR = 0x585b70
-const TABLE_COLOR = 0xa6744f
-const CHAIR_COLOR = 0x74543a
+const WALL_HEIGHT = 2.5
+const WALL_THICKNESS = 0.3
 
 // Las sillas libres se iluminan mientras se elige asiento; la que está bajo el mouse, más
 const FREE_CHAIR_GLOW = 0x2f9e5f
@@ -24,32 +25,45 @@ function addBox(width: number, height: number, depth: number, x: number, z: numb
   return box
 }
 
+let tallFrontWall: THREE.Mesh | null = null
+let chairs: THREE.Mesh[] = []
 
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(12, 12),
-  new THREE.MeshStandardMaterial({ color: 0x45475a }),
-)
-floor.rotation.x = -Math.PI / 2
-scene.add(floor)
+// Arma la sala del tipo indicado. Llena también la lista de sillas, que usan el personaje y los demás
+export function buildRoom(kind: string) {
+  const layout = useRoomLayout(kind)
+  const { width, depth, wallColor } = layout
 
-addBox(12, 2.5, 0.3, 0, -6, WALL_COLOR)
-addBox(0.3, 2.5, 12, -6, 0, WALL_COLOR)
-addBox(0.3, 2.5, 12, 6, 0, WALL_COLOR)
-addBox(12, 0.3, 0.3, 0, 6, WALL_COLOR)
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), new THREE.MeshStandardMaterial({ color: layout.floorColor }))
+  floor.rotation.x = -Math.PI / 2
+  scene.add(floor)
 
-// Desde arriba, una pared alta taparía la sala; solo hace falta en primera persona
-const tallFrontWall = addBox(12, 2.5, 0.3, 0, 6, WALL_COLOR)
-tallFrontWall.visible = false
+  addBox(width, WALL_HEIGHT, WALL_THICKNESS, 0, -depth / 2, wallColor)
+  addBox(WALL_THICKNESS, WALL_HEIGHT, depth, -width / 2, 0, wallColor)
+  addBox(WALL_THICKNESS, WALL_HEIGHT, depth, width / 2, 0, wallColor)
+  addBox(width, WALL_THICKNESS, WALL_THICKNESS, 0, depth / 2, wallColor)
+
+  // Desde arriba, una pared alta taparía la sala; solo hace falta en primera persona
+  tallFrontWall = addBox(width, WALL_HEIGHT, WALL_THICKNESS, 0, depth / 2, wallColor)
+  tallFrontWall.visible = false
+
+  for (const table of layout.tables) {
+    addBox(tableWidth(table), 0.75, TABLE_DEPTH, table.x, table.z, layout.tableColor)
+  }
+  // Una silla por asiento, en el mismo orden que seats: el número de silla es su posición
+  chairs = seats.map((seat) => addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, seat.x, seat.z, layout.chairColor))
+
+  scene.add(buildDecor(layout.decor))
+}
 
 export function setTallFrontWallVisible(visible: boolean) {
-  tallFrontWall.visible = visible
+  if (tallFrontWall) tallFrontWall.visible = visible
 }
 
-for (const table of TABLE_POSITIONS) {
-  addBox(TABLE_WIDTH, 0.75, TABLE_DEPTH, table.x, table.z, TABLE_COLOR)
+// Hasta dónde puede llegar la cámara sin pasar las paredes
+export function getRoomBounds() {
+  const { width, depth } = getCurrentLayout()
+  return { halfWidth: width / 2 - 0.5, halfDepth: depth / 2 - 0.5 }
 }
-// Una silla por asiento, en el mismo orden que seats: el número de silla es su posición
-const chairs = seats.map((seat) => addBox(CHAIR_SIZE, 0.45, CHAIR_SIZE, seat.x, seat.z, CHAIR_COLOR))
 
 // La silla bajo el rayo del mouse, si hay alguna
 export function findChairAt(raycaster: THREE.Raycaster) {

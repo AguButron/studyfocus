@@ -9,6 +9,8 @@ import { createRoom, joinRoom, leaveRoom, onSessionReplaced, reconnect, resumeSa
 import { hideMusic, setUpMusic } from './music'
 import { startFriends } from './friends'
 import { setDrawerInRoom } from './friendsDrawer'
+import { setUpRoomChat, startRoomChat, stopRoomChat } from './roomChat'
+import { getRoomKind } from './roomKinds'
 import { saveSummary } from './stats'
 import { adoptTimer, getTimer, isTimerIdle, resetTimer } from './timer'
 
@@ -106,7 +108,7 @@ async function leaveToMenu() {
 export const SOLO_KIND = 'solo'
 
 export async function showHome(
-  onEnter: (nickname: string, character: Character, resumed: ResumedPlayer | null, isSolo: boolean) => void,
+  onEnter: (nickname: string, character: Character, resumed: ResumedPlayer | null, kind: string) => void, // kind: el tipo de sala
   onLeave: () => void, // detiene la sala, que queda escondida
   // Descarga la sala 3D antes de entrar a una (el servidor manda quiénes están adentro justo al entrar)
   prepareRoom: () => Promise<boolean>,
@@ -134,6 +136,7 @@ export async function showHome(
     if (account?.username && username !== account.username) window.location.reload()
   })
 
+  setUpRoomChat()
   copyLinkButton.addEventListener('click', copyLink)
   leaveRoomButton.addEventListener('click', askToLeave)
   // Dentro de la sala o del temporizador, el logo también vuelve al menú
@@ -196,7 +199,7 @@ export async function showHome(
     setRoomTheme(true)
     // Estudiando solo no hay sala 3D ni link para compartir
     document.documentElement.dataset.mode = isSolo ? 'solo' : 'room'
-    hudRoomLabel.textContent = isSolo ? 'Estudiando solo' : 'Sala'
+    hudRoomLabel.textContent = isSolo ? 'Estudiando solo' : getRoomKind(kind).name
     roomCodeText.textContent = code
     hideMenu()
     home.hidden = true
@@ -204,11 +207,14 @@ export async function showHome(
     // Los amigos y el chat siguen a mano dentro de la sala, en una pestaña flotante
     setDrawerInRoom(true)
     startFriends()
-    onEnter(account.name, account.character, resumed, isSolo)
+    // El chat de la sala, solo si hay otros con quién hablar (estudiando solo no hay)
+    if (!isSolo) startRoomChat(code)
+    onEnter(account.name, account.character, resumed, kind)
   }
 
   showMenuAgain = () => {
     onLeave()
+    stopRoomChat()
     setDrawerInRoom(false)
     statusText.hidden = true // si la página partió dentro de la sala, el "Cargando…" seguía puesto
     setRoomTheme(false)
@@ -233,7 +239,7 @@ export async function showHome(
     }
     if (typeof result === 'object') {
       if (result.timer) adoptTimer(result.timer) // sigue con el temporizador de la otra ventana
-      enter(code, account!)
+      enter(code, account!, null, result.kind)
     } else if (result === 'duplicate') {
       showRoomsError('No se pudo cambiar la sesión a esta ventana. Prueba de nuevo.')
     } else {
@@ -280,7 +286,7 @@ export async function showHome(
       }
       const created = await createRoom(kind)
       if (created && created !== 'duplicate') {
-        enter(created.code, account!)
+        enter(created.code, account!, null, kind)
       } else {
         showRoomsError('No se pudo crear la sala. Prueba de nuevo.')
       }

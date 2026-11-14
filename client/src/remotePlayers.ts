@@ -50,11 +50,19 @@ function placeOnSeat(remote: { mesh: THREE.Mesh; targetX: number; targetZ: numbe
 }
 
 
+// Sin su silla (aún no se arma la sala, o no existe en ella) no hay nada sobre la mesa
 function showSeatedActivity(activity: ActivityView, seatId: number | null) {
-  if (seatId === null) {
-    activity.hide()
-  } else {
-    activity.showAt(seats[seatId])
+  const seat = seatId === null ? undefined : seats[seatId]
+  if (seat) activity.showAt(seat)
+  else activity.hide()
+}
+
+// Quienes ya estaban en la sala llegan justo al entrar, antes de que se sepa qué sala armar y dónde están sus
+// sillas. Apenas se arma, cada uno se sienta en la suya
+export function reseatRemotePlayers() {
+  for (const remote of remotePlayers.values()) {
+    placeOnSeat(remote, remote.seatId)
+    showSeatedActivity(remote.activity, remote.seatId)
   }
 }
 

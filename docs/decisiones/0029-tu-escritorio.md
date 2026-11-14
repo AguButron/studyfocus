@@ -4,6 +4,8 @@
 
 **Fecha:** 2026-11-10
 
+**Cambio del 2026-11-14:** ya no se entra con un botón "Estudiar solo" aparte. Es la primera de las salas, "Estudio individual" ([0031](0031-tipos-de-sala.md)).
+
 ## Contexto
 
 Estudiar solo era solo el temporizador al centro, sin 3D. Se quiere algo más acogedor: ver a tu personaje estudiando en un lugar propio, como en la sala, pero tranquilo y sin elegir nada.

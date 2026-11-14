@@ -116,10 +116,12 @@ export async function ensureSpaces() {
   if (!isLoaded) await loadSpaces()
 }
 
-// Cómo se muestra el apartado de algo de la agenda: su sigla, o su nombre
+// Cómo se muestra el apartado de algo de la agenda: su sigla, o su nombre (label), y su nombre completo (name)
 export function describeItemSection(sectionId: string | null) {
   const found = findSection(sectionId)
-  return found ? { label: found.section.code ?? found.section.name, color: found.section.color } : null
+  return found
+    ? { label: found.section.code ?? found.section.name, name: found.section.name, color: found.section.color }
+    : null
 }
 
 // Vuelve a pedirlos al servidor, por ejemplo para ver las horas estudiadas al día

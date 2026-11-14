@@ -70,8 +70,9 @@ async function fetchPage(otherId: string, before: string | null) {
   }
 }
 
-// El texto con sus links clicables. Se arma con nodos de texto, nunca con HTML: así un mensaje no puede inyectar nada
-function renderBody(body: string) {
+// El texto con sus links clicables. Se arma con nodos de texto, nunca con HTML: así un mensaje no puede inyectar nada.
+// También lo usa el chat de sala
+export function renderBody(body: string) {
   const fragment = document.createDocumentFragment()
   let last = 0
   for (const match of body.matchAll(LINK)) {
@@ -88,7 +89,7 @@ function renderBody(body: string) {
   return fragment
 }
 
-function describeDay(date: Date) {
+export function describeDay(date: Date) {
   const today = new Date()
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)

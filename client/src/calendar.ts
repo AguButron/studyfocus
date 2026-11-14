@@ -88,8 +88,8 @@ function createChip(item: AgendaItem, isCompact: boolean) {
   // Con apartado, se ve de su color y con su nombre; sin apartado, del color de su tipo
   const section = describeItemSection(item.sectionId)
   if (section) chip.style.setProperty('--kind', section.color)
-  const label = [kindName(item.kind), section?.label, item.time].filter(Boolean).join(' · ')
-  chip.title = `${label}: ${item.title}`
+  const label = [kindName(item.kind), item.time].filter(Boolean).join(' · ')
+  chip.title = `${[kindName(item.kind), section?.name, item.time].filter(Boolean).join(' · ')}: ${item.title}`
 
   if (!isCompact) {
     const kind = document.createElement('span')
@@ -101,6 +101,13 @@ function createChip(item: AgendaItem, isCompact: boolean) {
   title.className = 'agenda-chip-title'
   title.textContent = isCompact && item.time ? `${item.time} ${item.title}` : item.title
   chip.append(title)
+  // El ramo en su propia línea, para saber de cuál es sin pasar el mouse
+  if (section) {
+    const name = document.createElement('span')
+    name.className = 'agenda-chip-section'
+    name.textContent = section.name
+    chip.append(name)
+  }
 
   chip.addEventListener('click', (event) => {
     event.stopPropagation()
@@ -210,7 +217,12 @@ function renderYear(items: AgendaItem[]) {
           day.dataset.kind = dayItems[0].kind
           const section = describeItemSection(dayItems[0].sectionId)
           if (section) day.style.setProperty('--kind', section.color)
-          day.title = dayItems.map((item) => `${kindName(item.kind)}: ${item.title}`).join('\n')
+          day.title = dayItems
+            .map((item) => {
+              const itemSection = describeItemSection(item.sectionId)
+              return `${[kindName(item.kind), itemSection?.name].filter(Boolean).join(' · ')}: ${item.title}`
+            })
+            .join('\n')
         }
         day.addEventListener('click', () => {
           anchor = date

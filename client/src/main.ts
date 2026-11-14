@@ -1,7 +1,7 @@
 import './style.css'
 import type { Character } from './character'
 import { getActivity } from './choices'
-import { showHome } from './home'
+import { showHome, SOLO_KIND } from './home'
 import { sendStatus } from './network'
 import { playPeriodSound } from './sound'
 import { getTimer, isTimerIdle, onPeriodChange, updateTimer } from './timer'
@@ -65,7 +65,8 @@ function stopRoom() {
 }
 
 showHome(
-  async (nickname, character, resumed, isSolo) => {
+  async (nickname, character, resumed, kind) => {
+    const isSolo = kind === SOLO_KIND
     onPeriodChange(playPeriodSound)
     if (isSolo) {
       // Estudiar solo: tu escritorio en 3D, ya sentado. Si no se puede descargar, queda la pantalla simple
@@ -79,7 +80,7 @@ showHome(
         window.location.reload() // sin la sala no se puede seguir: al recargar se vuelve a ella
         return
       }
-      room!.startRoom(nickname, character, resumed)
+      room!.startRoom(nickname, character, resumed, kind)
     }
     shareStatus()
     // Fuera del bucle de dibujo, que se detiene al estudiar con la pestaña oculta

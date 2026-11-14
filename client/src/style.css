@@ -504,23 +504,15 @@ body {
 .sf-room-text { padding: 0 var(--cell-1); color: var(--ink-soft); font-size: 13px; line-height: 18px; }
 .sf-room-meta { padding: 6px var(--cell-1) 0; color: var(--ink-soft); font: 500 11px/16px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
 
-.sf-room--soon {
-  align-items: center;
-  justify-content: center;
-  min-height: 216px;
-  border-style: dashed;
-  border-color: var(--edge);
-  background: transparent;
-  color: var(--ink-soft);
-  text-align: center;
-  cursor: default;
-}
-.sf-room--soon:hover { border-color: var(--edge); box-shadow: none; }
 
 /* Plan drawings: a room seen from above */
 .sf-plan-table { fill: var(--card); stroke: var(--ink-soft); stroke-width: var(--stroke-2); vector-effect: non-scaling-stroke; }
 .sf-plan-seat { fill: var(--card); stroke: var(--ink-soft); stroke-width: var(--stroke-2); vector-effect: non-scaling-stroke; }
 .sf-plan-seat[data-taken] { fill: var(--marker); stroke: var(--marker); }
+/* Las paredes, las alfombras y los muebles, más tenues que las mesas */
+.sf-plan-walls { fill: none; stroke: var(--line); stroke-width: var(--stroke-2); vector-effect: non-scaling-stroke; }
+.sf-plan-rug { fill: var(--card-sunken); stroke: none; }
+.sf-plan-furniture { fill: var(--line); stroke: none; }
 
 /* ── List rows ────────────────────────────────────── */
 
@@ -1547,6 +1539,19 @@ body {
 .agenda-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .agenda-chip-kind { color: var(--ink-soft); font: 600 10px/14px var(--font-mono); letter-spacing: 0.04em; text-transform: uppercase; }
 .agenda-chip-title { overflow: hidden; font-size: 13px; line-height: 18px; font-weight: 600; overflow-wrap: anywhere; }
+/* El ramo, debajo del título y con su color: corto, sin pasar a otra línea */
+.agenda-chip-section {
+  overflow: hidden;
+  color: color-mix(in srgb, var(--kind) 55%, var(--ink));
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-chip--compact .agenda-chip-section { font-size: 10px; line-height: 13px; }
+/* En la semana sobra alto: el nombre entero, aunque ocupe dos líneas */
+.calendar-grid--week .agenda-chip-section { white-space: normal; overflow-wrap: anywhere; }
 .agenda-chip[data-done] { opacity: 0.55; }
 .agenda-chip[data-done] .agenda-chip-title { text-decoration: line-through; }
 .agenda-chip--compact { padding: 2px 6px; }
@@ -2759,6 +2764,23 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   left: 0;
   right: 0;
 }
+/* Tres partes con aire entre ellas: la sala a la izquierda, el reloj justo al centro y los botones a la derecha */
+.room-hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--cell-3);
+  min-height: 56px;
+}
+.room-hud-start { justify-self: start; gap: var(--cell-2); }
+.room-hud-clock { justify-self: center; gap: var(--cell-1-5); }
+.room-hud-end { justify-self: end; gap: var(--cell-1); }
+.room-hud-room { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.room-hud-divider { flex: none; width: var(--stroke-1); height: 20px; background: var(--line); }
+.room-hud-end .room-hud-divider { margin: 0 var(--cell-half); }
+/* Con poco ancho, el nombre de la sala no cabe junto al reloj: queda solo su código */
+@media (max-width: 1120px) {
+  .room-hud #hud-room-label { display: none; }
+}
 
 #hint {
   position: fixed;
@@ -2819,11 +2841,60 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .friends-drawer[data-popover] .drawer-online-photos { display: none; }
 .friends-drawer[data-popover] .friends-drawer-body { padding: var(--cell-1-5); overflow-y: auto; }
 .friends-drawer[data-popover] .drawer-lists .sf-section-title:first-of-type { margin-top: 0; }
-.study-friends {
+/* Sentado, los botones del chat de la sala y de Amigos van juntos en la esquina */
+.study-corner {
   position: absolute;
   top: var(--cell-2);
   right: var(--cell-2);
+  display: flex;
+  gap: var(--cell-1);
   pointer-events: auto;
+}
+
+/* El chat de la sala: su botón, con los mensajes nuevos, y una ventana que se despliega bajo él */
+.room-chat-button { gap: 6px; }
+.room-chat-button[aria-expanded="true"] { background: var(--card-sunken); }
+.room-chat-label { font-weight: 600; }
+.room-chat-unread { background: var(--online); color: #fff; }
+.chat.room-chat {
+  top: var(--room-chat-top, 64px);
+  right: var(--room-chat-right, 16px);
+  bottom: auto;
+  width: min(340px, calc(100vw - 32px));
+  height: min(460px, calc(100vh - var(--room-chat-top, 64px) - 16px));
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(10px);
+  animation: popover-in 140ms ease-out;
+}
+/* Bloqueado mientras estudias: solo el aviso, del alto justo */
+.chat.room-chat:has(#room-chat-locked:not([hidden])) { height: auto; }
+.room-chat-locked { margin: 0; padding: var(--cell-2) var(--cell-1-5); text-align: center; }
+@media (prefers-reduced-motion: reduce) {
+  .chat.room-chat { animation: none; }
+}
+/* En el celular tapa la pantalla entera, como el chat con un amigo */
+@media (max-width: 720px) {
+  .chat.room-chat { inset: 0; width: auto; height: 100dvh; border: 0; border-radius: 0; }
+}
+/* Quién escribió: su foto y su nombre, que abre su perfil en otra pestaña. Va solo en el primero de varios seguidos */
+.room-chat-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 2px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+a.room-chat-author:hover span { text-decoration: underline; text-underline-offset: 2px; }
+a.room-chat-author:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-1); }
+.room-chat-face {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--card-sunken);
 }
 
 #study-panel {
@@ -2895,19 +2966,6 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   transform: translate(-50%, -50%);
   border: var(--stroke-1) solid var(--line);
   border-radius: var(--radius-2);
-}
-
-.study-solo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--cell-2);
-  padding: var(--cell-2) var(--cell-3);
-}
-
-.study-solo p {
-  margin: 0;
 }
 
 #abandon-confirm p,
@@ -3279,9 +3337,14 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="fal
   }
 
   #mini-period,
-  #hud .sf-wordmark {
+  #hud .sf-wordmark,
+  #hud .room-hud-divider,
+  #hud-room-label {
     display: none;
   }
+
+  .room-hud { gap: var(--cell-1); }
+  .room-hud-start { gap: var(--cell-1); }
 
   #hud {
     padding: 0 var(--cell-2);

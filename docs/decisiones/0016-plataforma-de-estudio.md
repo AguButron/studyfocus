@@ -46,7 +46,7 @@ Cambiado por la [decisión 0018](0018-espacios-y-apartados.md): los ramos son ap
 
 Cambiado por la [decisión 0017](0017-agenda-y-calendario.md): Inicio es un calendario con la agenda y sus avisos.
 
-- Lo estudiado hoy, la racha de días y una meta diaria de horas que elige cada persona, aparte de las metas de los ramos.
+- Lo estudiado hoy y la racha de días. La meta diaria de horas se descartó: la reemplazan los [objetivos de estudio](0028-objetivos-de-estudio.md), junto a la meta semanal de cada ramo.
 - Las próximas pruebas y tareas, ordenadas por fecha.
 - Los amigos que están estudiando ahora, para unirse a su sala.
 - Un botón **Estudiar** para partir directo: solo o en una sala, eligiendo el ramo.

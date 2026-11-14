@@ -162,10 +162,13 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] Estadísticas por período: últimos 7, 30 o 90 días, último año, desde siempre o entre dos fechas. Cambian el total (con el promedio por día y los días con estudio), las barras (por día, semana, mes o año según el largo), los apartados y con quién estudiaste; Hoy, Racha y En total no cambian
 - [x] [Elegir el asiento con un clic](decisiones/0027-elegir-asiento-con-un-clic.md): la sala se ve desde arriba con las sillas libres iluminadas, y "Cambiar de asiento" reemplaza a caminar con WASD y sentarse con E
 - [x] [Ahorrar memoria](decisiones/0026-ahorrar-memoria.md): YouTube con portada hasta apretar ▶, la escena 3D solo dentro de la sala y Three.js en un archivo aparte
-- [ ] Chat de sala
+- [x] [Chat de sala](decisiones/0030-chat-de-sala.md): lo escriben todos los de la sala, solo fuera de un periodo de estudio; mientras estudias, el botón cuenta los mensajes nuevos
+- [x] La barra de arriba de la sala en tres partes: la sala y su link a la izquierda, el reloj al centro, y Chat, Amigos y Salir a la derecha
+- [x] [Seis tipos de sala](decisiones/0031-tipos-de-sala.md): Estudio individual (tu escritorio, en vez del botón "Estudiar solo"), Estudio de a dos (2), Sala de grupo (4), Café (8), Biblioteca (12) y Salón de estudio (16), cada una decorada con bloques hasta tener su arte
+- [ ] El arte de cada sala y de cada adorno
 - [x] [Aviso sin aceleración por hardware](decisiones/0026-ahorrar-memoria.md): los cuadros negros con YouTube en la sala pasaban con la aceleración apagada; ahora la sala avisa cómo activarla
 - [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)
-- [ ] Agregar `GEMINI_API_KEY` en Render para la versión publicada
+- [x] Agregar `GEMINI_API_KEY` en Render para la versión publicada
 - [x] Inicio en dos columnas: ¿Estudiamos? y tu carpeta más reciente con el punteo de sus ramos a la izquierda, y los próximos 7 días en una columna a la derecha
 
 **Terminada cuando:** creo mis ramos y mis pruebas, estudio solo o con amigos eligiendo el ramo, y en Inicio veo cuánto llevo hoy, mi racha y lo que viene.

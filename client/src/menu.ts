@@ -9,14 +9,14 @@ import { setUpProfileDialog } from './profileDialog'
 import { CHARACTER_COLORS, setCharacterPhoto, type Character } from './character'
 import { drawRoomPlan } from './roomPlan'
 import { COUNTRIES, getFlag } from './countries'
-import { ROOM_KINDS } from './roomKinds'
+import { DEFAULT_ROOM_KIND, ROOM_KINDS, SOLO_ROOM_KIND } from './roomKinds'
 import { refreshStats, setUpStatsRange, setUpSummary, showSavedSummary } from './stats'
 
 type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person'
 
 interface MenuActions {
   createRoom(kind: string): void
-  studySolo(): void
+  studySolo(): void // el estudio individual, que no se comparte
   joinRoom(code: string): void
   onAccountChange(account: Account | null): void
 }
@@ -56,7 +56,7 @@ const aboutMessage = document.querySelector<HTMLParagraphElement>('#about-messag
 const dateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long' })
 const logoutButton = document.querySelector<HTMLButtonElement>('#logout')!
 
-let selectedKind = ROOM_KINDS[0].id
+let selectedKind = DEFAULT_ROOM_KIND
 
 function isPanel(value: unknown): value is Panel {
   return typeof value === 'string' && [...panels].some((panel) => panel.dataset.panel === value)
@@ -111,27 +111,28 @@ function loadPanel(): Panel {
 
 function showRoomKinds() {
   roomKindsList.replaceChildren()
-  const plan = drawRoomPlan() // hoy hay un solo tipo de sala, con esta distribución
 
+  // Una tarjeta por tipo, con su plano, cuántas personas caben y cómo es
   for (const kind of ROOM_KINDS) {
     const card = document.createElement('button')
     card.type = 'button'
     card.className = 'sf-room'
     card.setAttribute('aria-pressed', String(kind.id === selectedKind))
-    card.innerHTML = `<span class="sf-room-plan sf-paper" aria-hidden="true">${plan}</span>
-      <span class="sf-room-name"></span>`
+    card.innerHTML = `<span class="sf-room-plan sf-paper" aria-hidden="true">${drawRoomPlan(undefined, kind.id)}</span>
+      <span class="sf-room-name"></span>
+      <span class="sf-room-text"></span>
+      <span class="sf-room-meta"></span>`
     card.querySelector('.sf-room-name')!.textContent = kind.name
+    card.querySelector('.sf-room-text')!.textContent = kind.description
+    card.querySelector('.sf-room-meta')!.textContent = kind.seats === 1 ? 'Solo tú' : `Hasta ${kind.seats} personas`
     card.addEventListener('click', () => {
       selectedKind = kind.id
       showRoomKinds()
     })
     roomKindsList.append(card)
   }
-
-  const soon = document.createElement('div')
-  soon.className = 'sf-room sf-room--soon'
-  soon.innerHTML = '<span class="sf-badge sf-badge--soon">Próximamente</span>'
-  roomKindsList.append(soon)
+  // Al estudio individual se entra directo; las demás se crean para compartir su link
+  createRoomButton.textContent = selectedKind === SOLO_ROOM_KIND ? 'Empezar a estudiar' : 'Crear sala'
 }
 
 function showCharacter(character: Character) {
@@ -239,7 +240,10 @@ export function setUpMenu(menuActions: MenuActions) {
     link.addEventListener('click', () => showPanel(link.dataset.panel as Panel))
   }
 
-  createRoomButton.addEventListener('click', () => actions.createRoom(selectedKind))
+  // El estudio individual no es una sala para compartir: se entra directo a tu escritorio
+  createRoomButton.addEventListener('click', () =>
+    selectedKind === SOLO_ROOM_KIND ? actions.studySolo() : actions.createRoom(selectedKind),
+  )
   setUpHomePanel()
   setUpProfilePage({ joinRoom: (code) => actions.joinRoom(code), editOwnProfile: () => showPanel('profile') })
   setUpSpacesPanel(() => showPanel('spaces'))
@@ -247,7 +251,6 @@ export function setUpMenu(menuActions: MenuActions) {
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open-panel]')) {
     button.addEventListener('click', () => showPanel(button.dataset.openPanel as Panel))
   }
-  document.querySelector<HTMLButtonElement>('#study-solo')!.addEventListener('click', () => actions.studySolo())
   setUpFriends((code) => actions.joinRoom(code))
   setUpProfileDialog((code) => actions.joinRoom(code))
   setUpNavToggle()

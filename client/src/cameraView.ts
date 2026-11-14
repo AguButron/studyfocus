@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { Seat } from './room'
+import { getCurrentLayout, type Seat } from './roomLayout'
 import { camera } from './scene'
 
 import type { CameraKind } from './choices'
@@ -19,7 +19,7 @@ const DESK_LOOK_DISTANCE = 1.3
 const FOCUS_DISTANCE = 1.8 // metros desde la persona
 const FOCUS_MIN_HEIGHT = 1.5
 const FOCUS_LOOK_HEIGHT = 1.1 // sobre su centro, para que también se vea su apodo
-const FOCUS_ROOM_LIMIT = 5.5 // metros desde el centro: no pasa más allá de las paredes
+const WALL_MARGIN = 0.5 // metros: la cámara no se acerca más que esto a una pared
 const TABLE_SIDE_DISTANCE = 4 // desde el centro de la mesa; alcanza sin chocar con las mesas del otro lado
 const TABLE_SIDE_HEIGHT = 1.9
 const TABLE_SIDE_LOOK_HEIGHT = 0.9
@@ -42,8 +42,17 @@ function aimAt(position: THREE.Vector3Like, lookAt: THREE.Vector3Like) {
   targetRotation.copy(helper.quaternion)
 }
 
+// Hasta dónde llega la cámara sin pasar las paredes, según la sala
+function roomLimits() {
+  const { width, depth } = getCurrentLayout()
+  return { x: width / 2 - WALL_MARGIN, z: depth / 2 - WALL_MARGIN }
+}
+
+// Desde arriba y adelante, más lejos mientras más grande es la sala (la de 12 × 12 se ve desde 10 metros)
 function viewRoom() {
-  aimAt({ x: 0, y: 10, z: 10 }, { x: 0, y: 0, z: 0 })
+  const { width, depth } = getCurrentLayout()
+  const distance = Math.max(width * 0.75, depth) * 0.83
+  aimAt({ x: 0, y: distance, z: distance + depth * 0.05 }, { x: 0, y: 0, z: depth * 0.05 })
 }
 
 function viewFromDesk(seat: Seat) {
@@ -56,8 +65,9 @@ function viewFromDesk(seat: Seat) {
 // Desde el pasillo central, mirando la mesa de costado y hacia la pared
 function viewFromTableSide(seat: Seat) {
   const side = seat.tableX < 0 ? 1 : -1
+  const limit = roomLimits().x
   aimAt(
-    { x: seat.tableX + side * TABLE_SIDE_DISTANCE, y: TABLE_SIDE_HEIGHT, z: seat.tableZ },
+    { x: THREE.MathUtils.clamp(seat.tableX + side * TABLE_SIDE_DISTANCE, -limit, limit), y: TABLE_SIDE_HEIGHT, z: seat.tableZ },
     { x: seat.tableX, y: TABLE_SIDE_LOOK_HEIGHT, z: seat.tableZ },
   )
 }
@@ -100,11 +110,12 @@ export function focusCameraOn(target: THREE.Vector3) {
     isFocused = true
   }
 
+  const limits = roomLimits()
   aimAt(
     {
-      x: THREE.MathUtils.clamp(target.x + focusDirection.x * FOCUS_DISTANCE, -FOCUS_ROOM_LIMIT, FOCUS_ROOM_LIMIT),
+      x: THREE.MathUtils.clamp(target.x + focusDirection.x * FOCUS_DISTANCE, -limits.x, limits.x),
       y: Math.max(target.y + focusDirection.y * FOCUS_DISTANCE, FOCUS_MIN_HEIGHT),
-      z: THREE.MathUtils.clamp(target.z + focusDirection.z * FOCUS_DISTANCE, -FOCUS_ROOM_LIMIT, FOCUS_ROOM_LIMIT),
+      z: THREE.MathUtils.clamp(target.z + focusDirection.z * FOCUS_DISTANCE, -limits.z, limits.z),
     },
     { x: target.x, y: FOCUS_LOOK_HEIGHT, z: target.z },
   )

@@ -37,9 +37,15 @@ let lastStatus = ''
 let token: string = crypto.randomUUID()
 let session: Session | null = null
 let seatLostListener = () => {}
+let rejoinedListener = () => {}
 
 export function onSeatLost(listener: () => void) {
   seatLostListener = listener
+}
+
+// Se volvió a la sala tras perder la conexión: lo que pasó mientras tanto hay que pedirlo de nuevo (el chat de sala)
+export function onRoomRejoined(listener: () => void) {
+  rejoinedListener = listener
 }
 
 // sessionStorage es de cada pestaña y sobrevive a una recarga: dos pestañas son dos personas
@@ -86,11 +92,12 @@ export async function createRoom(
 export async function joinRoom(
   code: string,
   takeOver = false,
-): Promise<{ timer: HandedTimer | null } | 'duplicate' | 'failed'> {
-  const result: boolean | { timer: HandedTimer } | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
+): Promise<{ timer: HandedTimer | null; kind: string } | 'duplicate' | 'failed'> {
+  // El servidor responde con el tipo de sala (que decide cómo se arma) y, si había, el temporizador de la otra ventana
+  const result: boolean | { timer?: HandedTimer; kind?: string } | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
   if (result === true || (typeof result === 'object' && result !== null)) {
     startSession(code)
-    return { timer: result === true ? null : result.timer }
+    return result === true ? { timer: null, kind: 'study' } : { timer: result.timer ?? null, kind: result.kind ?? 'study' }
   }
   return result === 'duplicate' ? 'duplicate' : 'failed'
 }
@@ -176,6 +183,7 @@ socket.on('connect', async () => {
   if (resumed) {
     // Tras un reinicio del servidor, alguien pudo haber tomado la silla mientras tanto
     if (resumed.seatId === null) seatLostListener()
+    rejoinedListener()
     return
   }
 
@@ -184,7 +192,9 @@ socket.on('connect', async () => {
   const joined = typeof (await joinRoom(session.code)) === 'object'
   if (!joined) {
     window.location.href = window.location.pathname
+    return
   }
+  rejoinedListener()
 })
 
 socket.on('disconnect', () => {
