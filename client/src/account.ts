@@ -1,3 +1,4 @@
+import { callApi } from './api'
 import type { Character } from './character'
 
 // Las llamadas al servidor sobre la cuenta. La sesión vive en una cookie que esta página no puede leer.
@@ -40,7 +41,6 @@ type AccountResult = { account: Account; error: null } | { account: null; error:
 
 const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
 const GOOGLE_BUTTON_WIDTH = 300 // píxeles
-const CONNECTION_ERROR = 'No se pudo conectar con el servidor. Revisa tu conexión.'
 
 declare const google: {
   accounts: {
@@ -61,18 +61,8 @@ export async function loadAccount(): Promise<AccountInfo | null> {
 }
 
 export async function sendAccount(path: string, body: unknown = {}): Promise<AccountResult> {
-  try {
-    const response = await fetch(`/api/account/${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const result: Account & { error?: string } = await response.json()
-    if (!response.ok) return { account: null, error: result.error ?? 'No se pudo completar.' }
-    return { account: result, error: null }
-  } catch {
-    return { account: null, error: CONNECTION_ERROR }
-  }
+  const result = await callApi<Account>(`/api/account/${path}`, body)
+  return result.value ? { account: result.value, error: null } : { account: null, error: result.error }
 }
 
 export async function loadProfile(username: string): Promise<Profile | null> {

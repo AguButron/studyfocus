@@ -165,7 +165,17 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] [Chat de sala](decisiones/0030-chat-de-sala.md): lo escriben todos los de la sala, solo fuera de un periodo de estudio; mientras estudias, el botón cuenta los mensajes nuevos
 - [x] La barra de arriba de la sala en tres partes: la sala y su link a la izquierda, el reloj al centro, y Chat, Amigos y Salir a la derecha
 - [x] [Seis tipos de sala](decisiones/0031-tipos-de-sala.md): Estudio individual (tu escritorio, en vez del botón "Estudiar solo"), Estudio de a dos (2), Sala de grupo (4), Café (8), Biblioteca (12) y Salón de estudio (16), cada una decorada con bloques hasta tener su arte
-- [ ] El arte de cada sala y de cada adorno
+- [x] [El arte en cubos](decisiones/0033-arte-en-cubos.md): un kit con 29 muebles y adornos y 18 diseños, tres por cada tipo de sala, que se ven en `salas.html` mientras se desarrolla
+- [x] Crea tu sala (propuesta): armar una sala propia con los muebles del catálogo, en `crea-tu-sala.html`
+- [x] El arte en cubos con cubos de 5 cm: los 29 muebles rehechos con el doble de detalle, y las salas dibujadas solo con las caras que se ven, juntas por color
+- [x] Cubos de 2,5 cm en las salas de 1, 2 y 4 personas, con los muebles rehechos, la mesa de a dos más grande con una lata y un café, y el resto de las salas como "Próximamente"
+- [x] El computador, el cuaderno y el libro en cubos, con 10 variantes para elegir que ven todos en la sala, y espacio libre frente a cada asiento
+- [x] El arte en cubos en la sala de verdad: quien crea un Estudio de a dos o una Sala de grupo elige el diseño, el servidor lo guarda y lo ven todos
+- [ ] El Estudio individual (tu escritorio) con su diseño en cubos
+- [ ] Rehacer en 2,5 cm el Café, la Biblioteca y el Salón de estudio
+- [ ] Elegir el diseño al crear una sala, y usar el arte en cubos en la sala de verdad
+- [ ] Guardar en la cuenta la sala creada y poder abrirla como sala
+- [ ] Revisar y priorizar lo que dejó la [revisión general del 2026-11-14](revision-2026-11-14.md)
 - [x] [Aviso sin aceleración por hardware](decisiones/0026-ahorrar-memoria.md): los cuadros negros con YouTube en la sala pasaban con la aceleración apagada; ahora la sala avisa cómo activarla
 - [x] Ordenar las evaluaciones de un ramo arrastrándolas (o con las flechas del teclado)
 - [x] Agregar `GEMINI_API_KEY` en Render para la versión publicada
@@ -173,7 +183,7 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 
 **Terminada cuando:** creo mis ramos y mis pruebas, estudio solo o con amigos eligiendo el ramo, y en Inicio veo cuánto llevo hoy, mi racha y lo que viene.
 
-Después vienen Repasar, con tarjetas de memoria, y adaptar la página al celular.
+Después vienen Repasar, con tarjetas de memoria, y [la app nativa para el celular](decisiones/0032-app-nativa.md), en vez de adaptar la página al navegador del teléfono. Falta elegir con qué hacerla.
 
 ## Cómo trabajamos cada tarea
 

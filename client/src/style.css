@@ -308,6 +308,8 @@ body {
   color: var(--ink);
   box-shadow: var(--lift-1);
 }
+/* Con nombres largos (los diseños de sala): el texto baja a otra línea en vez de montarse */
+.sf-seg--wrap > button { white-space: normal; overflow-wrap: anywhere; padding-block: 6px; }
 
 /* ── Slider ───────────────────────────────────────── */
 

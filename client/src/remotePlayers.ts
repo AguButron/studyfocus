@@ -17,6 +17,7 @@ interface PlayerState {
   x: number
   z: number
   activity: ActivityKind
+  item?: number // cuál computador, cuaderno o libro; las páginas de antes no lo mandan
   period: Period
   isRunning: boolean
   isStarted?: boolean // si ya empezó su temporizador; las páginas de antes no lo mandan
@@ -72,7 +73,7 @@ function addRemotePlayer(state: PlayerState) {
   const label = createLabel(state.nickname)
   mesh.add(label)
 
-  const activity = createActivityView(state.activity, state.character.color)
+  const activity = createActivityView(state.activity, state.character.color, undefined, state.item ?? 0)
   showSeatedActivity(activity, state.seatId)
 
   const remote: RemotePlayer = {
@@ -127,7 +128,7 @@ socket.on('player:status', (state: PlayerState) => {
 
   remotePlayer.state = state
   remotePlayer.pose = poseFor(state.period, state.isRunning, state.isStarted ?? state.isRunning)
-  remotePlayer.activity.setKind(state.activity)
+  remotePlayer.activity.setKind(state.activity, state.item ?? 0)
 })
 
 export function findRemotePlayerAt(raycaster: THREE.Raycaster) {

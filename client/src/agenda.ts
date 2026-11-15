@@ -1,5 +1,6 @@
 // La agenda: pruebas, tareas, trabajos, presentaciones y recordatorios. Aquí están las llamadas al
 // servidor y las fechas. Una fecha es un día del calendario escrito como '2026-11-14', sin hora ni zona.
+import { callApi } from './api'
 
 export type AgendaKind = 'prueba' | 'tarea' | 'trabajo' | 'presentacion' | 'recordatorio'
 
@@ -45,24 +46,7 @@ export function canBeDone(kind: AgendaKind) {
   return kind !== 'prueba'
 }
 
-type Result<T> = { value: T; error: null } | { value: null; error: string }
-
-const CONNECTION_ERROR = 'No se pudo conectar con el servidor.'
-
-async function call<T>(path: string, body?: unknown): Promise<Result<T>> {
-  try {
-    const response = await fetch(`/api/agenda${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-    const result = await response.json()
-    if (!response.ok) return { value: null, error: result.error ?? 'No se pudo completar.' }
-    return { value: result, error: null }
-  } catch {
-    return { value: null, error: CONNECTION_ERROR }
-  }
-}
+const call = <T>(path: string, body?: unknown) => callApi<T>(`/api/agenda${path}`, body)
 
 export async function loadRange(from: string, to: string) {
   const result = await call<{ items: AgendaItem[] }>(`?desde=${from}&hasta=${to}`)

@@ -4,18 +4,19 @@ import { refreshCalendar } from './calendar'
 import { refreshSpacesPanel, setUpSpacesPanel } from './spacesPanel'
 import { refreshHomePanel, setUpHomePanel } from './homePanel'
 import { resetFriendsDrawer, setUpFriendsDrawer } from './friendsDrawer'
-import { clearProfileParam, openProfilePage, setUpProfilePage } from './profilePage'
+import { clearProfileParam, openProfilePage, readProfileParam, setUpProfilePage } from './profilePage'
 import { setUpProfileDialog } from './profileDialog'
 import { CHARACTER_COLORS, setCharacterPhoto, type Character } from './character'
 import { drawRoomPlan } from './roomPlan'
 import { COUNTRIES, getFlag } from './countries'
 import { DEFAULT_ROOM_KIND, ROOM_KINDS, SOLO_ROOM_KIND } from './roomKinds'
+import { designsFor } from './voxel/designs'
 import { refreshStats, setUpStatsRange, setUpSummary, showSavedSummary } from './stats'
 
 type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person'
 
 interface MenuActions {
-  createRoom(kind: string): void
+  createRoom(kind: string, design: string | null): void
   studySolo(): void // el estudio individual, que no se comparte
   joinRoom(code: string): void
   onAccountChange(account: Account | null): void
@@ -35,6 +36,10 @@ const characterColors = document.querySelector<HTMLDivElement>('#character-color
 const characterMessage = document.querySelector<HTMLParagraphElement>('#character-message')!
 const roomKindsList = document.querySelector<HTMLDivElement>('#room-kinds')!
 const createRoomButton = document.querySelector<HTMLButtonElement>('#create-room')!
+const roomDesignsField = document.querySelector<HTMLDivElement>('#room-designs-field')!
+const roomDesignsList = document.querySelector<HTMLDivElement>('#room-designs')!
+const roomDesignText = document.querySelector<HTMLParagraphElement>('#room-design-text')!
+const CHOSEN_DESIGNS_KEY = 'studyfocus.roomDesigns' // el diseño elegido por tipo de sala (también en salas.html)
 const roomsError = document.querySelector<HTMLParagraphElement>('#rooms-error')!
 const joinForm = document.querySelector<HTMLFormElement>('#join-form')!
 const codeInput = document.querySelector<HTMLInputElement>('#code')!
@@ -58,11 +63,51 @@ const logoutButton = document.querySelector<HTMLButtonElement>('#logout')!
 
 let selectedKind = DEFAULT_ROOM_KIND
 
+function loadChosenDesigns(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(CHOSEN_DESIGNS_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+// El diseño en cubos de la sala que se va a crear: el último elegido para ese tipo, o el primero
+function selectedDesign() {
+  const designs = designsFor(selectedKind)
+  const chosen = loadChosenDesigns()[selectedKind]
+  return designs.find((design) => design.id === chosen) ?? designs[0] ?? null
+}
+
+// Los diseños del tipo elegido, para elegir cómo se ve la sala. Lo ven todos los que entran. El estudio
+// individual (tu escritorio) y las salas sin diseños todavía no muestran esta parte
+function showRoomDesigns() {
+  const designs = selectedKind === SOLO_ROOM_KIND ? [] : designsFor(selectedKind)
+  roomDesignsField.hidden = designs.length === 0
+  const current = selectedDesign()
+  roomDesignsList.replaceChildren(...designs.map((design) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.textContent = design.name
+    button.setAttribute('aria-pressed', String(design.id === current?.id))
+    button.addEventListener('click', () => {
+      try {
+        localStorage.setItem(CHOSEN_DESIGNS_KEY, JSON.stringify({ ...loadChosenDesigns(), [selectedKind]: design.id }))
+      } catch {
+        // Sin almacenamiento, se usa el primero la próxima vez
+      }
+      showRoomDesigns()
+    })
+    return button
+  }))
+  roomDesignText.textContent = current?.description ?? ''
+}
+
 function isPanel(value: unknown): value is Panel {
   return typeof value === 'string' && [...panels].some((panel) => panel.dataset.panel === value)
 }
 
-function showPanel(panel: Panel) {
+// push: deja una entrada en el historial del navegador; replace: cambia la actual; none: viene de atrás/adelante
+function showPanel(panel: Panel, mode: 'push' | 'replace' | 'none' = 'push') {
   for (const link of menuLinks) {
     if (link.dataset.panel === panel) {
       link.setAttribute('aria-current', 'page')
@@ -84,6 +129,10 @@ function showPanel(panel: Panel) {
   } else if (panel === 'spaces') {
     refreshSpacesPanel()
   }
+  // Volver a abrir la misma sección no suma otra entrada; un perfil distinto sí
+  if (mode === 'push' && panel !== 'person' && window.history.state?.panel === panel) mode = 'replace'
+  if (mode === 'push') window.history.pushState({ panel }, '', window.location.href)
+  if (mode === 'replace') window.history.replaceState({ panel }, '', window.location.href)
   // El perfil de otra persona se abre con su dirección; al ir a otra sección, la dirección deja de apuntarlo
   if (panel === 'person') return
   clearProfileParam()
@@ -133,6 +182,7 @@ function showRoomKinds() {
   }
   // Al estudio individual se entra directo; las demás se crean para compartir su link
   createRoomButton.textContent = selectedKind === SOLO_ROOM_KIND ? 'Empezar a estudiar' : 'Crear sala'
+  showRoomDesigns()
 }
 
 function showCharacter(character: Character) {
@@ -239,10 +289,18 @@ export function setUpMenu(menuActions: MenuActions) {
   for (const link of menuLinks) {
     link.addEventListener('click', () => showPanel(link.dataset.panel as Panel))
   }
+  // Los botones atrás y adelante del navegador recorren las secciones ya visitadas
+  window.addEventListener('popstate', (event) => {
+    const panel = event.state?.panel
+    if (menu.hidden || !isPanel(panel)) return
+    showPanel(panel, 'none')
+    const username = readProfileParam()
+    if (panel === 'person' && username) openProfilePage(username)
+  })
 
   // El estudio individual no es una sala para compartir: se entra directo a tu escritorio
   createRoomButton.addEventListener('click', () =>
-    selectedKind === SOLO_ROOM_KIND ? actions.studySolo() : actions.createRoom(selectedKind),
+    selectedKind === SOLO_ROOM_KIND ? actions.studySolo() : actions.createRoom(selectedKind, selectedDesign()?.id ?? null),
   )
   setUpHomePanel()
   setUpProfilePage({ joinRoom: (code) => actions.joinRoom(code), editOwnProfile: () => showPanel('profile') })
@@ -325,7 +383,7 @@ export function showMenu(account: Account) {
   showAccount(account)
   showRoomKinds()
   showSavedSummary()
-  showPanel(showSummaryFirst() ? 'rooms' : loadPanel())
+  showPanel(showSummaryFirst() ? 'rooms' : loadPanel(), 'replace')
   startFriends()
   menu.hidden = false
 }

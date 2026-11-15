@@ -6,20 +6,20 @@ import { hasDatabase, query } from './database.ts'
 
 const ORPHAN_WAIT = 10 // minutos: tras un reinicio, lo que tienen para volver a su sala
 
-export async function saveRoom(code: string, ownerId: string, kind: string) {
+export async function saveRoom(code: string, ownerId: string, kind: string, design: string | null) {
   const { rows } = await query(
-    'INSERT INTO rooms (code, owner_id, kind) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING RETURNING code',
-    [code, ownerId, kind],
+    'INSERT INTO rooms (code, owner_id, kind, design) VALUES ($1, $2, $3, $4) ON CONFLICT (code) DO NOTHING RETURNING code',
+    [code, ownerId, kind, design],
   )
   return rows.length > 0
 }
 
-// Marca la sala como usada y dice de qué tipo es. Nulo si no existe: nunca existió o ya quedó vacía.
-export async function touchSavedRoom(code: string): Promise<string | null> {
+// Marca la sala como usada y dice de qué tipo es y su diseño. Nulo si no existe: nunca existió o ya quedó vacía.
+export async function touchSavedRoom(code: string): Promise<{ kind: string; design: string | null } | null> {
   if (!hasDatabase()) return null
 
-  const { rows } = await query<{ kind: string }>('UPDATE rooms SET last_used_at = now() WHERE code = $1 RETURNING kind', [code])
-  return rows[0]?.kind ?? null
+  const { rows } = await query<{ kind: string; design: string | null }>('UPDATE rooms SET last_used_at = now() WHERE code = $1 RETURNING kind, design', [code])
+  return rows[0] ?? null
 }
 
 export async function deleteSavedRoom(code: string) {

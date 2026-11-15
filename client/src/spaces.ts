@@ -1,5 +1,6 @@
 // Los espacios (un semestre, un proyecto, un curso) y sus apartados (ramos, partes, módulos).
 // Se cargan una vez y se comparten: el calendario, la agenda y el temporizador los usan.
+import { callApi } from './api'
 
 export type SpaceKind = 'semestre' | 'proyecto' | 'curso' | 'otro'
 
@@ -73,7 +74,6 @@ export function describeKind(kind: SpaceKind) {
   return SPACE_KINDS.find(({ id }) => id === kind) ?? SPACE_KINDS[3]
 }
 
-type Result<T> = { value: T; error: null } | { value: null; error: string }
 interface SpacesResponse {
   spaces: Space[]
   colors: string[]
@@ -94,20 +94,7 @@ function store(result: SpacesResponse) {
   for (const listener of listeners) listener()
 }
 
-async function call(path: string, body?: unknown): Promise<Result<SpacesResponse>> {
-  try {
-    const response = await fetch(path, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-    const result = await response.json()
-    if (!response.ok) return { value: null, error: result.error ?? 'No se pudo completar.' }
-    return { value: result, error: null }
-  } catch {
-    return { value: null, error: 'No se pudo conectar con el servidor.' }
-  }
-}
+const call = (path: string, body?: unknown) => callApi<SpacesResponse>(path, body)
 
 let isLoaded = false
 

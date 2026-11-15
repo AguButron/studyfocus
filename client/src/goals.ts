@@ -2,6 +2,7 @@
 // Se crean desde Inicio o mientras se estudia, y cada uno muestra una barra con su avance.
 // Mientras corre un periodo de estudio, la barra suma lo que va del periodo (el servidor lo guarda al terminarlo).
 import { addDays, todayText } from './agenda'
+import { callApi } from './api'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import { formatDuration } from './stats'
 import { showNotice } from './undoToast'
@@ -42,20 +43,11 @@ const containers: { list: HTMLElement; empty: HTMLElement | null; compact: boole
 const timeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 
 async function call(path: string, body?: Record<string, unknown>) {
-  try {
-    const response = await fetch(path, {
-      method: body ? 'POST' : 'GET',
-      headers: body ? { 'Content-Type': 'application/json' } : {},
-      body: body ? JSON.stringify({ ...body, tz: timeZone() }) : undefined,
-    })
-    const result = await response.json()
-    if (!response.ok) return result.error ?? 'No se pudo completar.'
-    goals = result.goals
-    renderAll()
-    return null
-  } catch {
-    return 'No se pudo conectar con el servidor.'
-  }
+  const result = await callApi<{ goals: Goal[] }>(path, body && { ...body, tz: timeZone() })
+  if (result.value === null) return result.error
+  goals = result.value.goals
+  renderAll()
+  return null
 }
 
 export function loadGoals() {

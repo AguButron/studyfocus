@@ -16,6 +16,7 @@ import { addConnection, clearPresence, markActive, removeConnection, setPresence
 import { accountRoom, createChatHandler, setUpChatSocket } from './chat.ts'
 import { createProfilesHandler } from './profiles.ts'
 import { forgetRoomChat, setUpRoomChatSocket } from './roomChat.ts'
+import { allowAttempt } from './requests.ts'
 import { createStatsHandler, findCompanions, recordStudy } from './stats.ts'
 import { deleteAbandonedRooms, deleteSavedRoom, saveRoom, touchSavedRoom } from './savedRooms.ts'
 import { startTestPeople } from './testPeople.ts'
@@ -30,6 +31,7 @@ const MIN_MOVE_INTERVAL = 30 // milisegundos
 const MAX_MESSAGE_SIZE = 8 * 1024
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' // sin letras y números fáciles de confundir
 const ACTIVITIES = ['computer', 'reading', 'writing']
+const MAX_ACTIVITY_ITEM = 3 // las variantes de cada actividad (client/src/choices.ts): de 0 a 3
 const PERIODS = ['study', 'break']
 // Los tipos de sala y cuántas sillas tiene cada uno: caben tantas personas como sillas. 'study' es el de siempre,
 // el salón de 16. Cómo se ve cada uno lo decide la página (client/src/roomLayout.ts)
@@ -38,6 +40,7 @@ const ROOM_KINDS = Object.keys(ROOM_SEATS)
 const DEFAULT_KIND = 'study'
 const SOLO_KIND = 'solo' // estudiar solo: una sala privada, que nadie más puede unirse
 const MAX_TOKEN_LENGTH = 64
+const MAX_JOINS = 40 // intentos de unirse a una sala por cuenta cada 15 minutos
 const RECONNECT_WAIT = 15_000 // milisegundos que se guarda el lugar de quien se desconecta
 const ROOM_CLEANUP_INTERVAL = 10 * 60_000 // milisegundos
 const MAX_STUDY_PERIOD = 125 * 60_000 // milisegundos: el periodo más largo que permite el temporizador, con margen
@@ -47,6 +50,9 @@ const STUDY_SAVE_INTERVAL = 60_000 // milisegundos: si el servidor se cae, se pi
 
 interface PlayerStatus {
   activity: string
+  // Cuál computador, cuaderno o libro. Las páginas de antes no lo mandan.
+  // shortcut: no se guarda en active_sessions, así que tras reiniciar el servidor vuelve al primero hasta el próximo estado
+  item?: number
   period: string
   isRunning: boolean
   // Si ya empezó el temporizador: sentado y sin empezar no hay nada sobre la mesa; en pausa, sí.
@@ -121,14 +127,29 @@ interface Session {
 
 const rooms = new Map<string, Room>()
 const roomKinds = new Map<string, string>()
+const roomDesigns = new Map<string, string>() // el diseño en cubos que se eligió al crearla, si se eligió
+
+// Los diseños en cubos de cada tipo de sala, los mismos de client/src/voxel/designs.ts: el servidor solo
+// revisa que el que llega exista. Los tipos sin diseños todavía usan la sala de siempre
+const ROOM_DESIGNS: Record<string, string[]> = {
+  solo: ['solo-noche', 'solo-luz', 'solo-atico'],
+  duo: ['duo-ventana', 'duo-cafe', 'duo-noche'],
+  group: ['group-proyectos', 'group-lectura', 'group-terraza'],
+}
+const isRoomDesign = (kind: string, design: unknown): design is string => typeof design === 'string' && (ROOM_DESIGNS[kind] ?? []).includes(design)
 
 function getRoomKind(code: string) {
   return roomKinds.get(code) ?? DEFAULT_KIND
 }
 
+function getRoomDesign(code: string) {
+  return roomDesigns.get(code) ?? null
+}
+
 function forgetRoom(code: string) {
   rooms.delete(code)
   roomKinds.delete(code)
+  roomDesigns.delete(code)
   forgetRoomChat(code)
 }
 const sessions = new Map<string, Session>()
@@ -142,13 +163,13 @@ function createRoomCode() {
 }
 
 // Si falla la base de datos, la sala se crea igual, solo que sin guardarse
-async function createFreeRoomCode(accountId: string, kind: string) {
+async function createFreeRoomCode(accountId: string, kind: string, design: string | null = null) {
   while (true) {
     const code = createRoomCode()
     if (rooms.has(code)) continue
 
     try {
-      if (await saveRoom(code, accountId, kind)) return code
+      if (await saveRoom(code, accountId, kind, design)) return code
     } catch (error) {
       console.error('No se pudo guardar la sala:', error)
       return code
@@ -158,19 +179,20 @@ async function createFreeRoomCode(accountId: string, kind: string) {
 
 // Una sala con gente puede no estar en la memoria si el servidor se reinició: se abre de nuevo
 async function findRoom(code: string) {
-  let savedKind: string | null = null
+  let saved: { kind: string; design: string | null } | null = null
   try {
-    savedKind = await touchSavedRoom(code)
+    saved = await touchSavedRoom(code)
   } catch (error) {
     console.error('No se pudo revisar la sala guardada:', error)
   }
 
   const room = rooms.get(code)
-  if (room || !savedKind) return room
+  if (room || !saved) return room
 
   const loadedRoom: Room = new Map()
   rooms.set(code, loadedRoom)
-  roomKinds.set(code, savedKind)
+  roomKinds.set(code, saved.kind)
+  if (saved.design) roomDesigns.set(code, saved.design)
   console.log(`Sala abierta de nuevo tras un reinicio: ${code}`)
   return loadedRoom
 }
@@ -209,10 +231,11 @@ function isValidPosition(value: unknown): value is { x: number; z: number } {
 function isValidStatus(value: unknown): value is StatusMessage {
   if (typeof value !== 'object' || value === null) return false
 
-  const { activity, period, isRunning, isStarted, periodId, sectionId } = value as Record<string, unknown>
+  const { activity, item, period, isRunning, isStarted, periodId, sectionId } = value as Record<string, unknown>
   return (
     typeof activity === 'string' &&
     ACTIVITIES.includes(activity) &&
+    (item === undefined || (Number.isInteger(item) && (item as number) >= 0 && (item as number) <= MAX_ACTIVITY_ITEM)) &&
     typeof period === 'string' &&
     PERIODS.includes(period) &&
     typeof isRunning === 'boolean' &&
@@ -628,7 +651,10 @@ io.on('connection', (socket) => {
   // Para crear o unirse hace falta una cuenta, y el apodo es su nombre.
   // takeOver, solo al estudiar solo: si la cuenta ya estudia sola en otra ventana, esa vuelve al menú.
   // Sin takeOver, en ese caso responde 'duplicate' para que la página pregunte, como al unirse a una sala
-  socket.on('room:create', async (kind: unknown, token: unknown, takeOverOrReply: unknown, maybeReply?: unknown) => {
+  // request: el tipo de sala, o { kind, design } con el diseño en cubos elegido (las páginas de antes mandan solo el tipo)
+  socket.on('room:create', async (request: unknown, token: unknown, takeOverOrReply: unknown, maybeReply?: unknown) => {
+    const kind = typeof request === 'object' && request !== null ? (request as Record<string, unknown>).kind : request
+    const requestedDesign = typeof request === 'object' && request !== null ? (request as Record<string, unknown>).design : null
     // Una página de antes de takeOver manda (kind, token, reply)
     const reply = typeof takeOverOrReply === 'function' ? takeOverOrReply : maybeReply
     const takeOver = takeOverOrReply === true
@@ -649,7 +675,8 @@ io.on('connection', (socket) => {
     }
 
     isEntering = true
-    const code = await createFreeRoomCode(account.id, kind)
+    const design = isRoomDesign(kind, requestedDesign) ? requestedDesign : null
+    const code = await createFreeRoomCode(account.id, kind, design)
     isEntering = false
     if (!socket.connected || !isNewToken(token)) return
 
@@ -659,6 +686,7 @@ io.on('connection', (socket) => {
     const room: Room = new Map()
     rooms.set(code, room)
     roomKinds.set(code, kind)
+    if (design) roomDesigns.set(code, design)
     enterRoom(code, room, token)
     // Se sigue con el temporizador de la ventana que estaba abierta
     const handedTimer = openElsewhere.length > 0 && session ? handOver(openElsewhere[0], session) : null
@@ -681,6 +709,11 @@ io.on('connection', (socket) => {
 
     const account = socket.data.account
     if (!account || !isNewToken(token) || typeof code !== 'string' || code.length !== CODE_LENGTH) {
+      reply(false)
+      return
+    }
+    // Sin límite, alguien podría probar códigos sin parar hasta dar con salas ajenas
+    if (!allowAttempt(`join:${account.id}`, MAX_JOINS)) {
       reply(false)
       return
     }
@@ -716,7 +749,7 @@ io.on('connection', (socket) => {
       else removeFromRoom(other)
     }
     // El tipo de sala decide cómo la arma la página
-    reply({ kind: getRoomKind(code), timer: handedTimer ?? undefined })
+    reply({ kind: getRoomKind(code), design: getRoomDesign(code), timer: handedTimer ?? undefined })
   })
 
   // Al volver al menú: sale de inmediato, y responde cuánto estudió y con quién para el resumen
@@ -785,6 +818,7 @@ io.on('connection', (socket) => {
     // El estado que llegó antes de retomar la sesión es el más reciente
     if (lastStatus && lastStatus.periodId === existing.periodId) {
       player.activity = lastStatus.activity
+      player.item = lastStatus.item ?? 0
       player.period = lastStatus.period
       player.isRunning = lastStatus.isRunning
       player.isStarted = lastStatus.isStarted ?? lastStatus.isRunning
@@ -794,6 +828,7 @@ io.on('connection', (socket) => {
     reply({
       code: existing.code,
       kind: existing.kind,
+      design: getRoomDesign(existing.code),
       nickname: player.nickname,
       character: player.character,
       seatId: player.seatId,
@@ -869,6 +904,7 @@ socket.on('seat:leave', () => {
     lastPeriodId = status.periodId
 
     player.activity = status.activity
+    player.item = status.item ?? 0
     player.period = status.period
     player.isRunning = status.isRunning
     player.isStarted = status.isStarted ?? status.isRunning

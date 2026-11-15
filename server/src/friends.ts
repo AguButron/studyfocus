@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { parseUsername, requireAccount } from './accounts.ts'
 import { describeCharacter } from './character.ts'
 import { hasDatabase, query } from './database.ts'
-import { countUnread } from './chat.ts'
+import { countUnread, parseId } from './chat.ts'
 import { getPresence, isConnected } from './presence.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
@@ -34,10 +34,6 @@ function parseFriendCode(value: unknown) {
 
   const code = value.toUpperCase().replace(/[^A-Z0-9]/g, '')
   return code.length === CODE_LENGTH ? code : null
-}
-
-function parseId(value: unknown) {
-  return typeof value === 'string' && /^\d{1,19}$/.test(value) ? value : null
 }
 
 // Las cuentas creadas antes de que hubiera amigos no tienen código: se les crea la primera vez

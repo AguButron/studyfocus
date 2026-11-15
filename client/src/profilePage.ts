@@ -1,6 +1,7 @@
 // La página del perfil de una persona: su foto, lo que cuenta de sí, cuánto ha estudiado y si son amigos.
 // Se abre con /?perfil=usuario; por ejemplo, desde su nombre en la tarjeta que aparece al hacer clic en ella
 // dentro de una sala, en otra pestaña para no salir de la sala.
+import { callApi } from './api'
 import type { Character } from './character'
 import { createCharacterPhoto } from './character'
 import { getCountryName, getFlag } from './countries'
@@ -72,7 +73,7 @@ export function clearProfileParam() {
   const url = new URL(window.location.href)
   if (!url.searchParams.has(PARAM)) return
   url.searchParams.delete(PARAM)
-  window.history.replaceState(null, '', url)
+  window.history.replaceState(window.history.state, '', url)
 }
 
 async function fetchProfile(username: string): Promise<PersonProfile | { error: string }> {
@@ -146,7 +147,7 @@ export async function openProfilePage(username: string) {
   // La dirección apunta a este perfil mientras está abierto, para recargarlo o compartirlo
   const url = new URL(window.location.href)
   url.searchParams.set(PARAM, username)
-  window.history.replaceState(null, '', url)
+  window.history.replaceState(window.history.state, '', url)
   const currentRequest = ++request
   current = null
   content.hidden = true
@@ -169,24 +170,13 @@ async function changeFriendship(path: string, body: Record<string, string>, done
   const person = current
   friendButton.disabled = true
   messageText.textContent = ''
-  try {
-    const response = await fetch(`/api/friends/${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-    const result = await response.json()
-    if (!response.ok) {
-      messageText.textContent = result.error ?? 'No se pudo.'
-      showRelation(person)
-      return
-    }
-    messageText.textContent = done
-  } catch {
-    messageText.textContent = 'No se pudo conectar con el servidor.'
+  const result = await callApi(`/api/friends/${path}`, body)
+  if (result.error !== null) {
+    messageText.textContent = result.error
     showRelation(person)
     return
   }
+  messageText.textContent = done
   const updated = await fetchProfile(person.username)
   if (current === person && !('error' in updated)) render(updated)
 }

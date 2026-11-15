@@ -63,7 +63,7 @@ function saveCodeInUrl(code: string | null) {
   } else {
     url.searchParams.delete('sala')
   }
-  window.history.replaceState(null, '', url)
+  window.history.replaceState(window.history.state, '', url)
 }
 
 async function copyLink() {
@@ -148,6 +148,19 @@ export async function showHome(
     leaveToMenu()
   })
   document.querySelector('#leave-confirm-no')!.addEventListener('click', () => leaveConfirm.close())
+  // Atrás en el navegador dentro de la sala hace lo mismo que el botón de salir
+  window.addEventListener('popstate', () => {
+    if (!home.hidden) return
+    if (!isStudyPeriodStarted()) {
+      leaveToMenu()
+      return
+    }
+    // Hay un periodo en curso: se pregunta, y mientras tanto la dirección vuelve a ser la de la sala
+    const code = roomCodeText.textContent
+    window.history.pushState({ room: code }, '', window.location.href)
+    saveCodeInUrl(code)
+    leaveConfirm.showModal()
+  })
   document.querySelector('#replaced-notice-ok')!.addEventListener('click', () => replacedNotice.close())
 
   setUpLanding({
@@ -187,6 +200,9 @@ export async function showHome(
     kind = resumed?.kind ?? 'study',
   ) {
     const isSolo = kind === SOLO_KIND
+    // Entrar deja una entrada en el historial, para salir con el botón atrás del navegador.
+    // Al recargar dentro de la sala la entrada ya existe: no se agrega otra
+    if (window.history.state?.room !== code) window.history.pushState({ room: code }, '', window.location.href)
     saveCodeInUrl(code)
     // La sala 3D se arma una sola vez por página: para entrar a otra, se recarga y se retoma esta sesión
     // (la de la pestaña ya apunta a la sala nueva). Es lo único que corta la música.
@@ -278,13 +294,13 @@ export async function showHome(
   }
 
   setUpMenu({
-    async createRoom(kind) {
+    async createRoom(kind, design) {
       showRoomsError('')
       if (!(await prepareRoom())) {
         showRoomsError(ROOM_UNAVAILABLE)
         return
       }
-      const created = await createRoom(kind)
+      const created = await createRoom(kind, false, design)
       if (created && created !== 'duplicate') {
         enter(created.code, account!, null, kind)
       } else {

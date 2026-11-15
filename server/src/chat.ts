@@ -26,7 +26,7 @@ const MESSAGE_COLUMNS = `id::text, from_id::text AS "from", to_id::text AS "to",
 // El grupo de Socket.IO de cada cuenta: ahí le llega todo lo del chat
 export const accountRoom = (accountId: string) => `cuenta:${accountId}`
 
-function parseId(value: unknown) {
+export function parseId(value: unknown) {
   return typeof value === 'string' && /^\d{1,19}$/.test(value) ? value : null
 }
 

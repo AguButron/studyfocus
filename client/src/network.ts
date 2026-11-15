@@ -16,7 +16,8 @@ interface Session {
 
 export interface ResumedPlayer {
   code: string
-  kind: string // 'solo' es estudiar solo, en la pantalla simple
+  kind: string // el tipo de sala; 'solo' es el estudio individual (tu escritorio)
+  design?: string | null // el diseño en cubos de la sala; los servidores de antes no lo mandan
   nickname: string
   character: Character
   seatId: number | null
@@ -57,6 +58,14 @@ function loadSavedSession(): Session | null {
   }
 }
 
+// El diseño en cubos de la sala en que se está (voxel/designs.ts): lo elige quien la crea y lo ven todos.
+// Nulo si la sala no tiene uno guardado: entonces usa el primero de su tipo
+let roomDesign: string | null = null
+
+export function getRoomDesign() {
+  return roomDesign
+}
+
 function startSession(code: string) {
   session = { token, code }
 
@@ -73,14 +82,16 @@ function startSession(code: string) {
 export async function createRoom(
   kind: string,
   takeOver = false,
+  design: string | null = null,
 ): Promise<{ code: string; timer: HandedTimer | null } | 'duplicate' | null> {
   const result: string | { code: string; timer: HandedTimer } | 'duplicate' | null = await socket.emitWithAck(
     'room:create',
-    kind,
+    design ? { kind, design } : kind,
     token,
     takeOver,
   )
   if (!result) return null
+  roomDesign = design
   if (result === 'duplicate') return 'duplicate'
   const created = typeof result === 'string' ? { code: result, timer: null } : result
   startSession(created.code)
@@ -94,8 +105,9 @@ export async function joinRoom(
   takeOver = false,
 ): Promise<{ timer: HandedTimer | null; kind: string } | 'duplicate' | 'failed'> {
   // El servidor responde con el tipo de sala (que decide cómo se arma) y, si había, el temporizador de la otra ventana
-  const result: boolean | { timer?: HandedTimer; kind?: string } | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
+  const result: boolean | { timer?: HandedTimer; kind?: string; design?: string | null } | 'duplicate' = await socket.emitWithAck('room:join', code, token, takeOver)
   if (result === true || (typeof result === 'object' && result !== null)) {
+    roomDesign = typeof result === 'object' ? (result.design ?? null) : null
     startSession(code)
     return result === true ? { timer: null, kind: 'study' } : { timer: result.timer ?? null, kind: result.kind ?? 'study' }
   }
@@ -168,6 +180,7 @@ export async function resumeSavedRoom(code: string) {
   if (resumed) {
     token = saved.token
     session = saved
+    roomDesign = resumed.design ?? null
   }
   return resumed
 }
@@ -214,6 +227,7 @@ export function sendPosition(x: number, z: number) {
 
 export function sendStatus(status: {
   activity: ActivityKind
+  item: number // cuál computador, cuaderno o libro (choices.ts)
   period: Period
   isRunning: boolean
   isStarted: boolean // sentado sin empezar no hay nada sobre la mesa; en pausa, sí

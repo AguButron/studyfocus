@@ -35,11 +35,16 @@ export async function readBody(request: IncomingMessage, maxSize = MAX_BODY_SIZE
     throw new RequestError(415, 'Formato no válido.')
   }
 
-  let body = ''
+  // Se juntan los bytes y se leen como texto al final: una letra con tilde puede quedar partida entre dos trozos,
+  // y leer cada trozo por separado la cambiaba por "��"
+  const chunks: Buffer[] = []
+  let size = 0
   for await (const chunk of request) {
-    body += chunk
-    if (body.length > maxSize) throw new RequestError(413, 'Mensaje demasiado grande.')
+    size += chunk.length
+    if (size > maxSize) throw new RequestError(413, 'Mensaje demasiado grande.')
+    chunks.push(chunk)
   }
+  const body = Buffer.concat(chunks).toString('utf8')
 
   try {
     const parsed: unknown = JSON.parse(body)

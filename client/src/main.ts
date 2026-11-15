@@ -1,6 +1,6 @@
 import './style.css'
 import type { Character } from './character'
-import { getActivity } from './choices'
+import { getActivity, getActivityItem } from './choices'
 import { showHome, SOLO_KIND } from './home'
 import { sendStatus } from './network'
 import { playPeriodSound } from './sound'
@@ -21,6 +21,7 @@ function shareStatus() {
   const { period, isRunning, periodId, studyMinutes, breakMinutes, remainingMs } = getTimer()
   sendStatus({
     activity: getActivity(),
+    item: getActivityItem(getActivity()),
     period,
     isRunning,
     isStarted: !isTimerIdle(),

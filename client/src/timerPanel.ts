@@ -1,4 +1,4 @@
-import { chooseNextCamera, getActivity, getChosenCamera, setActivity, type ActivityKind, type CameraKind } from './choices'
+import { ACTIVITY_ITEMS, chooseNextCamera, getActivity, getActivityItem, getChosenCamera, setActivity, setActivityItem, type ActivityKind, type CameraKind } from './choices'
 import { onKeyPress } from './input'
 import { loadGoals, renderAll as renderGoals, setCurrentSection, setLiveStudy, showGoalsIn } from './goals'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
@@ -37,6 +37,7 @@ const breakValue = document.querySelector<HTMLSpanElement>('#break-value')!
 const standUpButton = document.querySelector<HTMLButtonElement>('#stand-up')!
 const standUpHint = document.querySelector<HTMLParagraphElement>('#stand-up-hint')!
 const activityButtons = document.querySelectorAll<HTMLButtonElement>('[data-activity]')
+const itemSelect = document.querySelector<HTMLSelectElement>('#activity-item')!
 const activitySection = document.querySelector<HTMLElement>('#activity-section')!
 const cameraPanel = document.querySelector<HTMLElement>('#camera-panel')!
 const cameraName = document.querySelector<HTMLSpanElement>('#camera-name')!
@@ -166,10 +167,13 @@ function applyMinutes() {
   render()
 }
 
+// Los botones de la actividad y, abajo, cuál computador, cuaderno o libro
 function renderActivity(activity: ActivityKind) {
   for (const button of activityButtons) {
     button.setAttribute('aria-pressed', String(button.dataset.activity === activity))
   }
+  itemSelect.replaceChildren(...ACTIVITY_ITEMS[activity].map((name, index) => new Option(name, String(index))))
+  itemSelect.value = String(getActivityItem(activity))
 }
 
 function renderCamera() {
@@ -249,6 +253,8 @@ export function setUpTimerPanel(onStandUp: () => void) {
       renderActivity(activity)
     })
   }
+
+  itemSelect.addEventListener('change', () => setActivityItem(getActivity(), Number(itemSelect.value)))
 
   cameraPanel.addEventListener('click', () => {
     chooseNextCamera()

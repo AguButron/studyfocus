@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyFocus · Crea tu sala</title>
+    <!-- Propuesta: armar una sala propia con los muebles en cubos. Solo mientras se desarrolla (npm run dev); no se publica -->
+  </head>
+  <body>
+    <div class="vx-app">
+      <aside class="vx-side">
+        <span class="vx-title">StudyFocus</span>
+        <div>
+          <h1>Crea tu sala</h1>
+          <p>Elige un mueble y haz clic en el piso para ponerlo. Haz clic en uno para moverlo, girarlo, cambiarle el color o borrarlo. Se guarda solo, en este navegador.</p>
+        </div>
+
+        <section id="selected" hidden>
+          <span class="vx-section" id="selected-name"></span>
+          <div class="vx-row" style="margin-top:12px">
+            <button class="vx-btn" type="button" id="move">Mover</button>
+            <button class="vx-btn" type="button" id="rotate">Girar (R)</button>
+            <button class="vx-btn" type="button" id="duplicate">Duplicar</button>
+            <button class="vx-btn" type="button" id="delete">Borrar (Supr)</button>
+          </div>
+          <div class="vx-row" id="chairs-row" style="margin-top:8px" hidden>
+            <button class="vx-btn" type="button" id="add-chairs">Agregar sillas alrededor</button>
+          </div>
+          <div class="vx-grid" id="selected-fields" style="margin-top:10px"></div>
+          <p style="margin-top:8px">Flechas: mover de a 10 cm (con Shift, de a 50 cm). Re Pág / Av Pág: subir o bajar de a 5 cm.</p>
+        </section>
+
+        <span class="vx-section">La sala</span>
+        <div class="vx-grid">
+          <label class="vx-label">Tamaño
+            <select id="size">
+              <option value="200x180">Chica (5 × 4,5 m)</option>
+              <option value="320x280">Mediana (8 × 7 m)</option>
+              <option value="480x400">Grande (12 × 10 m)</option>
+            </select>
+          </label>
+          <label class="vx-label">Hora
+            <select id="sky">
+              <option value="dia">De día</option>
+              <option value="tarde">De tarde</option>
+              <option value="noche">De noche</option>
+            </select>
+          </label>
+          <label class="vx-label">Piso
+            <select id="floor-style">
+              <option value="tablas">Tablas</option>
+              <option value="parquet">Parquet</option>
+              <option value="baldosas">Baldosas</option>
+              <option value="alfombra">Alfombra</option>
+              <option value="piedra">Piedra</option>
+            </select>
+          </label>
+          <div class="vx-row" style="align-items:flex-end">
+            <label class="vx-label">Color<input type="color" id="floor-color" /></label>
+            <label class="vx-label">Detalle<input type="color" id="floor-accent" /></label>
+          </div>
+          <label class="vx-label">Paredes
+            <select id="wall-style">
+              <option value="liso">Lisas</option>
+              <option value="zocalo">Con zócalo</option>
+              <option value="ladrillo">Ladrillo</option>
+              <option value="papel">Papel a rayas</option>
+              <option value="madera">Madera</option>
+            </select>
+          </label>
+          <div class="vx-row" style="align-items:flex-end">
+            <label class="vx-label">Color<input type="color" id="wall-color" /></label>
+            <label class="vx-label">Detalle<input type="color" id="wall-accent" /></label>
+          </div>
+        </div>
+
+        <span class="vx-section">Agregar</span>
+        <div id="catalog"></div>
+
+
+        <span class="vx-section">Tu sala</span>
+        <p id="summary"></p>
+        <div class="vx-row">
+          <button class="vx-btn" type="button" id="undo">Deshacer (Ctrl+Z)</button>
+          <button class="vx-btn" type="button" id="reset">Empezar de nuevo</button>
+          <button class="vx-btn" type="button" id="copy">Copiar como texto</button>
+        </div>
+        <p id="message" role="status"></p>
+        <a class="vx-btn" href="/salas.html">← Ver los diseños listos</a>
+      </aside>
+      <main class="vx-main">
+        <div class="vx-view" id="view"></div>
+        <div class="vx-overlay">
+          <span class="vx-pill" id="hint">Elige un mueble a la izquierda</span>
+          <div class="vx-row">
+            <button class="vx-btn" type="button" id="pixels" aria-pressed="true">Píxeles grandes</button>
+            <button class="vx-btn" type="button" id="view-room">Ver toda la sala</button>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/voxel/creator.ts"></script>
+  </body>
+</html>

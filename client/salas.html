@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StudyFocus · Diseños de sala</title>
+    <!-- Propuesta: los diseños en cubos de cada tipo de sala. Solo mientras se desarrolla (npm run dev); no se publica -->
+  </head>
+  <body>
+    <div class="vx-app">
+      <aside class="vx-side">
+        <span class="vx-title">StudyFocus</span>
+        <div>
+          <h1>Diseños de sala</h1>
+          <p>Propuesta de arte en cubos, como pixel art en 3D. Las salas de 1, 2 y 4 personas tienen tres diseños cada una; las mesas y sillas no cambian, así los asientos siguen siendo los mismos.</p>
+        </div>
+        <span class="vx-section">Tipo de sala</span>
+        <div class="vx-row" id="kinds"></div>
+        <span class="vx-section">Diseño</span>
+        <div class="vx-cards" id="designs"></div>
+        <span class="vx-section">Ver</span>
+        <div class="vx-row">
+          <button class="vx-btn" type="button" data-view="room" aria-pressed="true">Desde arriba</button>
+          <button class="vx-btn" type="button" data-view="side" aria-pressed="false">De lado</button>
+          <button class="vx-btn" type="button" data-view="close" aria-pressed="false">De cerca</button>
+        </div>
+        <div class="vx-row">
+          <button class="vx-btn" type="button" id="pixels" aria-pressed="true">Píxeles grandes</button>
+          <button class="vx-btn" type="button" id="spin" aria-pressed="false">Girar</button>
+        </div>
+        <span class="vx-section">Sobre las mesas</span>
+        <div class="vx-row">
+          <button class="vx-btn" type="button" id="study" aria-pressed="true">Cosas de estudio</button>
+          <button class="vx-btn" type="button" id="study-next">Cambiar</button>
+        </div>
+        <button class="vx-btn vx-btn--primary" type="button" id="choose">Elegir este diseño</button>
+        <p id="chosen" role="status"></p>
+        <a class="vx-btn" href="/crea-tu-sala.html">Crea tu propia sala →</a>
+        <p class="vx-note">Solo escenografía: sin personajes. Arrastra para mirar alrededor y usa la rueda para acercarte.</p>
+      </aside>
+      <main class="vx-main">
+        <div class="vx-view" id="view"></div>
+        <div class="vx-soon" id="soon" hidden>
+          <strong>Próximamente</strong>
+          <span>Esta sala todavía no tiene sus diseños en cubos.</span>
+        </div>
+        <div class="vx-overlay">
+          <span class="vx-pill" id="stats"></span>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/src/voxel/gallery.ts"></script>
+  </body>
+</html>

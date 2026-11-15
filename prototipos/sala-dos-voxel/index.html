@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Estudio de a dos · propuesta de arte</title>
+<!--
+  Propuesta de arte para la sala "Estudio de a dos": todo hecho de cubos de 10 cm, como pixel art en 3D.
+  Es una prueba aparte, no forma parte de la aplicación. Abre este archivo en un navegador (necesita internet
+  para descargar Three.js). La distribución es la misma de client/src/roomLayout.ts (sala "duo").
+-->
+<style>
+  :root {
+    --paper: #121417; --card: #1b1e24; --card-over: #1b1e24ee; --sunken: #23272f; --line: #2e333d;
+    --ink: #e8e6e1; --ink-soft: #9a9ca3; --marker: #f2c14e; --on-marker: #1a1a1a; --online: #3fb56b;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink);
+    font: 14px/20px system-ui, "Segoe UI", sans-serif; }
+  #scene { position: fixed; inset: 0; }
+  #scene canvas { display: block; width: 100%; height: 100%; }
+  body[data-pixels="true"] #scene canvas { image-rendering: pixelated; }
+
+  /* La barra de la sala, igual que en la app */
+  .hud { position: fixed; top: 0; left: 0; right: 0; z-index: 2; display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 24px; align-items: center; min-height: 56px; padding: 0 24px; background: var(--card-over);
+    border-bottom: 1px solid var(--line); backdrop-filter: blur(8px); }
+  .group { display: flex; align-items: center; gap: 16px; min-width: 0; }
+  .end { justify-self: end; gap: 8px; }
+  .clock { justify-self: center; gap: 12px; }
+  .wordmark { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; white-space: nowrap; }
+  .wordmark::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; background: var(--marker); vertical-align: 2px; }
+  .divider { width: 1px; height: 20px; background: var(--line); }
+  .label { color: var(--ink-soft); font-size: 13px; white-space: nowrap; }
+  .code { font: 500 15px/22px var(--mono); letter-spacing: .1em; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--sunken); color: var(--ink); font: 600 13px/1 system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+  .btn.quiet { background: transparent; border-color: transparent; }
+  .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .badge { padding: 2px 8px; border-radius: 4px; background: var(--marker); color: var(--on-marker); font: 600 11px/16px var(--mono); letter-spacing: .08em; }
+  .time { font: 500 18px/26px var(--mono); }
+  .faces { display: inline-flex; }
+  .faces i { width: 18px; height: 18px; margin-left: -5px; border: 2px solid var(--card); border-radius: 5px; }
+  .faces i:first-child { margin-left: 0; }
+  .count { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--online); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+
+  .hint { position: fixed; left: 50%; bottom: 24px; z-index: 2; transform: translateX(-50%); padding: 8px 14px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--card-over); font-size: 13px; white-space: nowrap; }
+  .music { position: fixed; right: 16px; bottom: 16px; z-index: 2; }
+
+  /* El panel de la propuesta (no es parte de la app) */
+  .proposal { position: fixed; left: 16px; top: 72px; z-index: 2; width: min(320px, calc(100vw - 32px)); padding: 16px;
+    border: 1px dashed #4a4f5c; border-radius: 12px; background: #121417e6; backdrop-filter: blur(8px); }
+  .proposal h1 { margin: 0 0 4px; font-size: 16px; line-height: 22px; }
+  .proposal p { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; line-height: 18px; }
+  .proposal .row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .proposal h2 { margin: 12px 0 6px; color: var(--ink-soft); font: 600 11px/16px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .swatches i { aspect-ratio: 1; border-radius: 3px; }
+  .proposal small { display: block; margin-top: 10px; color: var(--ink-soft); font-size: 12px; line-height: 16px; }
+  .proposal[data-hidden="true"] > :not(.toggle) { display: none; }
+  .toggle { position: absolute; top: 10px; right: 10px; }
+  @media (max-width: 900px) {
+    .hud { padding: 0 12px; gap: 8px; } .hide-narrow { display: none; }
+    .proposal { top: auto; bottom: 72px; }
+  }
+</style>
+<script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  } }
+</script>
+</head>
+<body data-pixels="true">
+  <div id="scene"></div>
+
+  <header class="hud">
+    <div class="group">
+      <span class="wordmark">StudyFocus</span>
+      <span class="divider hide-narrow"></span>
+      <span class="label hide-narrow">Estudio de a dos</span>
+      <span class="code">7WN79T</span>
+      <button class="btn quiet hide-narrow" type="button">Copiar link</button>
+    </div>
+    <div class="group clock">
+      <span class="badge">ESTUDIO</span>
+      <span class="time" id="time">25:00</span>
+    </div>
+    <div class="group end">
+      <button class="btn" type="button">Chat <span class="count">2</span></button>
+      <button class="btn" type="button"><span class="faces"><i style="background:#89b4fa"></i><i style="background:#a6e3a1"></i></span></button>
+      <span class="divider hide-narrow"></span>
+      <button class="btn quiet" type="button">Salir</button>
+    </div>
+  </header>
+
+  <aside class="proposal" id="proposal">
+    <button class="btn quiet toggle" type="button" id="toggle-panel" title="Esconder este panel">–</button>
+    <h1>Propuesta de arte · Estudio de a dos</h1>
+    <p>Todo está hecho de cubos de 10 cm, como pixel art en 3D. Cada superficie varía un poco de tono, cubo por cubo, para que se vea dibujado a mano. Es de tarde: la luz fría entra por la ventana y la lámpara pone la luz cálida.</p>
+    <h2>Vista</h2>
+    <div class="row" id="views">
+      <button class="btn" type="button" data-view="room" aria-pressed="true">Sala (desde arriba)</button>
+      <button class="btn" type="button" data-view="seat" aria-pressed="false">Sentada (Ana)</button>
+      <button class="btn" type="button" data-view="front" aria-pressed="false">De frente</button>
+    </div>
+    <h2>Estilo</h2>
+    <div class="row">
+      <button class="btn" type="button" id="pixels" aria-pressed="true">Píxeles grandes</button>
+      <button class="btn" type="button" id="night" aria-pressed="false">De noche</button>
+      <button class="btn" type="button" id="spin" aria-pressed="false">Girar</button>
+    </div>
+    <h2>Paleta</h2>
+    <div class="swatches" id="swatches"></div>
+    <small>Arrastra para mirar alrededor y usa la rueda para acercarte. Son unos 16.000 cubos dibujados de una vez (InstancedMesh), con sombras. En la app real, los adornos se harían en MagicaVoxel y se cargarían como modelos.</small>
+  </aside>
+
+  <p class="hint">Haz clic en una silla libre para sentarte</p>
+  <button class="btn music" type="button">♫ Música</button>
+
+<script type="module">
+import * as THREE from 'three'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+
+// ─── La paleta ───────────────────────────────────────────────────────────────
+const P = {
+  floorA: 0x8a5a3c, floorB: 0x7c4f35, floorSeam: 0x5e3b28,
+  wall: 0x7b7f9e, wallDark: 0x6b6f8c, wainscot: 0x50536f, trim: 0xe8e4da,
+  rug: 0x8c5a7a, rugLight: 0xc48aa8, rugDark: 0x6a3f5b,
+  wood: 0xb07a50, woodLight: 0xc9925f, woodDark: 0x74543a,
+  cushion: 0x7f8cc4, cushionDark: 0x5f6ba3,
+  metal: 0x2f2f36, shade: 0xf6e7c1, bulb: 0xfff4cf,
+  pot: 0xb5654a, potDark: 0x8f4c37, leaf: 0x4f9d5d, leafDark: 0x3a7a48, leafLight: 0x74c47f,
+  skyTop: 0x2b3a67, skyMid: 0x6b5b95, skyLow: 0xe8a87c, sun: 0xffd27f,
+  paper: 0xf5f2e8, ink: 0x45475a, laptop: 0x313244, screen: 0x89b4fa,
+  ana: 0x89b4fa, anaDark: 0x6c96dd, benja: 0xa6e3a1, benjaDark: 0x82c47d, skin: 0xf1c7a0, hair: 0x4a3426, hair2: 0x2b2b33,
+  mug: 0xe8e4da, coffee: 0x5b3d2a, poster1: 0xf2a65a, poster2: 0x89b4fa, poster3: 0x3a7a48,
+}
+document.querySelector('#swatches').append(...Object.values(P).slice(0, 32).map((color) => {
+  const swatch = document.createElement('i')
+  swatch.style.background = '#' + color.toString(16).padStart(6, '0')
+  return swatch
+}))
+
+// ─── Los cubos ───────────────────────────────────────────────────────────────
+// Todo se mide en cubos de 10 cm. La sala mide 6 × 5,5 m: x de -30 a 30, z de -27 a 27, y el piso arriba en y = 0
+const V = 0.1
+const voxels = new Map() // "x,y,z" → { color, glow }
+let seed = 7
+const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+
+// Un tono parecido al color, para que cada cubo varíe un poco
+function vary(color, amount = 0.06) {
+  const c = new THREE.Color(color)
+  const hsl = {}
+  c.getHSL(hsl)
+  c.setHSL(hsl.h, hsl.s, Math.min(1, Math.max(0, hsl.l + (random() - 0.5) * amount)))
+  return c.getHex()
+}
+
+function put(x, y, z, color, { glow = 0, jitter = 0.06 } = {}) {
+  voxels.set(`${x},${y},${z}`, { color: jitter ? vary(color, jitter) : color, glow })
+}
+
+// Un bloque de cubos, de x0 a x1 (sin incluir x1). color puede ser una función de la posición
+function fill(x0, y0, z0, x1, y1, z1, color, options) {
+  for (let x = x0; x < x1; x++)
+    for (let y = y0; y < y1; y++)
+      for (let z = z0; z < z1; z++) put(x, y, z, typeof color === 'function' ? color(x, y, z) : color, options)
+}
+
+// ─── La sala ─────────────────────────────────────────────────────────────────
+const W0 = -30, W1 = 30, D0 = -27, D1 = 28, H = 25
+
+// El piso: tablas de 4 cubos de ancho, con las uniones desfasadas
+fill(W0, -1, D0, W1, 0, D1, (x, _y, z) => {
+  const plank = Math.floor((x - W0) / 4)
+  const offset = (plank * 7) % 13
+  if ((z - D0 + offset) % 13 === 0) return P.floorSeam
+  return plank % 2 ? P.floorA : P.floorB
+})
+
+// Las paredes: atrás y a los lados, con zócalo, una franja clara y la parte de arriba
+function wallColor(y) {
+  if (y < 8) return P.wainscot
+  if (y === 8) return P.trim
+  return y % 6 === 0 ? P.wallDark : P.wall
+}
+fill(W0 - 2, -1, D0 - 2, W1 + 2, H, D0, (_x, y) => wallColor(y))
+fill(W0 - 2, -1, D0, W0, H, D1, (_x, y) => wallColor(y))
+fill(W1, -1, D0, W1 + 2, H, D1, (_x, y) => wallColor(y))
+// Adelante, una pared baja para que se vea de dónde a dónde es la sala
+fill(W0 - 2, -1, D1, W1 + 2, 2, D1 + 2, P.wainscot)
+
+// La ventana grande al fondo, con un atardecer de cubos
+const WIN = { x0: -12, x1: 12, y0: 8, y1: 21 }
+function sky(y) {
+  const t = (y - WIN.y0) / (WIN.y1 - WIN.y0)
+  return new THREE.Color(P.skyLow).lerp(new THREE.Color(P.skyMid), Math.min(1, t * 1.6)).lerp(new THREE.Color(P.skyTop), Math.max(0, t - 0.5) * 2).getHex()
+}
+for (let x = WIN.x0; x < WIN.x1; x++)
+  for (let y = WIN.y0; y < WIN.y1; y++) {
+    voxels.delete(`${x},${y},${D0 - 1}`)
+    const isFrame = x === WIN.x0 || x === WIN.x1 - 1 || y === WIN.y0 || y === WIN.y1 - 1 || x === 0 || y === 15
+    if (isFrame) put(x, y, D0 - 1, P.trim)
+    else put(x, y, D0 - 2, sky(y), { glow: 0.55, jitter: 0.02 })
+  }
+// El sol bajando, unas nubes y los cerros
+fill(5, 10, D0 - 2, 8, 13, D0 - 1, P.sun, { glow: 1, jitter: 0.02 })
+for (const [x, y] of [[-9, 17], [-8, 17], [-7, 17], [-8, 18], [-6, 17], [3, 19], [4, 19], [5, 19], [4, 20]]) put(x, y, D0 - 2, 0xd9c7e6, { glow: 0.6, jitter: 0.02 })
+for (let x = WIN.x0 + 1; x < WIN.x1 - 1; x++) {
+  const top = 9 + Math.round(1.5 + Math.sin(x * 0.45) * 1.5)
+  for (let y = 9; y < top; y++) put(x, y, D0 - 2, 0x3e4a6b, { glow: 0.25 })
+}
+// El alféizar
+fill(WIN.x0 - 1, WIN.y0 - 1, D0, WIN.x1 + 1, WIN.y0, D0 + 2, P.trim)
+// Una planta chica en el alféizar
+fill(8, WIN.y0, D0, 10, WIN.y0 + 2, D0 + 2, P.pot)
+fill(7, WIN.y0 + 2, D0, 11, WIN.y0 + 4, D0 + 2, P.leaf, { jitter: 0.15 })
+
+// La alfombra, con borde y un rombo al centro
+const RUG = { x0: -13, x1: 13, z0: -19, z1: 15 }
+fill(RUG.x0, 0, RUG.z0, RUG.x1, 1, RUG.z1, (x, _y, z) => {
+  const edge = x === RUG.x0 || x === RUG.x1 - 1 || z === RUG.z0 || z === RUG.z1 - 1
+  const border = x === RUG.x0 + 2 || x === RUG.x1 - 3 || z === RUG.z0 + 2 || z === RUG.z1 - 3
+  const diamond = Math.abs(x) + Math.abs(z + 2) === 7
+  if (edge) return P.rugDark
+  if (border || diamond) return P.rugLight
+  return P.rug
+}, { jitter: 0.04 })
+
+// ─── Los muebles ─────────────────────────────────────────────────────────────
+// La mesa: 1,2 × 1,2 m, centrada en z = -0,2, con 75 cm de alto
+const TABLE = { x0: -6, x1: 6, z0: -8, z1: 4, top: 7 }
+fill(TABLE.x0, TABLE.top, TABLE.z0, TABLE.x1, TABLE.top + 1, TABLE.z1, (x, _y, z) => ((x + z) % 5 === 0 ? P.wood : P.woodLight))
+for (const [x, z] of [[TABLE.x0, TABLE.z0], [TABLE.x1 - 1, TABLE.z0], [TABLE.x0, TABLE.z1 - 1], [TABLE.x1 - 1, TABLE.z1 - 1]]) fill(x, 1, z, x + 1, TABLE.top, z + 1, P.woodDark)
+
+// Una silla: asiento, patas y respaldo hacia el lado contrario de la mesa
+function chair(cx, cz, back) {
+  fill(cx - 2, 4, cz - 2, cx + 3, 5, cz + 3, P.woodDark)
+  for (const [dx, dz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) fill(cx + dx, 1, cz + dz, cx + dx + 1, 4, cz + dz + 1, P.woodDark)
+  const bz = cz + back * 2
+  fill(cx - 2, 5, bz, cx + 3, 10, bz + 1, (x, y) => (y === 9 || x === cx - 2 || x === cx + 2 ? P.woodDark : P.wood))
+}
+chair(0, -14, -1) // la de atrás, mirando hacia adelante
+chair(0, 10, 1) // la de adelante, mirando hacia atrás
+
+// Lo que hay sobre la mesa: el computador de Ana, el cuaderno de Benja, dos tazas y una lámpara chica
+fill(-2, TABLE.top + 1, -6, 3, TABLE.top + 2, -2, P.laptop)
+fill(-2, TABLE.top + 2, -2, 3, TABLE.top + 6, -1, P.laptop)
+fill(-1, TABLE.top + 3, -3, 2, TABLE.top + 5, -2, P.screen, { glow: 0.8, jitter: 0.02 }) // la pantalla, hacia Ana
+fill(-3, TABLE.top + 1, -1, 3, TABLE.top + 2, 3, (x) => (x === 0 ? P.ink : P.paper), { jitter: 0.02 })
+fill(4, TABLE.top + 1, -6, 5, TABLE.top + 3, -5, P.mug)
+put(4, TABLE.top + 3, -6, P.coffee)
+fill(-5, TABLE.top + 1, 1, -4, TABLE.top + 3, 2, P.mug)
+fill(4, TABLE.top + 1, 1, 6, TABLE.top + 2, 3, P.metal)
+fill(5, TABLE.top + 2, 2, 6, TABLE.top + 5, 3, P.metal)
+fill(3, TABLE.top + 5, 1, 6, TABLE.top + 7, 4, P.shade, { glow: 0.5 })
+
+// La lámpara de pie, en la esquina de atrás a la izquierda
+fill(-26, 0, -24, -22, 1, -20, P.metal)
+fill(-24, 1, -22, -23, 16, -21, P.metal)
+fill(-27, 16, -25, -20, 17, -18, P.shade, { glow: 0.7 })
+fill(-26, 17, -24, -21, 20, -19, P.shade, { glow: 0.7 })
+fill(-25, 15, -23, -22, 16, -20, P.bulb, { glow: 1 })
+
+// El sillón, de lado contra la pared derecha
+const AC = { x0: 18, x1: 27, z0: -23, z1: -14 }
+fill(AC.x0, 1, AC.z0, AC.x1, 4, AC.z1, P.cushionDark)
+fill(AC.x0 + 1, 4, AC.z0 + 2, AC.x1 - 2, 5, AC.z1 - 2, P.cushion)
+fill(AC.x1 - 2, 4, AC.z0, AC.x1, 10, AC.z1, P.cushion)
+fill(AC.x0, 4, AC.z0, AC.x1 - 2, 7, AC.z0 + 2, P.cushionDark)
+fill(AC.x0, 4, AC.z1 - 2, AC.x1 - 2, 7, AC.z1, P.cushionDark)
+for (const [x, z] of [[AC.x0, AC.z0], [AC.x0, AC.z1 - 1], [AC.x1 - 1, AC.z0], [AC.x1 - 1, AC.z1 - 1]]) put(x, 0, z, P.woodDark)
+// Un cojín y una manta
+fill(AC.x1 - 4, 5, AC.z0 + 3, AC.x1 - 2, 8, AC.z0 + 6, P.poster1)
+fill(AC.x0 + 1, 5, AC.z0 + 2, AC.x0 + 5, 6, AC.z1 - 2, (x, _y, z) => ((x + z) % 2 ? 0xd9c7e6 : 0xb79dcf))
+
+// El mueble bajo contra la pared izquierda, con una planta y libros encima
+const CB = { x0: -30, x1: -25, z0: -3, z1: 11, top: 8 }
+fill(CB.x0, 0, CB.z0, CB.x1, CB.top, CB.z1, (x, y, z) => (z === 4 || y === CB.top - 1 ? P.woodDark : 0x8a6a4f))
+fill(CB.x1, 3, 1, CB.x1 + 1, 5, 2, 0xd9c9a8)
+fill(CB.x1, 3, 6, CB.x1 + 1, 5, 7, 0xd9c9a8)
+fill(-29, CB.top, 6, -26, CB.top + 3, 9, P.pot)
+fill(-30, CB.top + 3, 5, -25, CB.top + 7, 10, P.leaf, { jitter: 0.2 })
+fill(-29, CB.top + 7, 6, -26, CB.top + 9, 9, P.leafLight, { jitter: 0.15 })
+const books = [0xc0504d, 0x4f81bd, 0xf2c14e, 0x9bbb59, 0x8064a2]
+books.forEach((color, index) => fill(-29, CB.top, -2 + index, -26, CB.top + 3 + (index % 2), -1 + index, color))
+
+// Una repisa con libros sobre el mueble
+fill(-30, 15, -3, -27, 16, 11, P.woodDark)
+for (let z = -2; z < 10; z++) {
+  if (random() < 0.15) continue
+  fill(-30, 16, z, -28, 16 + 2 + Math.floor(random() * 2), z + 1, books[Math.floor(random() * books.length)])
+}
+
+// El afiche en la pared derecha: un cerro, un sol y el cielo, en píxeles
+const PO = { z0: 0, z1: 8, y0: 11, y1: 21 }
+for (let z = PO.z0; z < PO.z1; z++)
+  for (let y = PO.y0; y < PO.y1; y++) {
+    const edge = z === PO.z0 || z === PO.z1 - 1 || y === PO.y0 || y === PO.y1 - 1
+    let color = P.poster2
+    if (edge) color = P.trim
+    else if (y < PO.y0 + 3 + Math.abs(z - 4) * -1 + 2) color = P.poster3
+    else if (z >= 4 && z <= 5 && y >= 16 && y <= 17) color = P.poster1
+    put(W1 - 1, y, z, color, { jitter: 0.03 })
+  }
+
+// La planta alta en la esquina de adelante a la derecha
+fill(21, 0, 19, 26, 5, 24, (x, y) => (y === 4 ? P.potDark : P.pot))
+fill(23, 5, 21, 24, 13, 22, 0x6b4a33)
+for (let i = 0; i < 260; i++) {
+  const x = 19 + Math.floor(random() * 9)
+  const y = 10 + Math.floor(random() * 9)
+  const z = 17 + Math.floor(random() * 9)
+  if ((x - 23) ** 2 + ((y - 14) * 1.2) ** 2 + (z - 21) ** 2 < 18) put(x, y, z, random() < 0.3 ? P.leafDark : random() < 0.5 ? P.leafLight : P.leaf, { jitter: 0.1 })
+}
+
+// ─── Las personas ────────────────────────────────────────────────────────────
+// Personajes de cubos, sentados: piernas, cuerpo, brazos hacia la mesa, cabeza y pelo
+function person(cz, facing, shirt, shirtDark, hair, glasses) {
+  const f = facing // 1: mira hacia +z (la de atrás), -1: mira hacia -z
+  const body = (x0, y0, dz0, x1, y1, dz1, color, options) => {
+    const z0 = cz + Math.min(dz0 * f, (dz1 - 1) * f)
+    const z1 = cz + Math.max(dz0 * f, (dz1 - 1) * f) + 1
+    fill(x0, y0, z0, x1, y1, z1, color, options)
+  }
+  body(-2, 5, 0, 3, 6, 4, 0x3b3f58) // los muslos, sobre el asiento
+  body(-2, 1, 3, 3, 5, 4, 0x3b3f58) // las piernas
+  body(-2, 6, -1, 3, 12, 2, shirt) // el cuerpo
+  body(-3, 8, 0, -2, 12, 5, shirtDark) // los brazos, hacia la mesa
+  body(3, 8, 0, 4, 12, 5, shirtDark)
+  body(-3, 8, 4, -2, 9, 6, P.skin)
+  body(3, 8, 4, 4, 9, 6, P.skin)
+  body(-2, 12, -1, 3, 16, 3, P.skin) // la cabeza
+  body(-2, 16, -1, 3, 17, 3, hair) // el pelo
+  body(-2, 13, -1, 3, 16, 0, hair)
+  if (glasses) body(-2, 14, 2, 3, 15, 3, P.metal)
+  else { body(-1, 14, 2, 0, 15, 3, P.metal); body(1, 14, 2, 2, 15, 3, P.metal) }
+}
+person(-14, 1, P.ana, P.anaDark, P.hair, false) // Ana, en la silla de atrás, con su computador
+person(10, -1, P.benja, P.benjaDark, P.hair2, true) // Benja, de frente a ella, escribiendo
+
+// ─── Dibujar ─────────────────────────────────────────────────────────────────
+const host = document.querySelector('#scene')
+const renderer = new THREE.WebGLRenderer({ antialias: false })
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFShadowMap
+host.append(renderer.domElement)
+
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 100)
+
+// Todos los cubos en dos dibujos: los que brillan y los que no
+function buildMesh(entries, glowing) {
+  const geometry = new THREE.BoxGeometry(V, V, V)
+  const material = glowing
+    ? new THREE.MeshBasicMaterial({ vertexColors: false })
+    : new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0 })
+  const mesh = new THREE.InstancedMesh(geometry, material, entries.length)
+  const matrix = new THREE.Matrix4()
+  const color = new THREE.Color()
+  entries.forEach(([key, value], index) => {
+    const [x, y, z] = key.split(',').map(Number)
+    matrix.makeTranslation((x + 0.5) * V, (y + 0.5) * V, (z + 0.5) * V)
+    mesh.setMatrixAt(index, matrix)
+    color.setHex(value.color)
+    if (glowing) color.multiplyScalar(0.55 + value.glow * 0.6)
+    mesh.setColorAt(index, color)
+  })
+  mesh.castShadow = !glowing
+  mesh.receiveShadow = !glowing
+  return mesh
+}
+const all = [...voxels.entries()]
+scene.add(buildMesh(all.filter(([, v]) => !v.glow), false))
+scene.add(buildMesh(all.filter(([, v]) => v.glow), true))
+document.title += ` · ${all.length.toLocaleString('es')} cubos`
+
+// La luz: el cielo, el atardecer por la ventana y las lámparas
+const hemi = new THREE.HemisphereLight(0xb8c4ff, 0x4a3426, 0.9)
+scene.add(hemi)
+const sunLight = new THREE.DirectionalLight(0xffc89a, 1.6)
+sunLight.position.set(1.5, 3.2, -6)
+sunLight.target.position.set(0, 0, 0.5)
+sunLight.castShadow = true
+sunLight.shadow.mapSize.set(2048, 2048)
+Object.assign(sunLight.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4, near: 0.5, far: 14 })
+sunLight.shadow.bias = -0.0008
+scene.add(sunLight, sunLight.target)
+// Una luz suave desde adelante, para que no quede a oscuras quien le da la espalda a la ventana
+const frontLight = new THREE.DirectionalLight(0xc9d2ff, 0.55)
+frontLight.position.set(-1, 4, 6)
+scene.add(frontLight)
+const floorLamp = new THREE.PointLight(0xffd59a, 2.2, 6, 1.6)
+floorLamp.position.set(-2.35, 1.5, -2.15)
+scene.add(floorLamp)
+const deskLamp = new THREE.PointLight(0xffe2b0, 0.9, 2.2, 1.8)
+deskLamp.position.set(0.5, 1.3, 0.25)
+scene.add(deskLamp)
+
+// La noche: el cielo se apaga y mandan las lámparas
+function setNight(isNight) {
+  hemi.intensity = isNight ? 0.25 : 0.9
+  frontLight.intensity = isNight ? 0.15 : 0.55
+  sunLight.intensity = isNight ? 0.25 : 1.6
+  sunLight.color.setHex(isNight ? 0x8fa6ff : 0xffc89a)
+  floorLamp.intensity = isNight ? 3.2 : 2.2
+  deskLamp.intensity = isNight ? 1.6 : 0.9
+  scene.background = new THREE.Color(isNight ? 0x0b0c10 : 0x121417)
+}
+setNight(false)
+
+// ─── Las vistas ──────────────────────────────────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+controls.maxPolarAngle = Math.PI * 0.48
+controls.minDistance = 0.6
+controls.maxDistance = 9
+const VIEWS = {
+  room: { position: [0, 5, 6.6], target: [0, 0.3, -0.4] }, // como al elegir asiento
+  seat: { position: [1.15, 2.05, -2.6], target: [-0.1, 0.8, 0.3] }, // por encima del hombro de Ana: su computador y Benja
+  front: { position: [-1.6, 1.4, 1.9], target: [0, 0.9, -0.4] }, // de lado, por sobre la mesa
+}
+let goal = null
+function setView(name) {
+  const view = VIEWS[name]
+  goal = { position: new THREE.Vector3(...view.position), target: new THREE.Vector3(...view.target) }
+  for (const button of document.querySelectorAll('#views button')) button.setAttribute('aria-pressed', String(button.dataset.view === name))
+}
+camera.position.set(...VIEWS.room.position)
+controls.target.set(...VIEWS.room.target)
+document.querySelector('#views').addEventListener('click', (event) => {
+  const button = event.target.closest('button')
+  if (button) setView(button.dataset.view)
+})
+controls.addEventListener('start', () => (goal = null))
+
+// Píxeles grandes: se dibuja a menos resolución y el navegador agranda sin suavizar, como pixel art
+let pixelScale = 0.5
+function fit() {
+  const { clientWidth: w, clientHeight: h } = host
+  renderer.setPixelRatio(pixelScale * Math.min(window.devicePixelRatio, 2))
+  renderer.setSize(w, h, false)
+  camera.aspect = w / h
+  camera.updateProjectionMatrix()
+}
+window.addEventListener('resize', fit)
+fit()
+
+function toggle(id, onChange) {
+  const button = document.querySelector(id)
+  button.addEventListener('click', () => {
+    const next = button.getAttribute('aria-pressed') !== 'true'
+    button.setAttribute('aria-pressed', String(next))
+    onChange(next)
+  })
+}
+toggle('#pixels', (on) => {
+  pixelScale = on ? 0.5 : 1
+  document.body.dataset.pixels = String(on)
+  fit()
+})
+toggle('#night', setNight)
+toggle('#spin', (on) => (controls.autoRotate = on))
+controls.autoRotateSpeed = 0.6
+document.querySelector('#toggle-panel').addEventListener('click', () => {
+  const panel = document.querySelector('#proposal')
+  panel.dataset.hidden = String(panel.dataset.hidden !== 'true')
+})
+
+// El temporizador corre, para que se vea viva
+const startedAt = Date.now()
+setInterval(() => {
+  const left = Math.max(0, 25 * 60 - Math.floor((Date.now() - startedAt) / 1000))
+  document.querySelector('#time').textContent = `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`
+}, 1000)
+
+renderer.setAnimationLoop(() => {
+  if (goal) {
+    camera.position.lerp(goal.position, 0.08)
+    controls.target.lerp(goal.target, 0.08)
+    if (camera.position.distanceTo(goal.position) < 0.01) goal = null
+  }
+  controls.update()
+  renderer.render(scene, camera)
+})
+</script>
+</body>
+</html>

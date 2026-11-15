@@ -1,3 +1,4 @@
+import { callApi } from './api'
 import { createCharacterPhoto, type Character } from './character'
 import { openProfile } from './profileDialog'
 // El panel de amigos: tu código, las solicitudes y en qué sala está cada amigo
@@ -118,22 +119,9 @@ function showMessage(text: string, isError = false) {
 }
 
 async function request(path: string, body?: unknown): Promise<FriendsState | null> {
-  try {
-    const response = await fetch(`/api/friends${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-    const result = await response.json()
-    if (!response.ok) {
-      showMessage(result.error ?? 'No se pudo completar.', true)
-      return null
-    }
-    return result
-  } catch {
-    showMessage('No se pudo conectar con el servidor.', true)
-    return null
-  }
+  const result = await callApi<FriendsState>(`/api/friends${path}`, body)
+  if (result.error !== null) showMessage(result.error, true)
+  return result.value
 }
 
 const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })

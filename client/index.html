@@ -161,6 +161,7 @@
             <button data-activity="reading" type="button">Leyendo</button>
             <button data-activity="writing" type="button">Escribiendo</button>
           </div>
+          <select id="activity-item" class="sf-input" aria-label="Con qué estás estudiando" style="margin-top:8px"></select>
         </div>
       </div>
 
@@ -699,6 +700,11 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
 
             <h3 class="sf-section-title">Elige una sala</h3>
             <div id="room-kinds" class="sf-rooms"></div>
+            <div id="room-designs-field" class="sf-section" hidden>
+              <h3 class="sf-section-title">Elige el diseño</h3>
+              <div id="room-designs" class="sf-seg sf-seg--wrap"></div>
+              <p id="room-design-text" class="sf-field-hint" style="margin-top:8px"></p>
+            </div>
             <div class="panel-actions">
               <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>
               <p id="rooms-error" class="sf-error" role="alert"></p>

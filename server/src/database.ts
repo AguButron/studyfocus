@@ -30,6 +30,8 @@ const SCHEMA = `
 
   -- Las tablas creadas antes de que hubiera tipos de sala no tienen esta columna
   ALTER TABLE rooms ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'study';
+  -- El diseño en cubos (client/src/voxel/designs.ts); sin él, la sala usa el primero de su tipo
+  ALTER TABLE rooms ADD COLUMN IF NOT EXISTS design TEXT;
 
   CREATE INDEX IF NOT EXISTS rooms_owner ON rooms (owner_id, last_used_at DESC);
 

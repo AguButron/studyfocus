@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { requireAccount } from './accounts.ts'
 import { query } from './database.ts'
-import { findSection, parseId as parseSectionId } from './spaces.ts'
+import { findSection, parseId } from './spaces.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
 // La agenda de cada persona: pruebas, tareas, trabajos, presentaciones y recordatorios, con su fecha.
@@ -78,7 +78,7 @@ async function parseGrading(accountId: string, body: Record<string, unknown>) {
     return { sectionId: null, weight: null, grade: null }
   }
 
-  const section = await findSection(accountId, parseSectionId(body.sectionId))
+  const section = await findSection(accountId, parseId(body.sectionId))
   if (!section) throw new RequestError(400, 'Ese apartado ya no existe.')
 
   const weight = body.weight === null || body.weight === undefined ? null : body.weight
@@ -117,11 +117,6 @@ export function parseItem(body: Record<string, unknown>) {
   return { kind, title, notes: notesText || null, date, time, remindDays: remindDays as number | null }
 }
 
-function parseId(value: unknown) {
-  if (typeof value !== 'string' || !/^\d{1,19}$/.test(value)) throw new RequestError(404, NOT_FOUND)
-  return value
-}
-
 function readParams(request: IncomingMessage) {
   return new URL(request.url ?? '/', 'http://localhost').searchParams
 }
@@ -157,7 +152,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
   // Todo lo de un apartado, sin importar la fecha: sus pruebas con notas y sus tareas
   if (route === 'GET /api/agenda' && readParams(request).has('apartado')) {
-    const sectionId = parseSectionId(readParams(request).get('apartado'))
+    const sectionId = parseId(readParams(request).get('apartado'))
     const { rows } = await query<Item>(
       `SELECT ${ITEM_COLUMNS} FROM agenda_items WHERE user_id = $1 AND section_id = $2
        ORDER BY position NULLS LAST, due_date NULLS LAST, due_time NULLS LAST, id`,
@@ -209,7 +204,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
   // El orden de las cosas de un apartado, como quedaron al arrastrarlas
   if (route === 'POST /api/agenda/ordenar') {
-    const sectionId = parseSectionId(body.sectionId)
+    const sectionId = parseId(body.sectionId)
     const ids = Array.isArray(body.ids) ? body.ids : null
     if (!ids || ids.length > MAX_ITEMS || !ids.every((value) => typeof value === 'string' && /^\d{1,19}$/.test(value))) {
       throw new RequestError(400, 'Formato no válido.')

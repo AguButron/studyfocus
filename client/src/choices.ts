@@ -43,6 +43,41 @@ export function setActivity(next: ActivityKind) {
   for (const listener of activityListeners) listener(next)
 }
 
+// Las variantes de cada actividad: cuál computador, cuaderno o libro tiene sobre la mesa (voxel/studyItems.ts
+// las dibuja en el mismo orden). Se recuerda una por actividad
+export const ACTIVITY_ITEMS: Record<ActivityKind, string[]> = {
+  computer: ['Portátil gris', 'Portátil plateado', 'Portátil con stickers', 'Computador de escritorio'],
+  reading: ['Libro de estudio', 'Novela de bolsillo', 'Atlas ilustrado'],
+  writing: ['Cuaderno universitario', 'Libreta cuadriculada', 'Hojas y destacador'],
+}
+const ITEMS_KEY = 'studyfocus.activityItems'
+
+function loadItems(): Record<ActivityKind, number> {
+  const items = { computer: 0, reading: 0, writing: 0 }
+  try {
+    const saved = JSON.parse(localStorage.getItem(ITEMS_KEY) ?? '{}') as Record<string, unknown>
+    for (const kind of Object.keys(items) as ActivityKind[]) {
+      const value = saved[kind]
+      if (Number.isInteger(value) && (value as number) >= 0 && (value as number) < ACTIVITY_ITEMS[kind].length) items[kind] = value as number
+    }
+  } catch {
+    // Guardado de otra forma: se parte con la primera de cada una
+  }
+  return items
+}
+
+let items = loadItems()
+
+export function getActivityItem(kind: ActivityKind) {
+  return items[kind]
+}
+
+export function setActivityItem(kind: ActivityKind, index: number) {
+  items = { ...items, [kind]: index }
+  save(ITEMS_KEY, JSON.stringify(items))
+  for (const listener of activityListeners) listener(activity)
+}
+
 // La sala 3D cambia lo que hay sobre la mesa
 export function onActivityChange(listener: (activity: ActivityKind) => void) {
   activityListeners.push(listener)
