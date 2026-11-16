@@ -21,6 +21,13 @@ Un amigo solo se veía conectado si estaba en una sala o estudiando solo; con St
 
 - **Solo entre amigos.** Si dejan de serlo, la conversación queda en "Conversaciones anteriores" para leerla, pero no se puede escribir. Si vuelven a ser amigos, sigue donde estaba.
 - **Se abre desde la pestaña de Amigos de la derecha.** Al apretar un amigo, su conversación sale en una ventana a la izquierda de la pestaña, encima de todo, y la lista sigue a la vista con ese amigo marcado. Sale a la altura del amigo que se apretó, con una flecha que lo apunta (sin salirse de la pantalla). Se cierra con ✕ o Escape. En el celular la ventana tapa la pantalla entera. En la sección Amigos, cada amigo tiene un botón "Escribir". (Hasta el 2026-11-10, la conversación reemplazaba a la lista dentro de la pestaña).
+- **En el menú, la pestaña va plegada (2026-11-16):**
+  - Siempre es una franja angosta con el ícono, cuántos están en línea y sus fotos.
+  - Al pasar el mouse (o al llegar con Tab, o con un clic en pantallas táctiles), se abre hacia la izquierda, encima del contenido y sin moverlo.
+  - Se pliega sola un cuarto de segundo después de que el mouse sale de la pestaña y del chat, así se puede pasar de una al otro.
+  - Si se abrió con "Escribir", se pliega con un clic en otra parte.
+  - El chat abierto se queda junto a la franja.
+  - Antes se abría y cerraba con un clic en su encabezado, y se recordaba cómo quedó.
 - **Su foto y su nombre**, arriba del chat, abren su perfil **siempre en otra pestaña**, para no cortar una sesión de estudio.
 - **Dentro de la sala también:** un botón en la barra de arriba (o en la esquina si estás sentado) muestra las fotos de hasta 3 amigos en línea, "+N" si hay más, y los mensajes sin leer; sin nadie conectado dice "Amigos". Al apretarlo, la lista se despliega bajo el botón como una ventana compacta y semitransparente, del alto justo, y el chat sale a su lado. Se cierra con el mismo botón, con Escape o con un clic en la sala (y se cierra también el chat). Hasta el 2026-11-10 era un panel de alto completo, igual al del menú. Escribir en el chat no mueve al personaje ni cambia la cámara.
 - **En el celular,** donde el menú no tiene la columna de la derecha, la pestaña también flota: se abre con "Escribir" y se cierra con ✕.

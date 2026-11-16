@@ -1,11 +1,12 @@
 // La pestaña de Amigos: tus amigos, primero los conectados y después los desconectados. Al apretar uno, su chat
-// sale en una ventana a la izquierda de la pestaña. En el menú de escritorio va a la derecha. En la sala y en el
+// sale en una ventana a la izquierda de la pestaña. En el menú de escritorio va a la derecha, plegada: una franja
+// con las fotos de los conectados que se abre encima del contenido al pasar el mouse. En la sala y en el
 // celular es flotante: se abre con un botón, encima de lo demás, y se cierra con ✕.
 import { closeChat, getOpenChatId, markRead, openChat, refreshChatHeader, setUpChat } from './chat'
 import { createCharacterPhoto } from './character'
 import { describePresence, getUnreadTotal, onFriendsChange, setChatOpener, type Friend, type PastChat, type Person } from './friends'
 
-const OPEN_KEY = 'studyfocus.friendsDrawer'
+const COLLAPSE_DELAY = 250 // milisegundos: alcanza para pasar el mouse de la pestaña al chat sin que se pliegue
 const narrowScreen = window.matchMedia('(max-width: 720px)') // en el celular el menú no tiene la columna de la derecha
 
 const drawer = document.querySelector<HTMLElement>('#friends-drawer')!
@@ -38,23 +39,21 @@ let lastPastChats: PastChat[] = []
 const isFloating = () => isInRoom || narrowScreen.matches
 
 function setOpen(isOpen: boolean) {
+  clearTimeout(collapseTimer)
+  if (drawer.dataset.open === String(isOpen)) return
   drawer.dataset.open = String(isOpen)
   toggleButton.setAttribute('aria-expanded', String(isOpen))
-  toggleButton.title = isOpen ? 'Cerrar la lista de amigos' : 'Abrir la lista de amigos'
-  try {
-    localStorage.setItem(OPEN_KEY, String(isOpen))
-  } catch {
-    // Sin almacenamiento, la pestaña vuelve a su estado inicial al recargar
-  }
   if (isOpen) markRead()
 }
 
-function loadOpen() {
-  try {
-    return localStorage.getItem(OPEN_KEY) !== 'false'
-  } catch {
-    return true
-  }
+// En el menú se pliega sola al salir el mouse de la pestaña y del chat, con un poco de espera
+let collapseTimer = 0
+function collapseSoon() {
+  if (isFloating()) return
+  clearTimeout(collapseTimer)
+  collapseTimer = window.setTimeout(() => {
+    if (!isFloating() && !drawer.matches(':hover') && !chatWindow.matches(':hover')) setOpen(false)
+  }, COLLAPSE_DELAY)
 }
 
 // Flotante: escondida hasta que se abre con su botón, y al nivel de la página (fuera del menú, que forma
@@ -72,7 +71,7 @@ function applyLayout() {
     drawer.dataset.open = 'true'
   } else {
     drawer.hidden = false
-    setOpen(loadOpen())
+    setOpen(false)
   }
 }
 
@@ -305,9 +304,29 @@ export function setUpFriendsDrawer() {
   }
   narrowScreen.addEventListener('change', relayout)
   window.addEventListener('resize', relayout)
+  // En el menú: se abre al pasar el mouse (o al llegar con Tab) y se pliega al salir. El clic en el
+  // encabezado la abre también, para las pantallas táctiles
   toggleButton.addEventListener('click', () => {
     if (isFloating()) return // flotante, el encabezado no la achica: se cierra con ✕
-    setOpen(drawer.dataset.open !== 'true')
+    setOpen(true)
+  })
+  drawer.addEventListener('pointerenter', () => {
+    if (!isFloating()) setOpen(true)
+  })
+  chatWindow.addEventListener('pointerenter', () => clearTimeout(collapseTimer))
+  drawer.addEventListener('pointerleave', collapseSoon)
+  chatWindow.addEventListener('pointerleave', collapseSoon)
+  drawer.addEventListener('focusin', () => {
+    if (!isFloating()) setOpen(true)
+  })
+  drawer.addEventListener('focusout', (event) => {
+    if (!drawer.contains(event.relatedTarget as Node | null)) collapseSoon()
+  })
+  // Abierta con "Escribir" sin pasar el mouse: un clic en otra parte la pliega
+  document.addEventListener('pointerdown', (event) => {
+    if (isFloating() || drawer.dataset.open !== 'true') return
+    const target = event.target as Node
+    if (!drawer.contains(target) && !chatWindow.contains(target)) setOpen(false)
   })
   closeButton.addEventListener('click', hideDrawer)
   drawer.addEventListener('keydown', (event) => {

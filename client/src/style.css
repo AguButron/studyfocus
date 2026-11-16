@@ -992,6 +992,20 @@ body {
 }
 .friends-drawer[data-open="false"] { width: 56px; }
 
+/* En el menú siempre ocupa la franja de 56px: abierta crece hacia la izquierda, encima del contenido,
+   sin mover lo demás (el margen negativo deja la columna del mismo ancho) */
+.friends-drawer:not([data-floating]) {
+  z-index: 5;
+  transition: width 160ms ease-out, margin-left 160ms ease-out, box-shadow 160ms ease-out;
+}
+.friends-drawer:not([data-floating])[data-open="true"] {
+  margin-left: -224px;
+  box-shadow: -12px 0 32px rgb(0 0 0 / 0.18);
+}
+@media (prefers-reduced-motion: reduce) {
+  .friends-drawer:not([data-floating]) { transition: none; }
+}
+
 .friends-drawer-toggle {
   display: flex;
   align-items: center;
@@ -1070,7 +1084,7 @@ body {
 .drawer-online-photo[data-presence="break"]::after { background: var(--break); }
 .drawer-online-photo[data-presence="online"]::after { background: var(--online); }
 .drawer-online-photo[data-presence="away"]::after { border-color: var(--online); background: var(--card); }
-.friends-drawer[data-open="false"] .friends-drawer-chevron { transform: rotate(180deg); }
+.friends-drawer:not([data-floating]) .friends-drawer-chevron { display: none; } /* ya no se pliega con un clic */
 
 .friends-drawer-body {
   display: flex;
@@ -3191,10 +3205,7 @@ a.room-chat-author:focus-visible { outline: 2px solid var(--focus); outline-offs
 }
 
 /* En el menú, la música queda a la izquierda de la pestaña de Amigos, para no tapar el chat */
-body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="true"]) #music {
-  right: calc(280px + var(--cell-2));
-}
-body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="false"]) #music {
+body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])) #music {
   right: calc(56px + var(--cell-2));
 }
 
