@@ -15,7 +15,9 @@ import {
   deleteSection,
   deleteSpace,
   describeKind,
+  ensureSpaces,
   findSection,
+  reorderSections,
   formatGrade,
   roundGrade,
   getColors,
@@ -35,6 +37,7 @@ import { openSyllabusUpload, refreshSyllabusSpace, setUpSyllabusImport } from '.
 import { describeClasses } from './classes'
 import { openClassDialog, setUpClassDialog } from './classDialog'
 import { createWeekSchedule } from './weekSchedule'
+import { LOCALE } from './i18n'
 
 const CONFIRM_TIME = 4000 // milisegundos que espera la confirmación de borrar
 
@@ -241,7 +244,7 @@ const detailItems = document.querySelector<HTMLUListElement>('#section-items')!
 const detailEmpty = document.querySelector<HTMLParagraphElement>('#section-items-empty')!
 const itemsTitle = document.querySelector<HTMLHeadingElement>('#section-items-title')!
 
-const dateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' })
+const dateFormat = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' })
 
 let editingSpace: Space | null = null
 let editingSection: Section | null = null
@@ -277,12 +280,14 @@ const RECENT_KEY = 'studyfocus.recentSpace'
 const homeSpaceCard = document.querySelector<HTMLDivElement>('#home-space-card')!
 const homeSpaceEmpty = document.querySelector<HTMLDivElement>('#home-space-empty')!
 const homeSpaceTitle = document.querySelector<HTMLHeadingElement>('#home-space-title')!
-const homeSchedule = document.querySelector<HTMLDivElement>('#home-schedule')!
+const schedulePage = document.querySelector<HTMLDivElement>('.schedule-page')!
+const scheduleNone = document.querySelector<HTMLDivElement>('#home-schedule-none')!
+const scheduleSpacePick = document.querySelector<HTMLSelectElement>('#home-schedule-space')!
+const SCHEDULE_KEY = 'studyfocus.scheduleSpace' // la carpeta elegida para la página Horario
 const homeScheduleGrid = document.querySelector<HTMLDivElement>('#home-schedule-grid')!
 const homeScheduleEmpty = document.querySelector<HTMLParagraphElement>('#home-schedule-empty')!
-const homeScheduleSpace = document.querySelector<HTMLSelectElement>('#home-schedule-space')!
-const SCHEDULE_KEY = 'studyfocus.scheduleSpace'
-let chosenScheduleSpace: string | null = null // la carpeta elegida para el horario de Inicio
+const homeSpacePick = document.querySelector<HTMLSelectElement>('#home-space-pick')!
+const HOME_SPACE_KEY = 'studyfocus.homeSpace' // la carpeta elegida para Inicio; vacía es "la más reciente"
 let showSpacesPanel = () => {}
 
 // El último espacio que se abrió, para mostrarlo en Inicio
@@ -311,10 +316,28 @@ function countSections(space: Space) {
   return `${labels.name} · ${count} ${(count === 1 ? labels.section : labels.sections).toLowerCase()}`
 }
 
+function readHomeChoice() {
+  try {
+    return localStorage.getItem(HOME_SPACE_KEY) ?? ''
+  } catch {
+    return '' // sin almacenamiento, siempre la más reciente
+  }
+}
+
+// La carpeta de Inicio: la elegida, o si no se eligió (o ya no está activa), la más reciente
+function findHomeSpace() {
+  const chosen = readHomeChoice()
+  return getSpaces().find((space) => space.id === chosen && !space.archived) ?? findRecentSpace()
+}
+
 function renderRecentSpace() {
-  const space = findRecentSpace()
+  const space = findHomeSpace()
+  const active = getSpaces().filter((item) => !item.archived)
+  homeSpacePick.replaceChildren(new Option('La más reciente', ''), ...active.map((item) => new Option(item.name, item.id)))
+  homeSpacePick.value = active.some((item) => item.id === readHomeChoice()) ? readHomeChoice() : ''
+  homeSpacePick.hidden = active.length < 2 // con una sola carpeta no hay qué elegir
   homeSpaceEmpty.hidden = space !== null
-  homeSpaceTitle.textContent = space ? 'Tu carpeta más reciente' : 'Tu carpeta'
+  homeSpaceTitle.textContent = !space ? 'Tu carpeta' : homeSpacePick.value ? 'Tu carpeta' : 'Tu carpeta más reciente'
   homeSpaceCard.replaceChildren(...(space ? [createRecentCard(space)] : []))
   renderHomeSchedule()
 }
@@ -322,27 +345,27 @@ function renderRecentSpace() {
 // Las carpetas que pueden tener horario: las activas con ramos
 const scheduleSpaces = () => getSpaces().filter((space) => !space.archived && space.sections.length > 0)
 
-// La carpeta del horario de Inicio: la que se eligió en el selector, o si no, la más reciente
+// La carpeta de la página Horario: la elegida en su selector, o si no, la de Inicio
 function findScheduleSpace() {
   const options = scheduleSpaces()
-  let saved = chosenScheduleSpace
+  let saved: string | null = null
   try {
-    saved ??= localStorage.getItem(SCHEDULE_KEY)
+    saved = localStorage.getItem(SCHEDULE_KEY)
   } catch {
-    // Sin almacenamiento se usa la más reciente
+    // Sin almacenamiento se usa la de Inicio
   }
-  const recent = findRecentSpace()
-  return options.find((space) => space.id === saved) ?? options.find((space) => space.id === recent?.id) ?? options[0] ?? null
+  const home = findHomeSpace()
+  return options.find((space) => space.id === saved) ?? options.find((space) => space.id === home?.id) ?? options[0] ?? null
 }
 
 function renderHomeSchedule() {
   const space = findScheduleSpace()
-  homeSchedule.hidden = !space
+  schedulePage.hidden = !space
+  scheduleNone.hidden = !!space
   if (!space) return
   const options = scheduleSpaces()
-  homeScheduleSpace.replaceChildren(...options.map((option) => new Option(option.name, option.id)))
-  homeScheduleSpace.value = space.id
-  homeScheduleSpace.hidden = options.length < 2 // con una sola carpeta no hay qué elegir
+  scheduleSpacePick.replaceChildren(...options.map((option) => new Option(option.name, option.id)))
+  scheduleSpacePick.value = space.id
   renderSchedule(space, homeScheduleGrid, homeScheduleEmpty)
 }
 
@@ -422,7 +445,7 @@ function createRecentCard(space: Space) {
   return card
 }
 
-function createSectionRow(section: Section) {
+function createSectionRow(section: Section, canReorder: boolean) {
   const row = document.createElement('button')
   row.type = 'button'
   row.className = 'section-row'
@@ -449,7 +472,16 @@ function createSectionRow(section: Section) {
     row.append(bar)
   }
   row.addEventListener('click', () => openSection(section.id))
-  return row
+  if (!canReorder) return row
+
+  const item = document.createElement('div')
+  item.className = 'section-row-item'
+  item.dataset.id = section.id
+  item.style.setProperty('--section', section.color)
+  const handle = createHandle(section.name)
+  makeDraggable(item, handle, folderSections, saveSectionOrder)
+  item.append(handle, row)
+  return item
 }
 
 function createSpaceCard(space: Space) {
@@ -509,7 +541,9 @@ function renderFolder() {
     .join(' · ')
   folderAdd.textContent = `+ Agregar ${labels.section.toLowerCase()}`
   folderAdd.hidden = space.archived
-  folderSections.replaceChildren(...space.sections.map(createSectionRow))
+  // Con más de uno se pueden ordenar arrastrándolos (no en una carpeta archivada)
+  const canReorder = space.sections.length > 1 && !space.archived
+  folderSections.replaceChildren(...space.sections.map((section) => createSectionRow(section, canReorder)))
   folderEmpty.hidden = space.sections.length > 0
   folderEmpty.textContent = `Esta carpeta aún está vacía. Usa «${folderAdd.textContent}» para empezar.`
   renderFolderSchedule(space)
@@ -556,12 +590,10 @@ function renderSpaces() {
 
 // ── Ordenar arrastrando ────────────────────────────────────────────────
 
-function readOrder() {
-  return [...detailItems.children].map((row) => (row as HTMLElement).dataset.id!)
-}
+const readOrder = (list: HTMLElement) => [...list.children].map((row) => (row as HTMLElement).dataset.id!)
 
-async function saveOrder(before: string[]) {
-  const ids = readOrder()
+async function saveItemOrder(before: string[]) {
+  const ids = readOrder(detailItems)
   if (!openSectionId || ids.join() === before.join()) return
   const { error } = await reorderSectionItems(openSectionId, ids)
   if (error) {
@@ -570,20 +602,33 @@ async function saveOrder(before: string[]) {
   }
 }
 
-// Se toma de la manilla: con el mouse o el dedo se arrastra, y con el teclado se mueve con las flechas
-function makeDraggable(row: HTMLLIElement, handle: HTMLButtonElement) {
+async function saveSectionOrder(before: string[]) {
+  const ids = readOrder(folderSections)
+  if (!openSpaceId || ids.join() === before.join()) return
+  const error = await reorderSections(openSpaceId, ids)
+  if (error) {
+    folderMessage.textContent = error // el error de la lista de carpetas no se ve con una carpeta abierta
+    folderMessage.hidden = false
+    renderFolder() // vuelve al orden guardado
+  }
+}
+
+// Se toma de la manilla: con el mouse o el dedo se arrastra, y con el teclado se mueve con las flechas.
+// Sirve en una lista y en una grilla: al pasar sobre otra fila, se pone antes o después según hacia dónde va
+function makeDraggable(row: HTMLElement, handle: HTMLButtonElement, list: HTMLElement, save: (before: string[]) => void) {
   handle.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return
     event.preventDefault()
-    const before = readOrder()
+    const before = readOrder(list)
     row.setAttribute('data-dragging', '')
 
     const move = (moveEvent: PointerEvent) => {
-      const target = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)?.closest<HTMLLIElement>('#section-items > li')
+      let target = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)
+      while (target && target.parentElement !== list) target = target.parentElement
       if (!target || target === row) return
-      const box = target.getBoundingClientRect()
-      const isAfter = moveEvent.clientY > box.top + box.height / 2
-      detailItems.insertBefore(row, isAfter ? target.nextSibling : target)
+      const children = [...list.children]
+      const isForward = children.indexOf(target) > children.indexOf(row)
+      list.insertBefore(row, isForward ? target.nextSibling : target)
     }
     // En toda la ventana: el puntero sale de la manilla apenas se empieza a mover
     const end = () => {
@@ -591,7 +636,7 @@ function makeDraggable(row: HTMLLIElement, handle: HTMLButtonElement) {
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
       row.removeAttribute('data-dragging')
-      saveOrder(before)
+      save(before)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', end)
@@ -599,14 +644,27 @@ function makeDraggable(row: HTMLLIElement, handle: HTMLButtonElement) {
   })
 
   handle.addEventListener('keydown', (event) => {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    const isBack = event.key === 'ArrowUp' || event.key === 'ArrowLeft'
+    const isForward = event.key === 'ArrowDown' || event.key === 'ArrowRight'
+    if (!isBack && !isForward) return
     event.preventDefault()
-    const before = readOrder()
-    if (event.key === 'ArrowUp' && row.previousElementSibling) detailItems.insertBefore(row, row.previousElementSibling)
-    if (event.key === 'ArrowDown' && row.nextElementSibling) detailItems.insertBefore(row.nextElementSibling, row)
+    const before = readOrder(list)
+    if (isBack && row.previousElementSibling) list.insertBefore(row, row.previousElementSibling)
+    if (isForward && row.nextElementSibling) list.insertBefore(row.nextElementSibling, row)
     handle.focus()
-    saveOrder(before)
+    save(before)
   })
+}
+
+// La manilla con seis puntos para arrastrar
+function createHandle(name: string) {
+  const handle = document.createElement('button')
+  handle.type = 'button'
+  handle.className = 'section-item-handle'
+  handle.setAttribute('aria-label', `Mover ${name}. Usa las flechas.`)
+  handle.title = 'Arrastra para ordenar'
+  handle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg>'
+  return handle
 }
 
 // ── Notas directo en la fila ───────────────────────────────────────────
@@ -684,13 +742,8 @@ function createItemRow(item: AgendaItem, section: Section) {
   row.dataset.id = item.id
   row.dataset.kind = item.kind
 
-  const handle = document.createElement('button')
-  handle.type = 'button'
-  handle.className = 'section-item-handle'
-  handle.setAttribute('aria-label', `Mover ${item.title}. Usa las flechas arriba y abajo.`)
-  handle.title = 'Arrastra para ordenar'
-  handle.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg>'
-  makeDraggable(row, handle)
+  const handle = createHandle(item.title)
+  makeDraggable(row, handle, detailItems, saveItemOrder)
 
   const button = document.createElement('button')
   button.type = 'button'
@@ -966,14 +1019,21 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
   }
   document.querySelector('#folder-schedule-add')!.addEventListener('click', () => addClasses(getSpaces().find((item) => item.id === openSpaceId)))
   document.querySelector('#home-schedule-add')!.addEventListener('click', () => addClasses(findScheduleSpace()))
-  homeScheduleSpace.addEventListener('change', () => {
-    chosenScheduleSpace = homeScheduleSpace.value
+  scheduleSpacePick.addEventListener('change', () => {
     try {
-      localStorage.setItem(SCHEDULE_KEY, homeScheduleSpace.value)
+      localStorage.setItem(SCHEDULE_KEY, scheduleSpacePick.value)
     } catch {
-      // Sin almacenamiento, la elección dura hasta recargar
+      // Sin almacenamiento, el horario vuelve a la carpeta de Inicio al recargar
     }
     renderHomeSchedule()
+  })
+  homeSpacePick.addEventListener('change', () => {
+    try {
+      localStorage.setItem(HOME_SPACE_KEY, homeSpacePick.value)
+    } catch {
+      // Sin almacenamiento, Inicio sigue mostrando la más reciente
+    }
+    renderRecentSpace()
   })
   setUpSyllabusImport((message) => {
     folderMessage.textContent = message
@@ -1095,6 +1155,16 @@ export function setUpSpacesPanel(openSpacesPanel: () => void) {
   onAgendaChange(() => {
     if (openSectionId) renderSection()
   })
+}
+
+// Desde el calendario: va al ramo de algo de la agenda y abre su ventana de edición, donde sí se cambian
+// el porcentaje y la nota
+export async function editInSection(item: AgendaItem) {
+  showSpacesPanel() // parte en la lista de carpetas
+  await ensureSpaces()
+  if (!item.sectionId || !findSection(item.sectionId)) return openAgendaDialog(item, item.date)
+  openSection(item.sectionId)
+  openAgendaDialog(item, item.date)
 }
 
 // Al entrar a Carpetas desde el menú se parte en la lista

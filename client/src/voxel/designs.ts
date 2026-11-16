@@ -28,6 +28,8 @@ function placer(kind: string) {
     // Contra la pared izquierda, mirando a la derecha, con su centro en z = along
     left: (id: string, along: number, extra: Extra = {}): PlacedProp => ({ id, x: x0 + halfDepth(id), z: along, rotation: 90, ...extra }),
     right: (id: string, along: number, extra: Extra = {}): PlacedProp => ({ id, x: x1 - 1 - halfDepth(id), z: along, rotation: 270, ...extra }),
+    // Contra la pared de adelante, mirando hacia atrás: solo se ve en primera persona (buildFrontWall)
+    front: (id: string, along: number, extra: Extra = {}): PlacedProp => ({ id, x: along, z: z1 - 1 - halfDepth(id), rotation: 180, ...extra }),
     at: (id: string, x: number, z: number, extra: Extra = {}): PlacedProp => ({ id, x, z, ...extra }),
   }
 }
@@ -56,8 +58,9 @@ export const DESIGNS: RoomDesign[] = [
     description: 'Tu escritorio frente a la ventana, de noche, con la lámpara y tus libros.',
     theme: theme({ style: 'tablas', color: 0x7c4f35, accent: 0x6b432d }, { style: 'papel', color: 0x3e4a6b, accent: 0x2e3550 }, 'noche'),
     table: { colors: { top: 0xc9925f, body: 0x8a6a4f } },
+    front: [solo.front('poster', -44, { colors: { sky: 0x2b3a67, hill: 0x4f5d8a, sun: 0xf6f1d8 } }), solo.front('clock', 0), solo.front('shelfWall', 44)],
     props: [
-      solo.back('window', 0, { y: 44, options: { sky: 'noche', curtains: 'si' }, colors: { curtain: 0x8c5a7a } }),
+      solo.back('window', 0, { y: 44, options: { sky: 'noche', curtains: 'si', weather: 'estrellas' }, colors: { curtain: 0x8c5a7a } }),
       solo.at('tableLamp', -21, -50, { y: 32, rotation: 90, colors: { shade: 0xf2c14e } }),
       solo.at('books', 21, -50, { y: 32 }),
       solo.left('shelfWall', -16),
@@ -76,8 +79,9 @@ export const DESIGNS: RoomDesign[] = [
     theme: theme({ style: 'tablas', color: 0xd9b88f, accent: 0xc9a77d }, { style: 'liso', color: 0xeae6dc, accent: 0xcfc8b8 }, 'dia'),
     table: { colors: { top: 0xe8d3b0, body: 0xf4f0e6 } },
     chair: { colors: { wood: 0xd9b88f, seat: 0x7fb8a4 } },
+    front: [solo.front('hangingPlant', -52), solo.front('corkboard', 0), solo.front('calendar', 52, { colors: { header: 0x7fb8a4 } })],
     props: [
-      solo.back('window', 0, { y: 44, options: { sky: 'dia' } }),
+      solo.back('window', 0, { y: 44, options: { sky: 'dia', weather: 'nubes' } }),
       solo.left('corkboard', -36),
       solo.at('cactus', 21, -48, { y: 32 }),
       solo.at('plant', -22, -48, { y: 32, colors: { pot: 0xf4f0e6 } }),
@@ -95,8 +99,9 @@ export const DESIGNS: RoomDesign[] = [
     description: 'Todo de madera, con luces colgando, velas y un puf para descansar.',
     theme: theme({ style: 'parquet', color: 0x9c6b48, accent: 0x8a5a3c }, { style: 'madera', color: 0xa6744f, accent: 0x74543a }, 'tarde'),
     table: { colors: { top: 0x74543a, body: 0x5b3d2a } },
+    front: [solo.front('shelfWall', -36, { colors: { wood: 0x74543a } }), solo.front('poster', 36, { colors: { sky: 0xf2a65a, hill: 0x8a5a3c, sun: 0xfff4cf } })],
     props: [
-      solo.back('window', 0, { y: 44, options: { sky: 'tarde' } }),
+      solo.back('window', 0, { y: 44, options: { sky: 'tarde', weather: 'lluvia' } }),
       solo.right('stringLights', 0, { y: 92 }),
       solo.at('candles', 21, -48, { y: 32 }),
       solo.at('books', -21, -48, { y: 32 }),
@@ -114,8 +119,9 @@ export const DESIGNS: RoomDesign[] = [
     id: 'duo-ventana', kind: 'duo', name: 'Junto a la ventana',
     description: 'Frente a frente, con el atardecer atrás, un sillón y una lámpara de pie.',
     theme: theme({ style: 'tablas', color: 0x8a5a3c, accent: 0x7c4f35 }, { style: 'zocalo', color: 0x7b7f9e, accent: 0x50536f }, 'tarde'),
+    front: [duo.front('corkboard', -64), duo.front('clock', 0), duo.front('poster', 64)],
     props: [
-      duo.back('window', 0),
+      duo.back('window', 0, { options: { weather: 'nubes' } }),
       duo.at('floorLamp', -96, -88),
       duo.at('armchair', 88, -76, { rotation: 270 }),
       duo.left('cabinet', 16),
@@ -137,10 +143,11 @@ export const DESIGNS: RoomDesign[] = [
     theme: theme({ style: 'baldosas', color: 0xe8e2d4, accent: 0x3c3f4a }, { style: 'ladrillo', color: 0xa0523d, accent: 0x6b4a3a }, 'tarde'),
     table: { colors: { top: 0x3c3f4a, legs: 0x2f2f36 }, options: { size: 'grande' } },
     chair: { colors: { wood: 0x2f2f36, seat: 0x8a3b3b } },
+    front: [duo.front('poster', -70, { colors: { sky: 0xa0523d, hill: 0x3c3f4a, sun: 0xf2c14e } }), duo.front('clock', 0), duo.front('shelfWall', 70, { colors: { wood: 0x5b3d2a } })],
     props: [
       duo.back('chalkboard', 0, { y: 48 }),
       duo.back('stringLights', 0, { y: 92 }),
-      duo.left('window', -16, { options: { sky: 'tarde', curtains: 'si' }, colors: { curtain: 0x5d8a7a } }),
+      duo.left('window', -16, { options: { sky: 'tarde', curtains: 'si', weather: 'lluvia' }, colors: { curtain: 0x5d8a7a } }),
       duo.right('bench', -8, { colors: { wood: 0x5b3d2a, cushion: 0x5d8a7a } }),
       duo.right('hangingPlant', 56),
       duo.at('coatRack', -96, -96, { colors: { coat: 0x5d8a7a, scarf: 0xf2c14e } }),
@@ -155,8 +162,9 @@ export const DESIGNS: RoomDesign[] = [
     id: 'duo-noche', kind: 'duo', name: 'Noche de estudio',
     description: 'Afuera ya es de noche: mandan las lámparas, la guirnalda y un puf para el descanso.',
     theme: theme({ style: 'alfombra', color: 0x4a4e6b, accent: 0x3a3e58 }, { style: 'papel', color: 0x2e3550, accent: 0x232842 }, 'noche'),
+    front: [duo.front('poster', -60, { colors: { sky: 0x2e3550, hill: 0x6b5b95, sun: 0xffb7d5 } }), duo.front('shelfWall', 0), duo.front('calendar', 72, { colors: { header: 0x6b5b95 } })],
     props: [
-      duo.back('window', -24, { options: { sky: 'noche', curtains: 'si' }, colors: { curtain: 0x6b5b95 } }),
+      duo.back('window', -24, { options: { sky: 'noche', curtains: 'si', weather: 'nieve' }, colors: { curtain: 0x6b5b95 } }),
       duo.left('stringLights', 0, { y: 88, colors: { bulbs: 0xffb7d5 } }),
       duo.at('floorLamp', -100, -92),
       duo.at('floorLamp', 100, 88, { colors: { shade: 0xf2c14e } }),
@@ -179,11 +187,12 @@ export const DESIGNS: RoomDesign[] = [
     theme: theme({ style: 'tablas', color: 0xc9a77d, accent: 0xb89670 }, { style: 'liso', color: 0xe6e2d8, accent: 0x9aa0a6 }, 'dia'),
     table: { colors: { top: 0xe8d3b0, legs: 0x9aa0a6 } },
     chair: { colors: { wood: 0x3f5f7a, seat: 0x3f5f7a } },
+    front: [group.front('kanban', -80), group.front('clock', 0), group.front('corkboard', 80)],
     props: [
       group.back('whiteboard', 0),
       group.back('clock', -84),
       group.left('corkboard', -24),
-      group.right('window', -24, { options: { sky: 'dia' } }),
+      group.right('window', -24, { options: { sky: 'dia', weather: 'nubes' } }),
       group.right('bookshelf', 72, { options: { height: 'medio' } }),
       group.at('tallPlant', -116, -108),
       group.at('plant', 120, -116),
@@ -200,11 +209,12 @@ export const DESIGNS: RoomDesign[] = [
     theme: theme({ style: 'parquet', color: 0x8a5a3c, accent: 0x74543a }, { style: 'madera', color: 0x8a6a4f, accent: 0x5b3d2a }, 'tarde'),
     table: { colors: { top: 0x74543a, legs: 0x5b3d2a } },
     chair: { colors: { wood: 0x5b3d2a, seat: 0x8a3b3b } },
+    front: [group.front('shelfWall', -72, { colors: { wood: 0x5b3d2a } }), group.front('poster', 0, { colors: { sky: 0x6e2f35, hill: 0x3e5c55, sun: 0xc9a227 } }), group.front('shelfWall', 72, { colors: { wood: 0x5b3d2a } })],
     props: [
       group.back('bookshelf', -48),
       group.back('bookshelf', 48),
       group.back('clock', 0),
-      group.left('window', -16, { options: { sky: 'tarde', curtains: 'si' }, colors: { curtain: 0x8a3b3b } }),
+      group.left('window', -16, { options: { sky: 'tarde', curtains: 'si', weather: 'lluvia' }, colors: { curtain: 0x8a3b3b } }),
       group.at('armchair', 104, 88, { rotation: 270, colors: { fabric: 0x8a3b3b } }),
       group.at('floorLamp', 116, 48),
       group.right('fireplace', -40),
@@ -221,9 +231,10 @@ export const DESIGNS: RoomDesign[] = [
     theme: theme({ style: 'piedra', color: 0x9aa0a6, accent: 0x6b6f7a }, { style: 'ladrillo', color: 0xb5654a, accent: 0x7a4a3a }, 'dia'),
     table: { colors: { top: 0xd9c9a8, legs: 0x2f2f36 } },
     chair: { colors: { wood: 0x2f2f36, seat: 0xd9c9a8 } },
+    front: [group.front('hangingPlant', -90), group.front('hangingPlant', -30), group.front('hangingPlant', 30), group.front('hangingPlant', 90)],
     props: [
-      group.left('window', -40, { options: { sky: 'dia' } }),
-      group.right('window', -40, { options: { sky: 'dia' } }),
+      group.left('window', -40, { options: { sky: 'dia', weather: 'nubes' } }),
+      group.right('window', -40, { options: { sky: 'dia', weather: 'nubes' } }),
       group.back('hangingPlant', -80),
       group.back('hangingPlant', 0),
       group.back('hangingPlant', 80),

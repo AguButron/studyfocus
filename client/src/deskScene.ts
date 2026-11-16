@@ -9,6 +9,7 @@ import { designsFor, getDesign } from './voxel/designs'
 import { buildRoom as buildVoxelRoom, WALL_HEIGHT, type RoomDesign } from './voxel/roomBuilder'
 import { SKY_LIGHT, voxelMesh } from './voxel/voxelView'
 import { VOXEL_SIZE, VoxelSet } from './voxel/voxels'
+import { windowWeather } from './voxel/windowWeather'
 import { camera, getRenderer, startRenderer, stopRenderer } from './scene'
 import { getTimer, isTimerIdle } from './timer'
 import { setCameraNames, setStudyScreenVisible, setUpTimerPanel } from './timerPanel'
@@ -81,6 +82,10 @@ function buildRoom(design: RoomDesign) {
     group.position.set(-seat.x, -VOXEL_SINK, -seat.z)
     parent.add(group)
   }
+  // Las ventanas de la pieza están en la pared de atrás: su clima se esconde con ella
+  const weather = windowWeather(built.windows)
+  weather.position.set(-seat.x, -VOXEL_SINK, -seat.z)
+  backWall.add(weather)
   room.add(backWall)
   walls = {
     back: z0 * VOXEL_SIZE - seat.z,

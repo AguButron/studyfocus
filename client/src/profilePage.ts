@@ -7,6 +7,8 @@ import { createCharacterPhoto } from './character'
 import { getCountryName, getFlag } from './countries'
 import { describePresence, type Friend } from './friends'
 import { formatDuration, renderChart } from './stats'
+import type { StatsVisibility } from './account'
+import { LOCALE } from './i18n'
 
 const PARAM = 'perfil'
 
@@ -22,7 +24,9 @@ interface PersonProfile {
   country: string | null
   character: Character
   memberSince: string // YYYY-MM-DD
-  stats: { total: number; week: number; streak: number; days: { date: string; seconds: number }[] }
+  stats: { total: number; week: number; streak: number; days: { date: string; seconds: number }[] } | null // nulo si no las comparte contigo
+  statsVisibility: StatsVisibility
+  medals: { id: string; name: string; description: string; earned: boolean }[] | null // nulo como stats
   relation: Relation
   presence: Friend['presence']
   lastSeen: string | null
@@ -40,15 +44,26 @@ const cancelButton = document.querySelector<HTMLButtonElement>('#person-friend-c
 const joinButton = document.querySelector<HTMLButtonElement>('#person-join')!
 const messageText = document.querySelector<HTMLParagraphElement>('#person-message')!
 const aboutTitle = document.querySelector<HTMLHeadingElement>('#person-about-title')!
-const studiesText = document.querySelector<HTMLParagraphElement>('#person-studies')!
+const studiesText = document.querySelector<HTMLSpanElement>('#person-studies')!
 const bioText = document.querySelector<HTMLParagraphElement>('#person-bio')!
 const aboutEmpty = document.querySelector<HTMLParagraphElement>('#person-about-empty')!
 const weekText = document.querySelector<HTMLElement>('#person-week')!
 const streakText = document.querySelector<HTMLElement>('#person-streak')!
 const totalText = document.querySelector<HTMLElement>('#person-total')!
 const chart = document.querySelector<HTMLDivElement>('#person-chart')!
+const allStatsButton = document.querySelector<HTMLButtonElement>('#person-all-stats')!
+const statsList = document.querySelector<HTMLDListElement>('#person-stats')!
+const statsHiddenText = document.querySelector<HTMLParagraphElement>('#person-stats-hidden')!
+const weekCard = document.querySelector<HTMLElement>('#person-week-card')!
+const weekVisibility = document.querySelector<HTMLSpanElement>('#person-week-visibility')!
+const grid = document.querySelector<HTMLDivElement>('#person-grid')!
+const medalsCard = document.querySelector<HTMLElement>('#person-medals-card')!
+const medalsList = document.querySelector<HTMLUListElement>('#person-medals')!
 
-const sinceFormat = new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+// En tu perfil, quién ve tus estadísticas (se cambia en Editar perfil)
+const VISIBILITY_TEXT: Record<StatsVisibility, string> = { public: 'Público', friends: 'Solo amigos', private: 'Privado' }
+
+const sinceFormat = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 let current: PersonProfile | null = null
 let request = 0 // descarta la respuesta de un perfil que ya no está abierto
@@ -109,7 +124,7 @@ function showRelation(person: PersonProfile) {
     received: 'Aceptar su solicitud',
     sent: 'Solicitud enviada',
     friend: 'Son amigos',
-    self: 'Editar tu perfil',
+    self: 'Editar perfil',
   }
   friendButton.textContent = labels[person.relation]
   friendButton.disabled = person.relation === 'sent' || person.relation === 'friend'
@@ -119,7 +134,7 @@ function showRelation(person: PersonProfile) {
 
 function render(person: PersonProfile) {
   current = person
-  photoBox.replaceChildren(createCharacterPhoto(person.character, 'character-photo--large'))
+  photoBox.replaceChildren(createCharacterPhoto(person.character, 'profile-hero-photo'))
   nameText.textContent = person.name
   usernameText.textContent = `@${person.username}`
   sinceText.textContent = `En StudyFocus desde ${sinceFormat.format(new Date(`${person.memberSince}T12:00:00Z`))}`
@@ -139,13 +154,36 @@ function render(person: PersonProfile) {
   studiesText.hidden = !studies
   bioText.textContent = person.bio ?? ''
   bioText.hidden = !person.bio
-  aboutEmpty.hidden = Boolean(studies || person.bio)
+  aboutEmpty.hidden = Boolean(person.bio)
   aboutEmpty.textContent = person.relation === 'self' ? 'Aún no cuentas nada sobre ti.' : 'Aún no ha contado nada sobre sí.'
 
-  weekText.textContent = formatDuration(person.stats.week)
-  streakText.textContent = `${person.stats.streak} ${person.stats.streak === 1 ? 'día' : 'días'}`
-  totalText.textContent = formatDuration(person.stats.total)
-  renderChart(person.stats.days, chart)
+  const { stats } = person
+  statsList.hidden = !stats
+  weekCard.hidden = !stats
+  grid.classList.toggle('profile-grid--single', !stats)
+  statsHiddenText.hidden = Boolean(stats)
+  statsHiddenText.textContent = person.statsVisibility === 'friends' ? 'Solo sus amigos pueden ver sus estadísticas.' : 'Sus estadísticas son privadas.'
+  if (stats) {
+    weekText.textContent = formatDuration(stats.week)
+    streakText.textContent = `${stats.streak} ${stats.streak === 1 ? 'día' : 'días'}`
+    totalText.textContent = formatDuration(stats.total)
+    renderChart(stats.days, chart)
+  }
+  allStatsButton.hidden = person.relation !== 'self'
+  const medals = person.medals ?? []
+  medalsCard.hidden = medals.length === 0
+  medalsList.replaceChildren(
+    ...medals.map((medal) => {
+      const item = document.createElement('li')
+      item.className = 'person-medal'
+      item.toggleAttribute('data-earned', medal.earned)
+      item.textContent = medal.name
+      item.title = medal.description
+      return item
+    }),
+  )
+  weekVisibility.hidden = person.relation !== 'self'
+  weekVisibility.textContent = VISIBILITY_TEXT[person.statsVisibility]
 
   content.hidden = false
   statusText.hidden = true

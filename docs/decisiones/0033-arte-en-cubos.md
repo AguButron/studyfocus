@@ -186,8 +186,22 @@ Ninguna de las dos se publica: `vite build` solo arma `index.html`.
 
 - Las sillas de cubos se ven siempre. Para elegir asiento, cada silla libre se envuelve en una caja verde transparente, más fuerte bajo el mouse. Es la misma caja que recibe el clic.
 - Toda la sala de cubos baja 5 cm (`VOXEL_SINK`). Así la cubierta de las mesas queda a 0,75 m y el computador, el libro y el cuaderno quedan apoyados, sin tocar `activity.ts`.
-- Se prenden hasta 4 lámparas del diseño. La pared alta de adelante (para la vista sentada) es una caja lisa del color de las paredes.
+- Se prenden hasta 4 lámparas del diseño.
 - Probado en la Sala de grupo con "Club de lectura": elegir asiento, sentarse, iniciar el temporizador y la vista Escritorio.
+
+### La cuarta pared y el clima en la ventana
+
+**Fecha:** 2026-11-16
+
+- **La pared de adelante, decorada:** la pared alta de adelante, que solo se ve sentado, ya no es una caja lisa. Se arma en cubos (`buildFrontWall` en `roomBuilder.ts`) con la textura de las paredes y lo que pone el diseño en `front` (afiches, reloj, repisas, diario mural, calendario, plantas colgantes). Todo cuelga sobre 1 m de alto y no choca con ningún cubo de la sala. Desde arriba no se ve, como antes.
+- **El clima en la ventana:** la ventana tiene la opción "Clima" (nada, lluvia, nieve, nubes o estrellas). Cada diseño trae el suyo y todos ven lo mismo. Detrás del vidrio se mueven cuadraditos del tamaño de un cubo (`windowWeather.ts`): la lluvia y la nieve caen, las nubes cruzan y se cortan en el marco, y las estrellas titilan. Con nubes o estrellas no se pintan las fijas. Se mueve solo al dibujarse (`onBeforeRender`), así que funciona igual en la sala, en tu escritorio, en la galería y en "Crea tu sala". Las nubes van solo de día o de tarde, y las estrellas solo de noche.
+
+| Diseño | Clima |
+|---|---|
+| Rincón de noche | Estrellas |
+| Estudio luminoso · Junto a la ventana · Sala de proyectos · Terraza cubierta | Nubes |
+| Ático de madera · Café de esquina · Club de lectura | Lluvia |
+| Noche de estudio | Nieve |
 
 ## Cómo llevarlo a la sala de verdad
 

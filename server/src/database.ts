@@ -44,6 +44,8 @@ const SCHEMA = `
   ALTER TABLE users ADD COLUMN IF NOT EXISTS studies TEXT;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS institution TEXT;
   ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT;
+  -- Quién ve tus estadísticas en tu perfil: 'public' (todos), 'friends' (solo amigos) o 'private' (solo tú)
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS stats_visibility TEXT NOT NULL DEFAULT 'public';
 
   -- Cómo se ve su personaje, del que sale su foto. Vacío: aún no lo eligió
   ALTER TABLE users ADD COLUMN IF NOT EXISTS character_look JSONB;
@@ -156,6 +158,8 @@ const SCHEMA = `
 
   -- El orden que cada persona les da a las cosas de un apartado, arrastrándolas; vacío es por fecha
   ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS position INTEGER;
+  -- El orden de los apartados dentro de su carpeta, arrastrándolos; vacío es por creación
+  ALTER TABLE sections ADD COLUMN IF NOT EXISTS position INTEGER;
 
   -- Una evaluación puede no tener fecha todavía: queda en su apartado, fuera del calendario
   ALTER TABLE agenda_items ALTER COLUMN due_date DROP NOT NULL;

@@ -12,7 +12,9 @@ import {
   type AgendaItem,
 } from './agenda'
 import { openAgendaDialog } from './agendaDialog'
+import { openAgendaDetail } from './agendaDetail'
 import { describeItemSection, ensureSpaces } from './spaces'
+import { LOCALE } from './i18n'
 
 const DAYS = 7
 
@@ -21,7 +23,7 @@ const emptyText = document.querySelector<HTMLParagraphElement>('#upcoming-empty'
 const errorText = document.querySelector<HTMLParagraphElement>('#upcoming-error')!
 const homeBadge = document.querySelector<HTMLSpanElement>('#home-badge')!
 
-const dayFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric' })
+const dayFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric' })
 
 let request = 0 // descarta respuestas viejas
 let onChange: () => void = () => {}
@@ -90,7 +92,7 @@ function createRow(item: AgendaItem, isLate: boolean) {
     name.textContent = section.name
     open.append(name)
   }
-  open.addEventListener('click', () => openAgendaDialog(item, item.date))
+  open.addEventListener('click', () => openAgendaDetail(item))
   row.append(open)
   return row
 }
@@ -124,13 +126,13 @@ export async function refreshUpcoming() {
   if (current !== request) return
 
   errorText.textContent = range.error ?? reminders.error ?? ''
-  if (reminders.value) {
-    homeBadge.hidden = reminders.value.length === 0
-    homeBadge.textContent = String(reminders.value.length)
-  }
   if (!range.value) return
 
   const late = reminders.value?.filter((item) => item.date !== null && item.date < today) ?? []
+  // El número junto a Inicio: lo pendiente de esta lista, sin importar el aviso (que será para notificaciones)
+  const pending = [...late, ...range.value].filter((item) => !item.done).length
+  homeBadge.hidden = pending === 0
+  homeBadge.textContent = String(pending)
   const groups: HTMLElement[] = []
   if (late.length > 0) groups.push(createGroup('Atrasadas', late, true))
   for (let index = 0; index < DAYS; index++) {

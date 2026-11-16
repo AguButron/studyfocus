@@ -286,7 +286,13 @@
       <div id="landing" class="landing" hidden>
         <header class="landing-top">
           <span class="sf-wordmark">StudyFocus</span>
-          <button id="landing-top-action" class="sf-btn sf-btn--sm" type="button">Iniciar sesión</button>
+          <div class="landing-top-actions">
+            <button class="sf-btn sf-btn--sm language-toggle" type="button" data-language-toggle aria-label="Cambiar idioma" title="Cambiar idioma">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>
+            <span data-language-next translate="no"></span>
+          </button>
+            <button id="landing-top-action" class="sf-btn sf-btn--sm" type="button">Iniciar sesión</button>
+          </div>
         </header>
 
         <section class="landing-hero" aria-labelledby="landing-title">
@@ -371,6 +377,12 @@
       </div>
 
       <section id="auth" class="auth-card sf-card" aria-label="Iniciar sesión" hidden>
+        <div class="auth-top">
+          <button class="sf-btn sf-btn--sm language-toggle" type="button" data-language-toggle aria-label="Cambiar idioma" title="Cambiar idioma">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>
+            <span data-language-next translate="no"></span>
+          </button>
+        </div>
         <h1 class="auth-wordmark">
           <button class="sf-wordmark sf-wordmark--xl home-logo" type="button" title="Ver la portada">StudyFocus</button>
         </h1>
@@ -441,6 +453,10 @@
               <span class="sf-nav-label">Inicio</span>
               <span id="home-badge" class="sf-badge sf-badge--count" hidden></span>
             </button>
+            <button class="sf-nav-link" data-panel="schedule" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 6v6l4 2" /></svg>
+              <span class="sf-nav-label">Horario</span>
+            </button>
             <button class="sf-nav-link" data-panel="calendar" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" /></svg>
               <span class="sf-nav-label">Calendario</span>
@@ -467,11 +483,25 @@
               <span class="sf-nav-label">Carpetas</span>
             </button>
           </div>
-          <!-- Tu foto y nombre: abre tu perfil -->
-          <button class="menu-user" data-panel="profile" type="button" aria-label="Perfil" title="Perfil">
+          <!-- Tu foto y nombre: abre un menú con tu perfil, los ajustes y cerrar sesión -->
+          <button id="menu-user" class="menu-user" type="button" aria-label="Tu cuenta" title="Tu cuenta" aria-haspopup="menu" aria-controls="menu-user-options" aria-expanded="false">
             <img id="menu-user-photo" class="character-photo character-photo--nav" alt="" />
-            <span id="menu-user-name"></span>
+            <span translate="no" id="menu-user-name"></span>
           </button>
+          <div id="menu-user-options" class="menu-user-options sf-card" popover role="menu">
+            <button id="menu-own-profile" class="sf-nav-link" type="button" role="menuitem">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" /></svg>
+              <span class="sf-nav-label">Perfil</span>
+            </button>
+            <button class="sf-nav-link" data-panel="settings" type="button" role="menuitem">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
+              <span class="sf-nav-label">Ajustes</span>
+            </button>
+            <button id="logout" class="sf-nav-link menu-user-logout" type="button" role="menuitem">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+              <span class="sf-nav-label">Cerrar sesión</span>
+            </button>
+          </div>
         </nav>
 
         <div class="menu-content">
@@ -520,7 +550,10 @@
 
               <div class="home-space">
                 <div class="home-space-head">
-                  <h3 id="home-space-title" class="sf-section-title">Tu carpeta</h3>
+                  <div class="schedule-title">
+                    <h3 id="home-space-title" class="sf-section-title">Tu carpeta</h3>
+                    <select id="home-space-pick" class="sf-input schedule-space" aria-label="Carpeta que se ve en Inicio" title="Elige qué carpeta ver en Inicio"></select>
+                  </div>
                   <button class="sf-btn sf-btn--sm sf-btn--quiet" type="button" data-open-panel="spaces">Ver todos</button>
                 </div>
                 <div id="home-space-card"></div>
@@ -528,18 +561,6 @@
                   <p class="sf-row-detail">Organiza tu semestre, un proyecto o un curso con sus ramos o partes.</p>
                   <button class="sf-btn sf-btn--sm" type="button" data-open-panel="spaces">Crear una carpeta</button>
                 </div>
-              </div>
-
-              <div id="home-schedule" class="home-space" hidden>
-                <div class="schedule-head">
-                  <div class="schedule-title">
-                    <h3 class="sf-section-title">Horario de clases</h3>
-                    <select id="home-schedule-space" class="sf-input schedule-space" aria-label="Carpeta del horario" title="Elige de qué carpeta es el horario"></select>
-                  </div>
-                  <button id="home-schedule-add" class="sf-btn sf-btn--sm" type="button">+ Agregar</button>
-                </div>
-                <div id="home-schedule-grid"></div>
-                <p id="home-schedule-empty" class="sf-row-detail" hidden>Aún no hay clases. Usa «+ Agregar» para poner tus ramos en el horario.</p>
               </div>
             </div>
 
@@ -556,6 +577,28 @@
               <p id="upcoming-error" class="sf-error" role="alert"></p>
             </div>
             </div>
+            </div>
+          </section>
+
+          <section class="menu-panel sf-panel" data-panel="schedule" aria-labelledby="schedule-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="schedule-title">Horario</h2>
+              <p>Tus clases de la semana</p>
+            </header>
+            <div class="schedule-page sf-card">
+              <div class="schedule-head">
+                <label class="schedule-title">
+                  <span class="sf-section-title">Carpeta</span>
+                  <select id="home-schedule-space" class="sf-input schedule-space" title="Elige de qué carpeta es el horario"></select>
+                </label>
+                <button id="home-schedule-add" class="sf-btn sf-btn--sm" type="button">+ Agregar</button>
+              </div>
+              <div id="home-schedule-grid"></div>
+              <p id="home-schedule-empty" class="sf-row-detail" hidden>Aún no hay clases. Usa «+ Agregar» para poner tus ramos en el horario.</p>
+            </div>
+            <div id="home-schedule-none" class="home-space-empty sf-card" hidden>
+              <p class="sf-row-detail">Para armar tu horario, crea una carpeta y agrégale sus ramos.</p>
+              <button class="sf-btn sf-btn--sm" type="button" data-open-panel="spaces">Ir a Carpetas</button>
             </div>
           </section>
 
@@ -719,19 +762,19 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
                   <strong id="room-preview-name"></strong>
                   <span id="room-preview-text" class="sf-row-detail"></span>
                 </div>
-                <div class="panel-actions">
+                <!-- "Unirse con un código" junto a "Crear sala": la vista previa queda a la vista al bajar -->
+                <div class="room-preview-actions">
                   <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>
-                  <p id="rooms-error" class="sf-error" role="alert"></p>
+                  <form id="join-form" class="room-join">
+                    <span class="sf-section-title">o únete con un código</span>
+                    <span class="sf-inline">
+                      <input id="code" class="sf-input sf-input--code" maxlength="6" autocomplete="off" aria-label="Código de sala" placeholder="ABC123" />
+                      <button class="sf-btn" type="submit">Unirse</button>
+                    </span>
+                  </form>
                 </div>
+                <p id="rooms-error" class="sf-error" role="alert"></p>
               </aside>
-            </div>
-
-            <div class="sf-section">
-              <h3 class="sf-section-title">Unirse con un código</h3>
-              <form id="join-form" class="sf-inline">
-                <input id="code" class="sf-input sf-input--code" maxlength="6" autocomplete="off" aria-label="Código de sala" placeholder="ABC123" />
-                <button class="sf-btn" type="submit">Unirse</button>
-              </form>
             </div>
           </section>
 
@@ -821,7 +864,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
 
             <div class="sf-section">
               <h3 id="stat-chart-title" class="sf-section-title">Por día</h3>
-              <div id="stat-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
+              <div id="stat-chart" class="stat-chart sf-card" role="list" aria-label="Tiempo de estudio por día"></div>
             </div>
 
             <div id="section-time-box" class="sf-section" hidden>
@@ -837,50 +880,69 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
           </section>
 
           <!-- El perfil de otra persona (o el tuyo, como lo ven los demás): se abre con /?perfil=usuario -->
-          <section class="menu-panel sf-panel person-page" data-panel="person" aria-labelledby="person-name" hidden>
+          <!-- El perfil público de alguien (o el tuyo): cómo lo ven los demás -->
+          <section class="menu-panel sf-panel person-page profile-page" data-panel="person" aria-labelledby="person-name" hidden>
             <p id="person-status" class="sf-row-detail" role="status"></p>
-            <div id="person-content" class="person-content" hidden>
-              <header class="person-head sf-card">
+            <div id="person-content" class="profile-page" hidden>
+              <header class="profile-hero sf-card">
                 <div id="person-photo" class="person-photo"></div>
-                <div class="person-head-text">
-                  <h2 id="person-name"></h2>
+                <div class="profile-hero-text">
+                  <h2 translate="no" id="person-name"></h2>
                   <span id="person-username" class="person-username"></span>
+                  <span translate="no" id="person-studies" class="sf-row-detail"></span>
                   <span id="person-presence" class="sf-presence" hidden></span>
-                  <span id="person-since" class="sf-row-detail"></span>
                 </div>
                 <div class="person-actions">
                   <button id="person-friend" class="sf-btn sf-btn--primary" type="button"></button>
                   <button id="person-friend-cancel" class="sf-btn" type="button" hidden>Cancelar solicitud</button>
                   <button id="person-join" class="sf-btn" type="button" hidden>Entrar a su sala</button>
                 </div>
+                <p id="person-stats-hidden" class="sf-row-detail person-stats-hidden" hidden></p>
+                <dl id="person-stats" class="profile-hero-stats" aria-label="Su estudio">
+                  <div>
+                    <dt class="stat-label">Últimos 7 días</dt>
+                    <dd id="person-week">–</dd>
+                  </div>
+                  <div>
+                    <dt class="stat-label">Racha</dt>
+                    <dd id="person-streak">–</dd>
+                  </div>
+                  <div>
+                    <dt class="stat-label">En total</dt>
+                    <dd id="person-total">–</dd>
+                  </div>
+                </dl>
               </header>
               <p id="person-message" class="form-message" role="status"></p>
 
-              <div class="sf-section">
-                <h3 id="person-about-title" class="sf-section-title">Sobre</h3>
-                <p id="person-studies" class="person-studies" hidden></p>
-                <p id="person-bio" class="person-bio" hidden></p>
-                <p id="person-about-empty" class="sf-row-detail" hidden>Aún no ha contado nada sobre sí.</p>
-              </div>
+              <div id="person-grid" class="profile-grid">
+                <section id="person-week-card" class="profile-card sf-card" aria-labelledby="person-week-title">
+                  <div class="profile-card-head profile-card-head--row">
+                    <div>
+                      <h3 id="person-week-title">Últimos 7 días <span id="person-week-visibility" class="person-visibility" hidden></span></h3>
+                    </div>
+                    <!-- Solo en tu perfil: Estadísticas muestra tus números -->
+                    <button id="person-all-stats" class="sf-btn sf-btn--sm" type="button" data-open-panel="stats" hidden>Ver todas las estadísticas</button>
+                  </div>
+                  <div id="person-chart" class="stat-chart" role="list" aria-label="Minutos de estudio por día"></div>
+                </section>
 
-              <div class="stat-cards person-stats">
-                <div class="stat-card sf-card">
-                  <span class="stat-label">Últimos 7 días</span>
-                  <strong id="person-week">–</strong>
-                </div>
-                <div class="stat-card sf-card">
-                  <span class="stat-label">Racha</span>
-                  <strong id="person-streak">–</strong>
-                </div>
-                <div class="stat-card sf-card">
-                  <span class="stat-label">En total</span>
-                  <strong id="person-total">–</strong>
-                </div>
-              </div>
+                <section class="profile-card sf-card" aria-labelledby="person-about-title">
+                  <div class="profile-card-head">
+                    <h3 id="person-about-title">Sobre</h3>
+                  </div>
+                  <p translate="no" id="person-bio" class="person-bio" hidden></p>
+                  <p id="person-about-empty" class="sf-row-detail" hidden>Aún no ha contado nada sobre sí.</p>
+                  <p id="person-since" class="sf-row-detail person-since"></p>
+                </section>
 
-              <div class="sf-section">
-                <h3 class="sf-section-title">Su semana</h3>
-                <div id="person-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
+                <!-- Las medallas: en color las ganadas, en gris las que faltan. Sin medallas definidas no se muestra -->
+                <section id="person-medals-card" class="profile-card sf-card person-medals-card" aria-labelledby="person-medals-title" hidden>
+                  <div class="profile-card-head">
+                    <h3 id="person-medals-title">Medallas</h3>
+                  </div>
+                  <ul id="person-medals" class="person-medals"></ul>
+                </section>
               </div>
             </div>
           </section>
@@ -953,79 +1015,121 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
             </ul>
           </section>
 
-          <section class="menu-panel sf-panel" data-panel="profile" aria-labelledby="profile-title" hidden>
-            <header class="sf-panel-head">
-              <h2 id="profile-title">Perfil</h2>
+          <!-- Editar tu perfil: lo que ven los demás y tu personaje. Se llega desde "Editar perfil" en tu perfil público -->
+          <section class="menu-panel sf-panel profile-page" data-panel="profile" aria-labelledby="profile-title" hidden>
+            <header class="sf-panel-head profile-edit-head">
+              <button id="profile-public" class="sf-btn sf-btn--sm sf-btn--quiet" type="button">← Ver mi perfil</button>
+              <h2 id="profile-title">Editar perfil</h2>
             </header>
 
-            <div class="character-card sf-card">
-              <img id="character-photo" class="character-photo character-photo--large" alt="Tu personaje" />
-              <div class="character-choice">
-                <h3 class="sf-section-title">Tu personaje</h3>
-                <p class="sf-row-detail">Tu foto es tu personaje. Más adelante podrás crearlo a tu gusto.</p>
+            <div class="profile-grid">
+              <section class="profile-card sf-card" aria-labelledby="profile-public-title">
+                <div class="profile-card-head">
+                  <h3 id="profile-public-title">Información pública</h3>
+                  <p class="sf-row-detail">La ven los demás en tu perfil y al hacer clic en ti dentro de una sala. Todo es opcional, menos el apodo.</p>
+                </div>
+
+                <form id="profile-form" class="profile-form">
+                  <label class="sf-field">
+                    Apodo
+                    <span class="profile-inline">
+                      <input id="profile-name" class="sf-input" maxlength="20" autocomplete="nickname" required />
+                      <button id="profile-save" class="sf-btn" type="submit">Guardar apodo</button>
+                    </span>
+                    <span id="profile-name-hint" class="sf-field-hint">Es el que verán los demás en la sala. Puedes cambiarlo una vez al mes.</span>
+                  </label>
+                </form>
+                <p id="profile-message" class="form-message" role="status"></p>
+
+                <form id="about-form" class="profile-form profile-about">
+                  <div class="profile-fields">
+                    <label class="sf-field">
+                      Qué estudias
+                      <input id="about-studies" class="sf-input" maxlength="80" placeholder="Ingeniería civil, medicina, 4° medio…" />
+                    </label>
+                    <label class="sf-field">
+                      Dónde estudias
+                      <input id="about-institution" class="sf-input" maxlength="80" placeholder="Universidad de Chile, Liceo…" />
+                    </label>
+                  </div>
+                  <label class="sf-field">
+                    Nacionalidad
+                    <select id="about-country" class="sf-input"></select>
+                  </label>
+                  <label class="sf-field">
+                    Descripción
+                    <textarea id="about-bio" class="sf-input about-bio" maxlength="300" rows="4" placeholder="Algo sobre ti, lo que estás preparando o cómo te gusta estudiar."></textarea>
+                    <span id="about-bio-count" class="sf-field-hint"></span>
+                  </label>
+                  <label class="sf-field">
+                    Quién ve tus estadísticas
+                    <select id="about-stats-visibility" class="sf-input">
+                      <option value="public">Todos (público)</option>
+                      <option value="friends">Solo tus amigos</option>
+                      <option value="private">Solo tú (privado)</option>
+                    </select>
+                    <span class="sf-field-hint">Tu tiempo de estudio, tu racha y tu gráfico de los últimos 7 días en tu perfil.</span>
+                  </label>
+                  <button class="sf-btn sf-btn--primary" type="submit">Guardar cambios</button>
+                </form>
+                <p id="about-message" class="form-message" role="status"></p>
+              </section>
+
+              <section class="profile-card sf-card" aria-labelledby="character-title">
+                <div class="profile-card-head">
+                  <h3 id="character-title">Tu personaje</h3>
+                  <p class="sf-row-detail">Tu foto es tu personaje. Más adelante podrás crearlo a tu gusto.</p>
+                </div>
+                <img id="character-photo" class="character-photo profile-hero-photo" alt="Tu personaje" />
                 <div id="character-colors" class="character-colors" role="group" aria-label="Color"></div>
                 <p id="character-message" class="form-message" role="status"></p>
+              </section>
+            </div>
+          </section>
+
+          <!-- Ajustes: cómo se ve la aplicación y los datos de tu cuenta -->
+          <section class="menu-panel sf-panel profile-page" data-panel="settings" aria-labelledby="settings-title" hidden>
+            <header class="sf-panel-head">
+              <h2 id="settings-title">Ajustes</h2>
+            </header>
+
+            <section class="profile-card sf-card" aria-labelledby="settings-theme-title">
+              <div class="profile-card-head">
+                <h3 id="settings-theme-title">Apariencia</h3>
+                <p class="sf-row-detail">Automático usa el mismo tema que tu computador o celular. Dentro de una sala siempre es oscuro.</p>
               </div>
-            </div>
-
-            <div class="sf-code-card">
-              <span class="sf-code-card-label">Tu nombre de usuario</span>
-              <strong id="profile-username" class="sf-code"></strong>
-            </div>
-
-            <form id="profile-form" class="profile-form">
-              <label class="sf-field">
-                Apodo
-                <input id="profile-name" class="sf-input" maxlength="20" autocomplete="nickname" required />
-                <span id="profile-name-hint" class="sf-field-hint">Es el que verán los demás en la sala. Puedes cambiarlo una vez al mes.</span>
-              </label>
-              <button id="profile-save" class="sf-btn sf-btn--primary" type="submit">Guardar</button>
-            </form>
-            <p id="profile-message" class="form-message" role="status"></p>
-
-            <div class="sf-section">
-              <h3 class="sf-section-title">Sobre ti</h3>
-              <p class="sf-row-detail">Lo ven los demás al hacer clic en ti dentro de una sala. Todo es opcional.</p>
-              <form id="about-form" class="profile-form">
-                <label class="sf-field">
-                  Qué estudias
-                  <input id="about-studies" class="sf-input" maxlength="80" placeholder="Ingeniería civil, medicina, 4° medio…" />
-                </label>
-                <label class="sf-field">
-                  Dónde estudias
-                  <input id="about-institution" class="sf-input" maxlength="80" placeholder="Universidad de Chile, Liceo…" />
-                </label>
-                <label class="sf-field">
-                  Nacionalidad
-                  <select id="about-country" class="sf-input"></select>
-                </label>
-                <label class="sf-field">
-                  Descripción
-                  <textarea id="about-bio" class="sf-input about-bio" maxlength="300" rows="4" placeholder="Algo sobre ti, lo que estás preparando o cómo te gusta estudiar."></textarea>
-                  <span id="about-bio-count" class="sf-field-hint"></span>
-                </label>
-                <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
-              </form>
-              <p id="about-message" class="form-message" role="status"></p>
-            </div>
-
-            <div class="sf-section">
-              <h3 class="sf-section-title">Apariencia</h3>
               <div id="theme-picker" class="sf-seg theme-picker" role="group" aria-label="Tema">
                 <button type="button" data-theme-choice="auto" title="Igual que tu computador o celular">Automático</button>
                 <button type="button" data-theme-choice="claro">Claro</button>
                 <button type="button" data-theme-choice="oscuro">Oscuro</button>
               </div>
-              <p class="sf-field-hint">Automático usa el mismo tema que tu computador o celular. Dentro de una sala siempre es oscuro.</p>
-            </div>
+            </section>
 
-            <div class="sf-section">
-              <h3 class="sf-section-title">Cuenta</h3>
-              <p id="profile-email" class="sf-row-detail"></p>
-              <div>
-                <button id="logout" class="sf-btn" type="button">Cerrar sesión</button>
+            <section class="profile-card sf-card" aria-labelledby="settings-language-title">
+              <div class="profile-card-head">
+                <h3 id="settings-language-title">Idioma</h3>
               </div>
-            </div>
+              <div class="sf-seg theme-picker" role="group" aria-label="Idioma">
+                <button type="button" data-language-choice="es">Español</button>
+                <button type="button" data-language-choice="en">English</button>
+              </div>
+            </section>
+
+            <section class="profile-card sf-card" aria-labelledby="settings-account-title">
+              <div class="profile-card-head">
+                <h3 id="settings-account-title">Cuenta</h3>
+              </div>
+              <dl class="settings-list">
+                <div>
+                  <dt>Nombre de usuario</dt>
+                  <dd id="settings-username"></dd>
+                </div>
+                <div>
+                  <dt>Inicio de sesión</dt>
+                  <dd id="profile-email"></dd>
+                </div>
+              </dl>
+            </section>
           </section>
         </div>
 
@@ -1227,10 +1331,22 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
         <div class="agenda-form-actions">
           <button class="sf-btn sf-btn--primary" type="submit">Guardar</button>
           <button id="goal-cancel" class="sf-btn" type="button">Cancelar</button>
-          <span class="agenda-form-spacer"></span>
-          <button id="goal-delete" class="sf-btn" type="button" hidden>Borrar</button>
         </div>
       </form>
+    </dialog>
+
+    <!-- Un objetivo ya puesto no se edita: solo se puede eliminar, con una advertencia -->
+    <dialog id="goal-remove-dialog" class="agenda-dialog sf-card" aria-labelledby="goal-remove-title">
+      <div class="agenda-form">
+        <h2 id="goal-remove-title">¿Eliminar este objetivo?</h2>
+        <p id="goal-remove-text"></p>
+        <p class="sf-row-detail">Se borra con su avance y no queda en tus objetivos anteriores. No se puede deshacer.</p>
+        <p id="goal-remove-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button id="goal-remove-confirm" class="sf-btn sf-btn--danger" type="button">Eliminar</button>
+          <button id="goal-remove-cancel" class="sf-btn" type="button">Cancelar</button>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="agenda-dialog" class="agenda-dialog sf-card" aria-labelledby="agenda-dialog-title">
@@ -1271,9 +1387,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
         <div class="agenda-form-row">
           <label class="sf-field">
             Fecha
-            <input id="agenda-date" class="sf-input" type="date" />
-            <span class="sf-field-hint">Déjala vacía si aún no se sabe: no aparecerá en el calendario.</span>
-          </label>
+            <input id="agenda-date" class="sf-input" type="date" />          </label>
           <label class="sf-field">
             Hora (opcional)
             <input id="agenda-time" class="sf-input" type="time" />
@@ -1289,7 +1403,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
             <option value="3">3 días antes</option>
             <option value="7">1 semana antes</option>
           </select>
-          <span class="sf-field-hint">Desde ese día se suma al número junto a Inicio, hasta la fecha.</span>
+          <span class="sf-field-hint">Te notificaremos.</span>
         </label>
         <label class="sf-field">
           Notas (opcional)
@@ -1306,7 +1420,24 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
       </form>
     </dialog>
 
-    <dialog id="profile-dialog" class="profile-dialog sf-card" aria-labelledby="profile-dialog-name">
+    <dialog id="agenda-detail" class="agenda-dialog agenda-detail sf-card" aria-labelledby="agenda-detail-title">
+      <div class="agenda-detail-head">
+        <div class="agenda-detail-text">
+          <p id="agenda-detail-kind" class="sf-row-detail"></p>
+          <h2 id="agenda-detail-title"></h2>
+        </div>
+        <button id="agenda-detail-edit" class="sf-btn agenda-detail-edit" type="button" title="Editar en su ramo" aria-label="Editar en su ramo">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+      </div>
+      <p id="agenda-detail-section" class="agenda-section-name" hidden></p>
+      <p id="agenda-detail-time" class="sf-row-detail" hidden></p>
+      <div class="agenda-form-actions">
+        <button id="agenda-detail-close" class="sf-btn" type="button">Cerrar</button>
+      </div>
+    </dialog>
+
+    <dialog id="profile-dialog"class="profile-dialog sf-card" aria-labelledby="profile-dialog-name">
       <button id="profile-dialog-close" class="sf-btn sf-btn--sm sf-btn--quiet profile-dialog-close" type="button" aria-label="Cerrar">✕</button>
       <div class="profile-dialog-head">
         <div id="profile-dialog-photo"></div>
@@ -1317,7 +1448,7 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
         </div>
       </div>
       <p id="profile-dialog-studies" class="profile-dialog-studies" hidden></p>
-      <p id="profile-dialog-bio" class="profile-dialog-bio" hidden></p>
+      <p translate="no" id="profile-dialog-bio" class="profile-dialog-bio" hidden></p>
       <p id="profile-dialog-empty" class="sf-row-detail" hidden>Todavía no ha contado nada sobre sí.</p>
       <button id="profile-dialog-join" class="sf-btn sf-btn--primary" type="button" hidden>Entrar a su sala</button>
     </dialog>

@@ -1,10 +1,11 @@
+import { LOCALE } from './i18n'
 // Los países para elegir la nacionalidad, con su nombre en español y su bandera
 
 // Códigos de dos letras que Intl conoce pero no son países ni territorios. El servidor usa la misma lista.
 const NOT_COUNTRIES = new Set(['EU', 'EZ', 'UN', 'QO', 'XA', 'XB', 'ZZ'])
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-const regionNames = new Intl.DisplayNames(['es'], { type: 'region', fallback: 'none' })
+const regionNames = new Intl.DisplayNames([LOCALE], { type: 'region', fallback: 'none' })
 
 export interface Country {
   code: string
@@ -19,7 +20,7 @@ export const COUNTRIES: Country[] = [...LETTERS]
     const name = regionNames.of(code)
     return name ? [{ code, name }] : []
   })
-  .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  .sort((a, b) => a.name.localeCompare(b.name, LOCALE))
 
 export function getCountryName(code: string) {
   return regionNames.of(code) ?? code

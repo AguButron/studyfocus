@@ -216,7 +216,7 @@ async function listSpaces(accountId: string) {
       `SELECT ${SPACE_COLUMNS} FROM spaces WHERE user_id = $1 ORDER BY archived_at IS NOT NULL, created_at DESC`,
       [accountId],
     ),
-    query<SectionRow>(`SELECT ${SECTION_COLUMNS} FROM sections WHERE user_id = $1 ORDER BY created_at`, [accountId]),
+    query<SectionRow>(`SELECT ${SECTION_COLUMNS} FROM sections WHERE user_id = $1 ORDER BY position NULLS LAST, created_at`, [accountId]),
     query<{ sectionId: string; week: number; total: number }>(
       `SELECT section_id AS "sectionId",
          coalesce(sum(extract(epoch FROM ended_at - started_at)) FILTER (WHERE ended_at > now() - make_interval(days => $2)), 0)::int AS week,
@@ -377,6 +377,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       account.id,
       JSON.stringify(rules),
     ]))
+  } else if (route === 'POST /api/apartados/ordenar') {
+    // El orden de los apartados de una carpeta, como quedaron al arrastrarlos
+    const ids = Array.isArray(body.ids) ? body.ids : null
+    if (!ids || ids.length > MAX_SECTIONS_PER_SPACE || !ids.every((value) => typeof value === 'string' && /^\d{1,19}$/.test(value))) {
+      throw new RequestError(400, 'Formato no válido.')
+    }
+    ;({ rowCount } = await query(
+      `UPDATE sections SET position = ordered.position - 1
+       FROM unnest($3::bigint[]) WITH ORDINALITY AS ordered (id, position)
+       WHERE sections.id = ordered.id AND sections.space_id = $2 AND sections.user_id = $1`,
+      [account.id, parseId(body.spaceId), ids],
+    ))
   } else if (route === 'POST /api/apartados/borrar') {
     ;({ rowCount } = await query('DELETE FROM sections WHERE id = $1 AND user_id = $2', [parseId(body.id), account.id]))
   } else {

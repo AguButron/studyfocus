@@ -6,6 +6,7 @@ import { callApi } from './api'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import { formatDuration } from './stats'
 import { showNotice, showUndo } from './undoToast'
+import { LOCALE } from './i18n'
 
 export interface Goal {
   id: string
@@ -29,12 +30,13 @@ const GENERAL_COLOR = 'var(--marker)'
 
 const dialog = document.querySelector<HTMLDialogElement>('#goal-dialog')!
 const form = document.querySelector<HTMLFormElement>('#goal-form')!
-const titleText = document.querySelector<HTMLHeadingElement>('#goal-dialog-title')!
 const hoursInput = document.querySelector<HTMLInputElement>('#goal-hours')!
 const deadlineInput = document.querySelector<HTMLInputElement>('#goal-deadline')!
 const sectionSelect = document.querySelector<HTMLSelectElement>('#goal-section')!
 const errorText = document.querySelector<HTMLParagraphElement>('#goal-error')!
-const deleteButton = document.querySelector<HTMLButtonElement>('#goal-delete')!
+const removeDialog = document.querySelector<HTMLDialogElement>('#goal-remove-dialog')!
+const removeText = document.querySelector<HTMLParagraphElement>('#goal-remove-text')!
+const removeError = document.querySelector<HTMLParagraphElement>('#goal-remove-error')!
 const historyList = document.querySelector<HTMLUListElement>('#goals-history-list')!
 const historyEmpty = document.querySelector<HTMLParagraphElement>('#goals-history-empty')!
 const historyError = document.querySelector<HTMLParagraphElement>('#goals-history-error')!
@@ -50,8 +52,8 @@ const filterCount = document.querySelector<HTMLParagraphElement>('#goals-filter-
 let history: Goal[] = [] // los objetivos anteriores, como llegan: por fecha de término, el más reciente primero
 const X = '<path d="M6 6l12 12M18 6L6 18" />'
 
-const weekdayFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', timeZone: 'UTC' })
-const dateFormat = new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+const weekdayFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', timeZone: 'UTC' })
+const dateFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 let goals: Goal[] = []
 let hiddenIds = loadHidden()
@@ -76,7 +78,7 @@ function toggleHidden(goal: Goal) {
   }
   renderAll()
 }
-let editing: Goal | null = null
+let removing: Goal | null = null
 let liveSource: () => LiveStudy = () => null
 const containers: { list: HTMLElement; empty: HTMLElement | null; compact: boolean }[] = []
 
@@ -237,8 +239,8 @@ function createGoalRow(goal: Goal, compact: boolean) {
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'goal-open'
-  button.title = 'Editar el objetivo'
-  button.addEventListener('click', () => openGoalDialog(goal))
+  button.title = 'Eliminar el objetivo'
+  button.addEventListener('click', () => openRemoveDialog(goal))
 
   const head = document.createElement('span')
   head.className = 'goal-head'
@@ -343,7 +345,14 @@ export function setLiveStudy(source: () => LiveStudy) {
   liveSource = source
 }
 
-// ── La ventana para crear o editar ─────────────────────────────────────
+// ── Las ventanas para crear y para eliminar ────────────────────────────
+
+function openRemoveDialog(goal: Goal) {
+  removing = goal
+  removeError.textContent = ''
+  removeText.textContent = `${describeGoal(goal).title}, ${goal.isEnded ? 'ya terminado' : describeDeadline(goal)}.`
+  removeDialog.showModal()
+}
 
 function fillSections(selected: string | null) {
   const groups = getSpaces()
@@ -358,17 +367,14 @@ function fillSections(selected: string | null) {
   sectionSelect.value = selected && findSection(selected) ? selected : ''
 }
 
-// Sin objetivo, crea uno nuevo; sectionId propone ese ramo (el que se está estudiando)
-export async function openGoalDialog(goal: Goal | null, sectionId: string | null = null) {
-  editing = goal
+// Crea un objetivo; sectionId propone ese ramo (el que se está estudiando)
+export async function openGoalDialog(sectionId: string | null = null) {
   errorText.textContent = ''
-  titleText.textContent = goal ? 'Editar objetivo' : 'Nuevo objetivo'
-  hoursInput.value = goal ? String(Math.round((goal.minutes / 60) * 100) / 100).replace('.', ',') : ''
+  hoursInput.value = ''
   deadlineInput.min = todayText()
-  deadlineInput.value = goal ? goal.deadline : todayText()
-  deleteButton.hidden = !goal
+  deadlineInput.value = todayText()
   await ensureSpaces()
-  fillSections(goal ? goal.sectionId : sectionId)
+  fillSections(sectionId)
   dialog.showModal()
   hoursInput.focus()
 }
@@ -389,7 +395,7 @@ export function setUpGoals() {
       deadline: deadlineInput.value,
       sectionId: sectionSelect.value || null,
     }
-    const error = editing ? await call('/api/objetivos/editar', { id: editing.id, ...body }) : await call('/api/objetivos', body)
+    const error = await call('/api/objetivos', body)
     if (error) {
       errorText.textContent = error
       return
@@ -397,14 +403,15 @@ export function setUpGoals() {
     dialog.close()
   })
   document.querySelector('#goal-cancel')!.addEventListener('click', () => dialog.close())
-  deleteButton.addEventListener('click', async () => {
-    if (!editing) return
-    const error = await call('/api/objetivos/borrar', { id: editing.id })
-    if (error) errorText.textContent = error
-    else dialog.close()
+  document.querySelector('#goal-remove-cancel')!.addEventListener('click', () => removeDialog.close())
+  document.querySelector('#goal-remove-confirm')!.addEventListener('click', async () => {
+    if (!removing) return
+    const error = await call('/api/objetivos/borrar', { id: removing.id })
+    if (error) removeError.textContent = error
+    else removeDialog.close()
   })
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-new-goal]')) {
-    button.addEventListener('click', () => openGoalDialog(null, button.dataset.newGoal === 'study' ? (liveSource()?.sectionId ?? currentSection()) : null))
+    button.addEventListener('click', () => openGoalDialog(button.dataset.newGoal === 'study' ? (liveSource()?.sectionId ?? currentSection()) : null))
   }
 }
 

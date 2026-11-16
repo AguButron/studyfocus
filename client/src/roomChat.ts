@@ -10,6 +10,7 @@ import { hideDrawer } from './friendsDrawer'
 import { onRoomRejoined, socket } from './network'
 import { profileUrl } from './profilePage'
 import { isStudyRunning } from './timer'
+import { LOCALE } from './i18n'
 
 const MAX_LENGTH = 1000
 const LOCK_CHECK_INTERVAL = 500 // milisegundos: cada cuánto se revisa si empezó o terminó un periodo de estudio
@@ -58,7 +59,7 @@ const errorText = document.querySelector<HTMLParagraphElement>('#room-chat-error
 const buttons = [...document.querySelectorAll<HTMLButtonElement>('.room-chat-button')]
 const friendsButtons = [...document.querySelectorAll<HTMLButtonElement>('.room-friends')]
 
-const timeFormat = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' })
+const timeFormat = new Intl.DateTimeFormat(LOCALE, { hour: '2-digit', minute: '2-digit' })
 
 let code: string | null = null // la sala en la que estás; nula fuera de una sala con otros
 let me: string | null = null // tu cuenta, para saber qué mensajes son tuyos
@@ -143,6 +144,7 @@ function createMessage(message: RoomMessage, showAuthor: boolean) {
   }
   const bubble = document.createElement('p')
   bubble.className = 'chat-bubble'
+  bubble.translate = false // lo que escribe la persona no se traduce
   bubble.append(renderBody(message.body))
   const time = document.createElement('time')
   time.dateTime = message.createdAt

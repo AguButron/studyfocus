@@ -37,8 +37,8 @@ export async function recordStudy(
 
 // Quiénes estudiaban en la misma sala y al mismo tiempo, y cuánto rato coincidieron
 export async function findCompanions(accountId: string, since: number, roomCode: string | null = null, until: number | null = null) {
-  const { rows } = await query<{ name: string; seconds: number }>(
-    `SELECT users.name,
+  const { rows } = await query<{ name: string; username: string | null; seconds: number }>(
+    `SELECT users.name, users.username,
        sum(extract(epoch FROM least(mine.ended_at, theirs.ended_at) - greatest(mine.started_at, theirs.started_at)))::int AS seconds
      FROM study_segments mine
      JOIN study_segments theirs ON theirs.room_code = mine.room_code AND theirs.user_id <> mine.user_id

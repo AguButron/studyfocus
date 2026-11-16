@@ -46,7 +46,8 @@ const INVALID_USERNAME = `El nombre de usuario debe tener entre ${MIN_USERNAME_L
 const TAKEN_USERNAME = 'Ese nombre de usuario ya está ocupado.'
 const TOO_MANY_ATTEMPTS = 'Demasiados intentos. Prueba de nuevo en unos minutos.'
 const WRONG_LOGIN = 'El usuario o la contraseña no coinciden.'
-const PROFILE_COLUMNS = 'users.id, users.bio, users.studies, users.institution, users.country, users.character_look'
+const PROFILE_COLUMNS = 'users.id, users.bio, users.studies, users.institution, users.country, users.character_look, users.stats_visibility'
+export const STATS_VISIBILITY = ['public', 'friends', 'private']
 const ACCOUNT_COLUMNS = `users.name, users.email, users.username, users.name_changed_at, ${PROFILE_COLUMNS}`
 
 export interface Account {
@@ -60,9 +61,10 @@ export interface Account {
   institution: string | null
   country: string | null // código de dos letras, como CL
   character_look: unknown
+  stats_visibility: string // quién ve tus estadísticas: STATS_VISIBILITY
 }
 
-type PublicPerson = Pick<Account, 'id' | 'name' | 'username' | 'bio' | 'studies' | 'institution' | 'country' | 'character_look'>
+type PublicPerson = Pick<Account, 'id' | 'name' | 'username' | 'bio' | 'studies' | 'institution' | 'country' | 'character_look' | 'stats_visibility'>
 
 function describeProfile(person: PublicPerson) {
   return {
@@ -73,7 +75,15 @@ function describeProfile(person: PublicPerson) {
     institution: person.institution,
     country: person.country,
     character: describeCharacter(person.character_look, person.id),
+    statsVisibility: person.stats_visibility,
   }
+}
+
+// Quién ve tus estadísticas. Sin el dato (una página de antes) no se cambia
+function parseStatsVisibility(value: unknown) {
+  if (value === undefined || value === null) return null
+  if (typeof value !== 'string' || !STATS_VISIBILITY.includes(value)) throw new RequestError(400, 'Elige quién puede ver tus estadísticas.')
+  return value
 }
 
 // Un texto opcional del perfil: vacío se guarda como nada, y largo es un error
@@ -416,10 +426,12 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       parseProfileText(body.studies, PROFILE_LIMITS.studies),
       parseProfileText(body.institution, PROFILE_LIMITS.institution),
       parseCountry(body.country),
+      parseStatsVisibility(body.statsVisibility),
     ]
 
     const { rows } = await query<Account>(
-      `UPDATE users SET bio = $1, studies = $2, institution = $3, country = $4 WHERE id = $5
+      `UPDATE users SET bio = $1, studies = $2, institution = $3, country = $4,
+         stats_visibility = coalesce($5, stats_visibility) WHERE id = $6
        RETURNING ${ACCOUNT_COLUMNS.replaceAll('users.', '')}`,
       [...values, account.id],
     )

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { BuiltRoom, Sky } from './roomBuilder'
 import { faceQuads, VOXEL_SIZE, type VoxelSet } from './voxels'
+import { windowWeather } from './windowWeather'
 
 // Dibuja una sala en cubos con Three.js, con su luz y una cámara que se puede mover. La usan la galería de
 // diseños y "Crea tu sala"; la sala de verdad (room.ts) usa voxelMesh para sus cubos.
@@ -135,6 +136,7 @@ export function createVoxelView(container: HTMLElement) {
         })
       }
       const { group, triangles } = voxelMesh(built.voxels)
+      group.add(windowWeather(built.windows))
       const stats = { cubes: built.voxels.size, triangles }
       roomGroup = group
       scene.add(group)

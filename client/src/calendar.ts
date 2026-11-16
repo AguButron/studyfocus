@@ -6,33 +6,75 @@ import {
   fromDateText,
   kindName,
   loadRange,
+  moveItem,
   startOfMonth,
   startOfWeek,
   todayText,
   type AgendaItem,
 } from './agenda'
-import { openAgendaDialog } from './agendaDialog'
+import { notifyAgendaChange, openAgendaDialog } from './agendaDialog'
+import { openAgendaDetail } from './agendaDetail'
 import { describeItemSection, ensureSpaces } from './spaces'
+import { showUndo } from './undoToast'
+import { LOCALE } from './i18n'
 
 type View = 'week' | 'month' | 'year'
 
 const VIEW_KEY = 'studyfocus.calendarView'
-const MONTH_CELL_ITEMS = 3 // en el mes, lo que cabe en cada día antes de "y N más"
+// En el mes, cada día muestra lo que cabe en su alto antes de "y N más". Medidas en píxeles, según style.css.
+const MONTH_HEAD_HEIGHT = 25 // la fila con los nombres de los días
+const CELL_FIXED_HEIGHT = 30 // la fila con el número del día (y "y N más") y el relleno
+const CHIP_HEIGHT = 36 // el título y, debajo, el nombre del ramo
 
 const grid = document.querySelector<HTMLDivElement>('#calendar-grid')!
 const label = document.querySelector<HTMLElement>('#calendar-label')!
 const errorText = document.querySelector<HTMLParagraphElement>('#calendar-error')!
 const viewButtons = document.querySelectorAll<HTMLButtonElement>('[data-calendar-view]')
 
-const weekdayFormat = new Intl.DateTimeFormat('es', { weekday: 'short' })
-const monthFormat = new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric' })
-const monthNameFormat = new Intl.DateTimeFormat('es', { month: 'long' })
-const dayMonthFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long' })
-const longFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' })
+const weekdayFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'short' })
+const monthFormat = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric' })
+const monthNameFormat = new Intl.DateTimeFormat(LOCALE, { month: 'long' })
+const dayMonthFormat = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'long' })
+const longFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })
 
 let view: View = loadView()
 let anchor = todayText() // un día dentro de lo que se está mirando
 let request = 0 // descarta respuestas viejas si se cambió de semana mientras tanto
+let dragged: AgendaItem | null = null // lo que se está arrastrando a otro día
+let monthCellItems = 0 // cuántas cosas se mostraron por día la última vez que se dibujó el mes
+
+function countMonthCellItems(weeks: number) {
+  const cellHeight = (grid.clientHeight - MONTH_HEAD_HEIGHT) / weeks
+  return Math.max(1, Math.floor((cellHeight - CELL_FIXED_HEIGHT) / CHIP_HEIGHT))
+}
+
+// Soltar algo sobre un día lo cambia a esa fecha
+function acceptDrops(target: HTMLElement, date: string) {
+  target.addEventListener('dragover', (event) => {
+    if (!dragged) return
+    event.preventDefault()
+    target.toggleAttribute('data-drop', true)
+  })
+  target.addEventListener('dragleave', () => target.removeAttribute('data-drop'))
+  target.addEventListener('drop', async (event) => {
+    event.preventDefault()
+    target.removeAttribute('data-drop')
+    const item = dragged
+    dragged = null
+    if (!item || item.date === date) return
+    const result = await moveItem(item, date)
+    if (result.error) {
+      errorText.textContent = result.error
+      return
+    }
+    notifyAgendaChange()
+    showUndo(`«${item.title}» pasó al ${dayMonthFormat.format(fromDateText(date))}.`, async () => {
+      const restored = await moveItem(item, item.date)
+      if (!restored.error) notifyAgendaChange()
+      return restored.error
+    })
+  })
+}
 
 function loadView(): View {
   try {
@@ -111,8 +153,15 @@ function createChip(item: AgendaItem, isCompact: boolean) {
 
   chip.addEventListener('click', (event) => {
     event.stopPropagation()
-    openAgendaDialog(item, item.date)
+    openAgendaDetail(item)
   })
+  chip.draggable = true
+  chip.addEventListener('dragstart', (event) => {
+    dragged = item
+    event.dataTransfer!.effectAllowed = 'move'
+    event.dataTransfer!.setData('text/plain', item.title) // Firefox no arrastra sin datos
+  })
+  chip.addEventListener('dragend', () => (dragged = null))
   return chip
 }
 
@@ -149,6 +198,7 @@ function renderWeek(from: string, items: AgendaItem[]) {
       day.className = 'calendar-day'
       day.toggleAttribute('data-today', date === today)
       day.toggleAttribute('data-past', date < today)
+      acceptDrops(day, date)
 
       const head = document.createElement('div')
       head.className = 'calendar-day-head'
@@ -250,38 +300,67 @@ function renderMonth(from: string, to: string, items: AgendaItem[]) {
     return header
   })
 
-  const cells = Array.from({ length: daysFrom(from, to) + 1 }, (_, index) => {
+  const days = daysFrom(from, to) + 1
+  monthCellItems = countMonthCellItems(days / 7)
+  const cells = Array.from({ length: days }, (_, index) => {
     const date = addDays(from, index)
     const dayItems = byDate.get(date) ?? []
     const cell = document.createElement('div')
     cell.className = 'calendar-cell'
+    acceptDrops(cell, date)
     cell.toggleAttribute('data-today', date === today)
     cell.toggleAttribute('data-other-month', !date.startsWith(month))
 
     const number = document.createElement('span')
     number.className = 'calendar-cell-number'
     number.textContent = String(fromDateText(date).getDate())
-    cell.append(number)
+    const head = document.createElement('div')
+    head.className = 'calendar-cell-head'
+    head.append(number)
 
-    cell.append(...dayItems.slice(0, MONTH_CELL_ITEMS).map((item) => createChip(item, true)))
-    if (dayItems.length > MONTH_CELL_ITEMS) {
-      // Lo que no cabe se ve en esa semana
+    const shown = Math.min(dayItems.length, monthCellItems)
+    if (dayItems.length > shown) {
+      // Lo que no cabe se ve en esa semana; el aviso va junto al número para no gastar una fila
       const more = document.createElement('button')
       more.type = 'button'
       more.className = 'calendar-more'
-      more.textContent = `y ${dayItems.length - MONTH_CELL_ITEMS} más`
+      more.textContent = `+${dayItems.length - shown} más`
       more.addEventListener('click', (event) => {
         event.stopPropagation()
-        anchor = date
-        setView('week')
+        showDayPopover(cell, date, dayItems)
       })
-      cell.append(more)
+      head.append(more)
     }
+    cell.append(head, ...dayItems.slice(0, shown).map((item) => createChip(item, true)))
     cell.append(createAddButton(date))
     return cell
   })
 
   grid.replaceChildren(...headers, ...cells)
+}
+
+// Todo lo de un día del mes, en una ventanita sobre su casilla. Se cierra con un clic afuera o Esc.
+function showDayPopover(cell: HTMLElement, date: string, items: AgendaItem[]) {
+  const popover = document.createElement('div')
+  popover.popover = 'auto'
+  popover.className = 'calendar-day-popover sf-card'
+  const title = document.createElement('strong')
+  title.textContent = capitalize(longFormat.format(fromDateText(date)))
+  const list = document.createElement('div')
+  list.className = 'calendar-day-items'
+  list.append(...items.map((item) => createChip(item, false)))
+  popover.append(title, list)
+  popover.addEventListener('toggle', (event) => {
+    if ((event as ToggleEvent).newState === 'closed') popover.remove()
+  })
+  document.body.append(popover)
+  popover.showPopover()
+
+  // Parte sobre la casilla, sin salirse de la pantalla
+  const rect = cell.getBoundingClientRect()
+  const margin = 8
+  popover.style.left = `${Math.max(margin, Math.min(rect.left, innerWidth - popover.offsetWidth - margin))}px`
+  popover.style.top = `${Math.max(margin, Math.min(rect.top, innerHeight - popover.offsetHeight - margin))}px`
 }
 
 export async function refreshCalendar() {
@@ -328,6 +407,13 @@ function move(direction: 1 | -1) {
 }
 
 export function setUpCalendar() {
+  // Al cambiar el alto de la ventana, el mes se vuelve a dibujar si ahora cabe otra cantidad por día
+  new ResizeObserver(() => {
+    if (view !== 'month' || grid.clientHeight === 0) return
+    const weeks = (grid.children.length - 7) / 7
+    if (weeks >= 1 && countMonthCellItems(weeks) !== monthCellItems) refreshCalendar()
+  }).observe(grid)
+
   document.querySelector('#calendar-prev')!.addEventListener('click', () => move(-1))
   document.querySelector('#calendar-next')!.addEventListener('click', () => move(1))
   document.querySelector('#calendar-today')!.addEventListener('click', () => {

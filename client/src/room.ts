@@ -4,9 +4,10 @@ import { CHAIR_SIZE, getCurrentLayout, seats, TABLE_DEPTH, tableWidth, useRoomLa
 import { scene } from './scene'
 import { getRoomDesign } from './network'
 import { designsFor, getDesign } from './voxel/designs'
-import { buildRoom as buildVoxelRoom, type RoomDesign } from './voxel/roomBuilder'
+import { buildFrontWall, buildRoom as buildVoxelRoom, type RoomDesign } from './voxel/roomBuilder'
 import { voxelMesh } from './voxel/voxelView'
 import { VOXEL_SIZE } from './voxel/voxels'
+import { windowWeather } from './voxel/windowWeather'
 
 // La sala 3D: el piso, las paredes, las mesas, las sillas y la decoración. Cómo es cada tipo de sala está en
 // roomLayout. Se arma una sola vez por página, al entrar (para ir a otra sala la página se recarga)
@@ -35,7 +36,7 @@ function addBox(width: number, height: number, depth: number, x: number, z: numb
   return box
 }
 
-let tallFrontWall: THREE.Mesh | null = null
+let tallFrontWall: THREE.Object3D | null = null
 let chairs: THREE.Mesh[] = []
 let usesVoxels = false
 
@@ -50,9 +51,9 @@ function chosenDesign(kind: string): RoomDesign | null {
 
 function buildFromDesign(design: RoomDesign) {
   usesVoxels = true
-  const { width, depth } = getCurrentLayout()
   const built = buildVoxelRoom(design)
   const { group } = voxelMesh(built.voxels)
+  group.add(windowWeather(built.windows))
   group.position.y = -VOXEL_SINK
   scene.add(group)
   for (const source of built.lights.slice(0, MAX_VOXEL_LAMPS)) {
@@ -60,8 +61,11 @@ function buildFromDesign(design: RoomDesign) {
     lamp.position.set((source.x + 0.5) * VOXEL_SIZE, (source.y + 0.5) * VOXEL_SIZE - VOXEL_SINK, (source.z + 0.5) * VOXEL_SIZE)
     scene.add(lamp)
   }
-  tallFrontWall = addBox(width + 0.4, WALL_HEIGHT, WALL_THICKNESS, 0, depth / 2 + 0.1, design.theme.wall.color)
+  // La pared de adelante en cubos, con sus adornos: solo en primera persona
+  tallFrontWall = voxelMesh(buildFrontWall(design)).group
+  tallFrontWall.position.y = -VOXEL_SINK
   tallFrontWall.visible = false
+  scene.add(tallFrontWall)
   // Las sillas para hacer clic: cajas transparentes que envuelven cada silla de cubos (con el respaldo), de un
   // verde que no depende de la luz. Sin elegir asiento no se ven
   chairs = seats.map((seat) => {

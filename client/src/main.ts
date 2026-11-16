@@ -1,4 +1,5 @@
 import './style.css'
+import { startTranslation } from './i18n'
 import type { Character } from './character'
 import { getActivity, getActivityItem } from './choices'
 import { showHome, SOLO_KIND } from './home'
@@ -65,6 +66,7 @@ function stopRoom() {
   setStudyScreenVisible(false)
 }
 
+startTranslation() // antes de mostrar nada: en inglés traduce la página y lo que se agregue
 showHome(
   async (nickname, character, resumed, kind) => {
     const isSolo = kind === SOLO_KIND

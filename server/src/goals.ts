@@ -133,15 +133,6 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       [account.id, sectionId, minutes, deadline, today, MAX_ACTIVE],
     )
     if (!rowCount) throw new RequestError(409, `Puedes tener hasta ${MAX_ACTIVE} objetivos a la vez.`)
-  } else if (route === 'POST /api/objetivos/editar') {
-    const minutes = parseMinutes(body.minutes)
-    const deadline = parseDeadline(body.deadline, today)
-    const sectionId = await parseSection(account.id, body.sectionId)
-    const { rowCount } = await query(
-      'UPDATE study_goals SET minutes = $3, deadline = $4, section_id = $5 WHERE id = $1 AND user_id = $2',
-      [parseId(body.id), account.id, minutes, deadline, sectionId],
-    )
-    if (!rowCount) throw new RequestError(404, 'Ese objetivo ya no existe.')
   } else if (route === 'POST /api/objetivos/archivar') {
     // archived: true lo pasa al historial; false lo devuelve a la lista (el "Deshacer")
     if (typeof body.archived !== 'boolean') throw new RequestError(400, 'Falta si se archiva o no.')

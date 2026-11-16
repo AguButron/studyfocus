@@ -882,6 +882,23 @@ body {
 .menu-user[aria-current="page"] { background: var(--card-sunken); color: var(--ink); font-weight: 600; }
 .menu-user:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* El menú de tu foto: Perfil, Ajustes y Cerrar sesión, sobre la foto */
+.menu-user-options {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  width: 208px;
+  padding: var(--cell-half);
+  border: var(--stroke-1) solid var(--line);
+  color: var(--ink);
+  box-shadow: var(--lift-2);
+}
+.menu-user-options:popover-open { display: flex; }
+.menu-user-logout { margin-top: var(--cell-half); border-top: var(--stroke-1) solid var(--line); border-radius: 0 0 var(--radius-1) var(--radius-1); }
+
 #menu-user-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -901,15 +918,71 @@ body {
 .character-photo--card { width: 40px; height: 40px; }
 .character-photo--large { width: 96px; height: 96px; border-radius: var(--radius-2); }
 
-.character-card {
-  display: flex;
-  flex-wrap: wrap;
+/* ── Tu perfil y Ajustes ─────────────────────────── */
+
+.menu-panel[data-panel="profile"] { max-width: 1080px; }
+.profile-card .profile-hero-photo { align-self: flex-start; }
+.menu-panel[data-panel="settings"] { max-width: 720px; }
+.profile-page { align-items: stretch; gap: var(--cell-3); width: 100%; margin-inline: auto; }
+
+/* Arriba: cómo te ven los demás. Foto, nombre, lo que estudias y tus números */
+.profile-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--cell-2) var(--cell-3);
   padding: var(--cell-3);
 }
-.character-choice { display: flex; flex: 1; flex-direction: column; gap: var(--cell-1); min-width: 200px; }
-.character-choice .form-message:empty { display: none; }
+.profile-hero-photo { width: 112px; height: 112px; border-radius: var(--radius-2); }
+.profile-hero-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.profile-hero-text h2 { margin: 0; font-size: 28px; line-height: 34px; font-weight: 650; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.profile-hero-text .sf-row-detail { margin-top: var(--cell-half); }
+.profile-hero-text .sf-row-detail:empty { display: none; }
+.profile-hero-stats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding-top: var(--cell-2);
+  border-top: var(--stroke-1) solid var(--line);
+}
+.profile-hero-stats > div { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--cell-2); }
+.profile-hero-stats > div + div { border-left: var(--stroke-1) solid var(--line); }
+.profile-hero-stats > div:first-child { padding-left: 0; }
+.profile-hero-stats dd { margin: 0; font-size: 20px; line-height: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Abajo: lo que se cambia, en tarjetas. La información a la izquierda y el personaje a la derecha */
+.profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; gap: var(--cell-3); }
+.profile-card { display: flex; flex-direction: column; gap: var(--cell-2); padding: var(--cell-3); }
+.profile-card-head { display: flex; flex-direction: column; gap: 4px; }
+.profile-card-head h3 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+.profile-card-head p { margin: 0; }
+.profile-card-head--row { flex-direction: row; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--cell-1) var(--cell-2); }
+.profile-card-head--row > div { display: flex; flex-direction: column; gap: 4px; }
+.profile-card .profile-form { max-width: none; }
+.profile-card .form-message { margin: 0; }
+.profile-card .form-message:empty { display: none; }
+.profile-about { padding-top: var(--cell-2); border-top: var(--stroke-1) solid var(--line); }
+.profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--cell-2); width: 100%; }
+.profile-inline { display: flex; gap: var(--cell-1); }
+.profile-inline .sf-input { flex: 1; min-width: 0; }
+.profile-inline .sf-btn { flex: none; }
+
+/* Ajustes: cada dato de la cuenta en su fila */
+.settings-list { display: flex; flex-direction: column; margin: 0; }
+.settings-list > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--cell-1) var(--cell-3); padding: var(--cell-1-5) 0; border-top: var(--stroke-1) solid var(--line); }
+.settings-list > div:first-child { padding-top: 0; border-top: 0; }
+.settings-list dt { color: var(--ink-soft); }
+.settings-list dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .profile-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .profile-hero { grid-template-columns: auto minmax(0, 1fr); }
+  .profile-hero-photo { width: 80px; height: 80px; }
+  .profile-fields { grid-template-columns: minmax(0, 1fr); }
+}
 
 .character-colors { display: flex; flex-wrap: wrap; gap: var(--cell-1); margin-top: var(--cell-half); }
 .character-swatch {
@@ -1362,10 +1435,15 @@ body {
 /* El calendario usa todo el ancho y el alto de la pantalla */
 .menu-panel[data-panel="calendar"] {
   max-width: none;
-  min-height: calc(100vh - 2 * var(--cell-6));
+  /* Alto fijo: el calendario se reparte en lo que hay, sin hacer scroll en la página */
+  height: calc(100vh - 2 * var(--cell-6));
+  min-height: 480px;
 }
 
-.menu-panel[data-panel="home"] { max-width: 1280px; }
+/* Inicio usa todo el ancho que dejan los paneles laterales, abiertos o cerrados */
+.menu-panel[data-panel="home"] { max-width: none; }
+/* Con margen abajo chico, si todo cabe en la pantalla no queda nada que bajar */
+.menu-content:has(> .menu-panel[data-panel="home"]:not([hidden])) { padding-bottom: var(--cell-2); }
 
 /* Inicio: a la izquierda estudiar y tu espacio; a la derecha, una columna alta con lo que viene */
 /* Se adapta a su propio ancho: el panel de amigos abierto también le quita espacio */
@@ -1375,13 +1453,12 @@ body {
 }
 .home-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
   align-items: start;
   gap: var(--cell-3);
   align-self: stretch;
 }
 .home-main { display: flex; flex-direction: column; gap: var(--cell-3); min-width: 0; }
-.home-columns > .upcoming { min-height: calc(100vh - 220px); }
 .home-layout .upcoming-head { flex-direction: column; align-items: flex-start; }
 
 .home-study {
@@ -1406,12 +1483,14 @@ body {
 .home-space { display: flex; flex-direction: column; gap: var(--cell-1); }
 .home-space-head { display: flex; align-items: center; justify-content: space-between; gap: var(--cell-1); }
 .home-space-head .sf-section-title { margin: 0; }
+.menu-panel[data-panel="schedule"] { max-width: none; }
+.schedule-page { align-self: stretch; padding: var(--cell-2); }
+.schedule-page[hidden] { display: none; }
 .home-space-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--cell-1-5); padding: var(--cell-2); }
 .home-space-empty p { margin: 0; }
 
 @container (max-width: 760px) {
   .home-columns { grid-template-columns: minmax(0, 1fr); }
-  .home-columns > .upcoming { min-height: 0; }
 }
 
 .home-head,
@@ -1466,10 +1545,13 @@ body {
   overflow-wrap: anywhere;
 }
 
-.calendar { flex: 1; }
-.calendar-grid { flex: 1; }
-.calendar-grid--month { grid-template-rows: auto; grid-auto-rows: minmax(104px, 1fr); }
-.calendar-grid--year { align-content: start; }
+.calendar { flex: 1; min-height: 0; }
+.calendar-grid { flex: 1; min-height: 0; }
+.calendar-grid--month { grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); }
+.calendar-grid--week { grid-template-rows: minmax(0, 1fr); }
+.calendar-grid--year { align-content: start; overflow-y: auto; }
+.calendar [data-drop] { box-shadow: inset 0 0 0 2px var(--focus); }
+.agenda-chip[draggable="true"] { cursor: grab; }
 
 .home-head {
   display: flex;
@@ -1524,7 +1606,7 @@ body {
   flex-direction: column;
   gap: var(--cell-1);
   min-width: 0;
-  min-height: 240px;
+  min-height: 0;
   padding: 6px;
   border-radius: var(--radius-1);
   background: var(--card-sunken);
@@ -1540,7 +1622,7 @@ body {
   background: var(--marker);
   color: var(--on-marker);
 }
-.calendar-day-items { display: flex; flex-direction: column; gap: var(--cell-half); }
+.calendar-day-items { display: flex; flex-direction: column; gap: var(--cell-half); min-height: 0; overflow-y: auto; }
 
 .agenda-chip {
   display: flex;
@@ -1572,13 +1654,14 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.agenda-chip--compact .agenda-chip-section { font-size: 10px; line-height: 13px; }
 /* En la semana sobra alto: el nombre entero, aunque ocupe dos líneas */
 .calendar-grid--week .agenda-chip-section { white-space: normal; overflow-wrap: anywhere; }
 .agenda-chip[data-done] { opacity: 0.55; }
 .agenda-chip[data-done] .agenda-chip-title { text-decoration: line-through; }
-.agenda-chip--compact { padding: 2px 6px; }
-.agenda-chip--compact .agenda-chip-title { font-size: 12px; line-height: 16px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.agenda-chip--compact { flex: none; padding: 1px 6px; }
+.agenda-chip--compact .agenda-chip-section { font-size: 10px; line-height: 13px; }
+.calendar-cell-head { display: flex; align-items: center; gap: 4px; flex: none; padding-right: 22px; }
+.agenda-chip--compact .agenda-chip-title { font-size: 12px; line-height: 17px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 
 .calendar-add {
   align-self: flex-start;
@@ -1618,7 +1701,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-height: 104px;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
   padding: var(--cell-half);
   border-right: var(--stroke-1) solid var(--line);
   border-bottom: var(--stroke-1) solid var(--line);
@@ -1627,9 +1712,9 @@ body {
 .calendar-cell[data-other-month] .calendar-cell-number { color: var(--ink-soft); }
 .calendar-cell-number { align-self: flex-start; padding: 0 4px; font-size: 13px; line-height: 20px; font-weight: 600; }
 .calendar-cell[data-today] .calendar-cell-number { border-radius: var(--radius-0); background: var(--marker); color: var(--on-marker); }
-.calendar-cell .calendar-add { width: 22px; height: 22px; font-size: 13px; }
+/* Arriba a la derecha, para no quitarle alto a lo del día */
+.calendar-cell .calendar-add { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; margin: 0; font-size: 13px; background: var(--card); }
 .calendar-more {
-  align-self: flex-start;
   padding: 0 4px;
   border: 0;
   background: none;
@@ -1638,6 +1723,24 @@ body {
   font-size: 12px;
   cursor: pointer;
 }
+.calendar-day-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  display: none;
+  flex-direction: column;
+  gap: var(--cell-1);
+  width: 260px;
+  max-height: min(420px, calc(100vh - 16px));
+  padding: var(--cell-1-5);
+  border: var(--stroke-1) solid var(--line);
+  color: var(--ink);
+  box-shadow: var(--lift-2);
+  overflow-y: auto;
+}
+.calendar-day-popover:popover-open { display: flex; }
+.calendar-day-popover strong { font-size: 14px; line-height: 20px; }
+.calendar-day-popover .agenda-chip-section { white-space: normal; overflow-wrap: anywhere; }
 .calendar-more:hover { color: var(--ink); text-decoration: underline; }
 
 /* Año: los doce meses en pequeño */
@@ -1901,6 +2004,14 @@ input.section-item-grade:invalid { border-color: var(--danger); }
   color: var(--ink);
 }
 .agenda-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+/* Solo flex abierta: sin [open], cerrada se vería igual */
+.agenda-detail { flex-direction: column; gap: var(--cell-1-5); min-width: min(360px, calc(100vw - 32px)); }
+.agenda-detail[open] { display: flex; }
+.agenda-detail p, .agenda-detail h2 { margin: 0; }
+.agenda-detail h2 { font-size: 20px; line-height: 26px; overflow-wrap: anywhere; }
+.agenda-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--cell-2); }
+.agenda-detail-edit { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; }
+.agenda-detail .agenda-section-name { margin: 0; }
 .agenda-section-name { display: flex; align-items: center; gap: var(--cell-1); margin: calc(-1 * var(--cell-1)) 0 0; color: var(--ink-soft); font-size: 14px; }
 .agenda-section-name::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--section); }
 
@@ -2194,7 +2305,8 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 }
 .week-class:hover { background: color-mix(in srgb, var(--section) 32%, var(--card)); }
 .week-class:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; z-index: 3; }
-.week-class strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+/* El nombre del ramo puede ser largo: hasta dos líneas antes de cortarse */
+.week-class strong { display: -webkit-box; overflow: hidden; font-size: 12px; line-height: 15px; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .week-class span { overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
 .week-class[data-clash] { outline: 1px dashed var(--danger); outline-offset: -1px; }
 .week-class[data-now] { box-shadow: inset 0 0 0 1px var(--card), 0 0 0 2px var(--section); z-index: 2; }
@@ -3432,26 +3544,25 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])) #music {
 /* Perfil: el tema de la interfaz */
 .theme-picker { align-self: flex-start; width: max-content; max-width: 100%; }
 
-/* La página del perfil de otra persona */
-.person-content { display: flex; flex-direction: column; gap: var(--cell-3); }
-.person-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--cell-2);
-  padding: var(--cell-3);
-}
-.person-head-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 180px; }
-.person-head-text h2 { margin: 0; font-size: 28px; line-height: 34px; letter-spacing: -0.02em; }
+/* El perfil público: usa el mismo encabezado y las mismas tarjetas que editar el perfil */
+.menu-panel[data-panel="person"] { max-width: 1080px; }
+#person-content { display: flex; flex-direction: column; }
+.person-photo { display: flex; }
 .person-username { color: var(--ink-soft); font: 500 13px/18px var(--font-mono); }
-.person-head-text .sf-presence { margin-top: var(--cell-half); }
-.person-actions { display: flex; flex-wrap: wrap; gap: var(--cell-1); }
-.person-studies { margin: 0; font-weight: 600; }
-.person-bio { margin: var(--cell-half) 0 0; color: var(--ink-soft); white-space: pre-line; overflow-wrap: anywhere; }
-.person-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 520px) {
-  .person-stats { grid-template-columns: minmax(0, 1fr); }
+.profile-hero-text .sf-presence { margin-top: var(--cell-half); }
+.person-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--cell-1); }
+.person-bio { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.person-since { margin: 0; padding-top: var(--cell-1-5); border-top: var(--stroke-1) solid var(--line); }
+.profile-card .stat-chart { padding: 0; }
+#person-message:empty { display: none; }
+.person-stats-hidden { grid-column: 1 / -1; margin: 0; padding-top: var(--cell-2); border-top: var(--stroke-1) solid var(--line); }
+.profile-grid--single { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 600px) {
+  .person-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* Editar perfil: vuelve a tu perfil público */
+.profile-edit-head { flex-direction: column; align-items: flex-start; gap: var(--cell-1); }
 
 /* El aviso de la sala cuando el navegador dibuja sin la tarjeta gráfica: arriba al centro, sin tapar la escena */
 .gpu-notice {
@@ -3535,12 +3646,15 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])) #music {
 
 /* Estudiar: a la izquierda las salas y su diseño, a la derecha la vista previa con el botón para crearla.
    En pantallas angostas la vista previa baja, bajo las salas */
-.menu-panel[data-panel="rooms"] { max-width: 1180px; }
-.rooms-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--cell-3); align-self: stretch; align-items: start; }
+.menu-panel[data-panel="rooms"] { max-width: none; }
+/* Las salas a la izquierda y la vista previa, más grande, en el resto hasta el panel de amigos */
+.rooms-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--cell-3); align-self: stretch; align-items: start; }
+@media (max-width: 900px) { .rooms-layout { grid-template-columns: minmax(0, 1fr); } }
 .rooms-pick { display: flex; flex-direction: column; gap: var(--cell-2); min-width: 0; }
-.rooms-pick .sf-rooms { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.rooms-pick .sf-rooms { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
 .room-preview { position: sticky; top: var(--cell-2); display: flex; flex-direction: column; gap: var(--cell-1-5); padding: var(--cell-1-5); }
-.room-preview-view { position: relative; overflow: hidden; aspect-ratio: 4 / 3; border-radius: var(--radius-1); background: #121417; }
+/* Tan ancha como su columna, pero sin que la tarjeta pase del alto de la pantalla (se queda fija al bajar) */
+.room-preview-view { position: relative; overflow: hidden; aspect-ratio: 4 / 3; max-height: calc(100vh - 360px); min-height: 220px; border-radius: var(--radius-1); background: #121417; }
 .room-preview-view canvas { display: block; width: 100%; height: 100%; }
 .room-preview-plan { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--cell-2); }
 .room-preview-plan svg { width: 100%; height: 100%; }
@@ -3548,3 +3662,50 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])) #music {
 .room-preview-view[data-mode="plan"] canvas { display: none; }
 .room-preview-info { display: flex; flex-direction: column; gap: 2px; }
 .room-preview .panel-actions { margin: 0; }
+.room-preview-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--cell-3); }
+.room-join { display: flex; flex-direction: column; gap: var(--cell-1-5); }
+.room-join .sf-inline { gap: var(--cell-1-5); }
+.room-join .sf-section-title { margin: 0; }
+.room-join .sf-input--code { width: 120px; }
+.room-preview .sf-error:empty { display: none; }
+
+/* En Estadísticas, el nombre de quien estudió contigo abre su perfil */
+.stats-person { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.stats-person:hover { text-decoration: underline; }
+.stats-person:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* Junto a "Últimos 7 días" en tu perfil: quién lo ve */
+.person-visibility { margin-left: var(--cell-1); color: var(--ink-soft); font: 600 11px/16px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; vertical-align: middle; }
+
+/* Los ramos de una carpeta: la manilla para arrastrar al lado de cada uno */
+.section-row-item { display: flex; align-items: stretch; border-left: 4px solid var(--section); border-radius: var(--radius-0); background: color-mix(in srgb, var(--section) 8%, var(--card)); }
+.section-row-item > .section-row { flex: 1; min-width: 0; padding-left: 0; border-left: 0; background: none; }
+.section-row-item:hover { background: color-mix(in srgb, var(--section) 16%, var(--card)); }
+.section-row-item:hover .section-item-handle { opacity: 1; }
+.section-row-item[data-dragging] { position: relative; z-index: 1; box-shadow: var(--lift-3); }
+.section-row-item[data-dragging] .section-item-handle { cursor: grabbing; }
+
+/* El globo para cambiar de idioma, en la portada y al iniciar sesión */
+.landing-top-actions { display: flex; align-items: center; gap: var(--cell-1); }
+.auth-top { display: flex; justify-content: flex-end; margin-bottom: calc(-1 * var(--cell-2)); }
+.language-toggle { display: inline-flex; align-items: center; gap: 6px; }
+.language-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; }
+.language-toggle span { font: 600 12px/16px var(--font-mono); letter-spacing: 0.06em; }
+
+/* Las medallas del perfil: ocupan todo el ancho, bajo el gráfico y "Sobre" */
+.person-medals-card { grid-column: 1 / -1; }
+.person-medals { display: flex; flex-wrap: wrap; gap: var(--cell-1); margin: 0; padding: 0; list-style: none; }
+.person-medal {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cell-1);
+  padding: var(--cell-1) var(--cell-1-5);
+  border: var(--stroke-1) solid var(--line);
+  border-radius: var(--radius-1);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.person-medal::before { content: "★"; color: var(--line); }
+.person-medal[data-earned] { border-color: var(--marker); color: var(--ink); }
+.person-medal[data-earned]::before { color: var(--marker); }

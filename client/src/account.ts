@@ -1,5 +1,6 @@
 import { callApi } from './api'
 import type { Character } from './character'
+import { LOCALE } from './i18n'
 
 // Las llamadas al servidor sobre la cuenta. La sesión vive en una cookie que esta página no puede leer.
 
@@ -12,7 +13,11 @@ export interface Profile {
   institution: string | null
   country: string | null // código de dos letras, como CL
   character: Character
+  statsVisibility: StatsVisibility
 }
+
+// Quién ve tus estadísticas en tu perfil
+export type StatsVisibility = 'public' | 'friends' | 'private'
 
 export interface Account {
   name: string // el apodo, que ven los demás en la sala
@@ -85,7 +90,7 @@ export function setupGoogleButton(container: HTMLElement, clientId: string, onCr
       theme: 'filled_black',
       text: 'continue_with',
       width: GOOGLE_BUTTON_WIDTH,
-      locale: 'es',
+      locale: LOCALE,
     })
   })
   document.head.append(script)

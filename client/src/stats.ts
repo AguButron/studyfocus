@@ -1,10 +1,19 @@
 // El panel de estadísticas y el resumen que aparece al volver de una sala
 import { addDays, todayText } from './agenda'
 import { findSection, loadSpaces } from './spaces'
+import { LOCALE } from './i18n'
 
 interface Companion {
   name: string
+  username?: string | null // para abrir su perfil; el resumen al salir de una sala no lo trae
   seconds: number
+}
+
+let openPerson: (username: string) => void = () => {}
+
+// Al hacer clic en el nombre de alguien con quien estudiaste se abre su perfil
+export function setUpStatsPeople(open: (username: string) => void) {
+  openPerson = open
 }
 
 type Bucket = 'day' | 'week' | 'month' | 'year'
@@ -75,13 +84,13 @@ const chartTitle = document.querySelector<HTMLElement>('#stat-chart-title')!
 const sectionTimeTitle = document.querySelector<HTMLElement>('#section-time-title')!
 
 // Los días llegan como fechas sin hora: se leen en UTC para que no cambien de día
-const weekdayFormat = new Intl.DateTimeFormat('es', { weekday: 'short', timeZone: 'UTC' })
-const longDateFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
-const shortDateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-const fullDateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-const monthFormat = new Intl.DateTimeFormat('es', { month: 'short', timeZone: 'UTC' })
-const monthYearFormat = new Intl.DateTimeFormat('es', { month: 'short', year: '2-digit', timeZone: 'UTC' })
-const longMonthFormat = new Intl.DateTimeFormat('es', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+const weekdayFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', timeZone: 'UTC' })
+const longDateFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+const shortDateFormat = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const fullDateFormat = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+const monthFormat = new Intl.DateTimeFormat(LOCALE, { month: 'short', timeZone: 'UTC' })
+const monthYearFormat = new Intl.DateTimeFormat(LOCALE, { month: 'short', year: '2-digit', timeZone: 'UTC' })
+const longMonthFormat = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric', timeZone: 'UTC' })
 const MAX_LABELS = 12 // con más barras, solo algunas llevan su etiqueta para que no se encimen
 const MAX_VALUES = 14 // con más barras, los minutos van solo en la descripción de cada una
 
@@ -243,9 +252,15 @@ function render(stats: Stats) {
       item.className = 'sf-row'
       const text = document.createElement('div')
       text.className = 'sf-row-main'
-      const name = document.createElement('strong')
-      name.className = 'sf-row-title'
+      const name = document.createElement(companion.username ? 'button' : 'strong')
+      name.className = companion.username ? 'sf-row-title stats-person' : 'sf-row-title'
       name.textContent = companion.name
+      if (companion.username) {
+        const username = companion.username
+        ;(name as HTMLButtonElement).type = 'button'
+        name.title = `Ver el perfil de ${companion.name}`
+        name.addEventListener('click', () => openPerson(username))
+      }
       const time = document.createElement('span')
       time.className = 'sf-row-detail'
       time.textContent = `${formatDuration(companion.seconds)} juntos`

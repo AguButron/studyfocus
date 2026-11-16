@@ -1,6 +1,7 @@
 import { getRoomLayout, layoutSeats } from '../roomLayout'
 import { resolveProp, type PropLight } from './props'
 import { hash, mix, PER_METER, shade, VoxelSet } from './voxels'
+import type { Weather, WindowSpot } from './windowWeather'
 
 // Arma una sala completa en cubos a partir de su diseño: el piso, las paredes, las mesas y sillas de su tipo
 // (las mismas de roomLayout, así los asientos no cambian) y los muebles y adornos que elige el diseño.
@@ -34,6 +35,8 @@ export interface RoomDesign {
   table?: { colors?: Record<string, number>; options?: Record<string, string> } // cómo son sus mesas
   chair?: { colors?: Record<string, number> }
   props: PlacedProp[]
+  // Lo que cuelga de la pared de adelante. Esa pared se ve entera solo en primera persona (buildFrontWall)
+  front?: PlacedProp[]
   // Para "Crea tu sala": un tamaño propio, sin las mesas de un tipo (las mesas y sillas van entre los muebles)
   size?: { width: number; depth: number }
 }
@@ -43,6 +46,7 @@ export const WALL_HEIGHT = 100 // cubos: 2,5 m
 export interface BuiltRoom {
   voxels: VoxelSet
   lights: PropLight[] // en cubos, ya en su lugar
+  windows: WindowSpot[] // para lo que se mueve detrás del vidrio (windowWeather.ts)
   width: number // en cubos
   depth: number
 }
@@ -136,14 +140,50 @@ function wallColor(style: WallStyle, color: number, accent: number, u: number, y
   }
 }
 
-export function buildRoom(design: RoomDesign): BuiltRoom {
+// El tamaño de la sala en cubos y dónde están sus paredes
+function roomBox(design: RoomDesign) {
   const layout = getRoomLayout(design.kind)
   const width = design.size?.width ?? Math.round(layout.width * PER_METER)
   const depth = design.size?.depth ?? Math.round(layout.depth * PER_METER)
   const x0 = -Math.floor(width / 2)
-  const x1 = x0 + width
   const z0 = -Math.floor(depth / 2)
-  const z1 = z0 + depth
+  return { layout, width, depth, x0, x1: x0 + width, z0, z1: z0 + depth }
+}
+
+// Pone un mueble del catálogo en la sala, con sus luces y, si es una ventana, su clima
+function placeProp(voxels: VoxelSet, lights: PropLight[], windows: WindowSpot[], placed: PlacedProp, seed: number) {
+  const resolved = resolveProp(placed.id, placed.colors, placed.options)
+  if (!resolved) return
+  const piece = new VoxelSet(seed)
+  const propLights = resolved.def.build(piece, resolved.colors, resolved.options) ?? []
+  const rotation = placed.rotation ?? 0
+  const y = placed.y ?? resolved.def.y ?? 0
+  const scale = resolved.def.legacy ? 2 : 1
+  voxels.merge(piece, placed.x, y, placed.z, rotation, scale)
+  for (const light of propLights) {
+    const angle = (rotation * Math.PI) / 180
+    const lx = Math.round((light.x * Math.cos(angle) + light.z * Math.sin(angle)) * scale)
+    const lz = Math.round((-light.x * Math.sin(angle) + light.z * Math.cos(angle)) * scale)
+    lights.push({ ...light, x: lx + placed.x, y: light.y * scale + y, z: lz + placed.z })
+  }
+  if (placed.id === 'window') {
+    windows.push({ x: placed.x, y, z: placed.z, rotation, sky: resolved.options.sky as Sky, weather: resolved.options.weather as Weather })
+  }
+}
+
+// La pared de adelante entera, sobre la pared baja, con lo que cuelga de ella. Solo se ve en primera persona
+// (room.ts): desde arriba taparía la sala
+export function buildFrontWall(design: RoomDesign) {
+  const { x0, x1, z1 } = roomBox(design)
+  const voxels = new VoxelSet(design.id.length * 173)
+  const { wall } = design.theme
+  voxels.fill(x0 - 2, 12, z1, x1 + 2, WALL_HEIGHT, z1 + 2, (x, y) => wallColor(wall.style, wall.color, wall.accent, x - x0, y), { jitter: 0 })
+  design.front?.forEach((prop, index) => placeProp(voxels, [], [], prop, 900 + index))
+  return voxels
+}
+
+export function buildRoom(design: RoomDesign): BuiltRoom {
+  const { layout, width, depth, x0, x1, z0, z1 } = roomBox(design)
   const voxels = new VoxelSet(design.id.length * 131 + width)
   const { floor, wall } = design.theme
 
@@ -157,22 +197,8 @@ export function buildRoom(design: RoomDesign): BuiltRoom {
   voxels.fill(x0 - 2, -1, z1, x1 + 2, 12, z1 + 2, (_x, y) => (y === 11 ? shade(wall.accent, 0.1) : shade(wall.accent, -0.1)), { jitter: 0 })
 
   const lights: PropLight[] = []
-  const place = (placed: PlacedProp, seed: number) => {
-    const resolved = resolveProp(placed.id, placed.colors, placed.options)
-    if (!resolved) return
-    const piece = new VoxelSet(seed)
-    const propLights = resolved.def.build(piece, resolved.colors, resolved.options) ?? []
-    const rotation = placed.rotation ?? 0
-    const y = placed.y ?? resolved.def.y ?? 0
-    const scale = resolved.def.legacy ? 2 : 1
-    voxels.merge(piece, placed.x, y, placed.z, rotation, scale)
-    for (const light of propLights) {
-      const angle = (rotation * Math.PI) / 180
-      const lx = Math.round((light.x * Math.cos(angle) + light.z * Math.sin(angle)) * scale)
-      const lz = Math.round((-light.x * Math.sin(angle) + light.z * Math.cos(angle)) * scale)
-      lights.push({ ...light, x: lx + placed.x, y: light.y * scale + y, z: lz + placed.z })
-    }
-  }
+  const windows: WindowSpot[] = []
+  const place = (placed: PlacedProp, seed: number) => placeProp(voxels, lights, windows, placed, seed)
 
   // Lo de abajo primero (las alfombras), para que lo demás quede encima
   const ordered = [...design.props].sort((a, b) => Number(b.id === 'rug') - Number(a.id === 'rug'))
@@ -190,5 +216,5 @@ export function buildRoom(design: RoomDesign): BuiltRoom {
   }
 
   ordered.filter((prop) => prop.id !== 'rug').forEach((prop, index) => place(prop, 700 + index))
-  return { voxels, lights, width, depth }
+  return { voxels, lights, windows, width, depth }
 }

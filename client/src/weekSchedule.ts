@@ -51,8 +51,8 @@ export function createWeekSchedule(sections: Section[], openClass: (section: Sec
   )
   if (entries.length === 0) return null
 
-  // De lunes a viernes siempre; sábado y domingo solo si hay clases
-  const days = DAYS.filter((day) => day.id <= 5 || entries.some((entry) => entry.item.day === day.id))
+  // De lunes a sábado siempre; el domingo solo si hay clases
+  const days = DAYS.filter((day) => day.id <= 6 || entries.some((entry) => entry.item.day === day.id))
   let first = Math.floor(Math.min(...entries.map((entry) => entry.start)) / 60)
   let last = Math.ceil(Math.max(...entries.map((entry) => entry.end)) / 60)
   if (last - first < MIN_HOURS) last = Math.min(24, first + MIN_HOURS)
@@ -116,7 +116,7 @@ export function createWeekSchedule(sections: Section[], openClass: (section: Sec
       block.toggleAttribute('data-now', day.id === today && entry.start <= nowMinutes && nowMinutes < entry.end)
 
       const name = document.createElement('strong')
-      name.textContent = section.code ?? section.name
+      name.textContent = section.name
       const time = document.createElement('span')
       time.textContent = `${item.start}–${item.end}`
       const detail = document.createElement('span')

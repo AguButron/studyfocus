@@ -753,7 +753,8 @@ export const PROPS: PropDef[] = [
   {
     id: 'window', name: 'Ventana', category: 'pared', width: 96, depth: 8, onWall: true, y: 32,
     colors: { frame: { label: 'Marco', value: 0xe8e4da }, curtain: { label: 'Cortinas', value: 0xb5654a } },
-    options: { sky: { label: 'Cielo', values: ['tarde', 'dia', 'noche'] }, curtains: { label: 'Cortinas', values: ['no', 'si'] } },
+    // El clima se mueve (windowWeather.ts): las nubes y estrellas que se mueven reemplazan a las fijas
+    options: { sky: { label: 'Cielo', values: ['tarde', 'dia', 'noche'] }, curtains: { label: 'Cortinas', values: ['no', 'si'] }, weather: { label: 'Clima', values: ['nada', 'lluvia', 'nieve', 'nubes', 'estrellas'] } },
     build(set, c, o) {
       const [low, mid, top] = SKIES[o.sky] ?? SKIES.tarde
       const h = 52
@@ -770,7 +771,11 @@ export const PROPS: PropDef[] = [
       }
       if (o.sky === 'noche') {
         // Estrellas, una luna en cuarto creciente y la ciudad con sus ventanas encendidas
-        for (let i = 0; i < 40; i++) paint(-47 + Math.floor(set.next() * 94), 24 + Math.floor(set.next() * 27), 0xfff4cf, set.next() < 0.5 ? 1 : 0.7)
+        // Los números al azar se sacan igual sin pintar, para que la ciudad salga igual con o sin estrellas que titilan
+        for (let i = 0; i < 40; i++) {
+          const star = [-47 + Math.floor(set.next() * 94), 24 + Math.floor(set.next() * 27), set.next() < 0.5 ? 1 : 0.7]
+          if (o.weather !== 'estrellas') paint(star[0], star[1], 0xfff4cf, star[2])
+        }
         for (const [x, y] of [[-32, 42], [10, 46]]) for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) paint(x + dx, y + dy, 0xfff4cf, 1)
         blob(24, 36, 6.4, 6.4, 0xf6f1d8, 1)
         blob(27.2, 38, 5.2, 5.2, mix(mid, top, 0.4), 0.6)
@@ -790,7 +795,7 @@ export const PROPS: PropDef[] = [
         if (day) blob(22, 36, 5.2, 5.2, 0xfff4cf, 1)
         else blob(16, 14, 7.2, 7.2, 0xffc06a, 1)
         // Nubes
-        for (const [cx, cy, rx] of day ? [[-28, 40, 8], [-20, 42, 6], [4, 46, 8], [34, 28, 6]] : [[-24, 34, 12], [8, 42, 10], [28, 30, 8]]) {
+        for (const [cx, cy, rx] of o.weather === 'nubes' ? [] : day ? [[-28, 40, 8], [-20, 42, 6], [4, 46, 8], [34, 28, 6]] : [[-24, 34, 12], [8, 42, 10], [28, 30, 8]]) {
           blob(cx, cy, rx, day ? 3.2 : 1.6, day ? 0xffffff : 0xf2b8a0, day ? 0.8 : 0.7)
         }
         // Cerros lejanos, cerros cercanos y unos árboles

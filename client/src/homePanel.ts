@@ -1,5 +1,6 @@
 // Inicio: lo primero que se ve con la sesión iniciada. El saludo, tu estudio y lo que viene esta semana.
 import { onAgendaChange, setUpAgendaDialog } from './agendaDialog'
+import { setUpAgendaDetail } from './agendaDetail'
 import { describeToday, refreshCalendar, setUpCalendar } from './calendar'
 import { formatDuration, loadStats } from './stats'
 import { loadGoals, setUpGoals, showGoalsIn } from './goals'
@@ -21,6 +22,7 @@ function refreshAgenda() {
 
 export function setUpHomePanel() {
   setUpAgendaDialog()
+  setUpAgendaDetail()
   setUpGoals()
   showGoalsIn(document.querySelector('#home-goals')!, document.querySelector('#home-goals-empty'))
   onAgendaChange(refreshAgenda)

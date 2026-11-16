@@ -6,6 +6,7 @@ import { createCharacterPhoto } from './character'
 import { describePresence, findPerson, setUnread, type Person } from './friends'
 import { socket } from './network'
 import { profileUrl } from './profilePage'
+import { LOCALE } from './i18n'
 
 const MAX_LENGTH = 1000
 const TYPING_SEND_INTERVAL = 2500 // milisegundos entre avisos de "Escribiendo…"
@@ -37,8 +38,8 @@ const input = document.querySelector<HTMLTextAreaElement>('#chat-input')!
 const sendButton = document.querySelector<HTMLButtonElement>('#chat-send')!
 const errorText = document.querySelector<HTMLParagraphElement>('#chat-error')!
 
-const timeFormat = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' })
-const dayFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long' })
+const timeFormat = new Intl.DateTimeFormat(LOCALE, { hour: '2-digit', minute: '2-digit' })
+const dayFormat = new Intl.DateTimeFormat(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })
 
 let person: Person | null = null // con quién está abierta la conversación
 let messages: Message[] = []
@@ -124,6 +125,7 @@ function render() {
     item.className = mine ? 'chat-message chat-message--mine' : 'chat-message'
     const bubble = document.createElement('p')
     bubble.className = 'chat-bubble'
+    bubble.translate = false // lo que escribe la persona no se traduce
     bubble.append(renderBody(message.body))
     const time = document.createElement('time')
     time.dateTime = message.createdAt

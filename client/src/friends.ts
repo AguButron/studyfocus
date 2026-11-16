@@ -1,6 +1,7 @@
 import { callApi } from './api'
 import { createCharacterPhoto, type Character } from './character'
 import { openProfile } from './profileDialog'
+import { LOCALE } from './i18n'
 // El panel de amigos: tu código, las solicitudes y en qué sala está cada amigo
 
 interface Person {
@@ -124,7 +125,7 @@ async function request(path: string, body?: unknown): Promise<FriendsState | nul
   return result.value
 }
 
-const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })
+const relativeFormat = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' })
 
 // "hace 5 minutos", "hace 2 horas", "ayer", "hace 3 días"
 export function describeLastSeen(lastSeen: string) {

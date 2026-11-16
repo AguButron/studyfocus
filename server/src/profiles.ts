@@ -5,6 +5,7 @@ import { hasDatabase, query } from './database.ts'
 import { getPresence, isConnected } from './presence.ts'
 import { createJsonHandler, RequestError, sendJson } from './requests.ts'
 import { loadStats, TIME_ZONES } from './stats.ts'
+import { describeMedals } from './medals.ts'
 
 // La página del perfil de una persona: lo que cuenta de sí misma, cuánto ha estudiado y si son amigos.
 // Se abre, por ejemplo, desde su nombre en la tarjeta que aparece al hacer clic en ella dentro de una sala.
@@ -18,6 +19,7 @@ interface PersonRow {
   institution: string | null
   country: string | null
   character_look: unknown
+  stats_visibility: string
   member_since: string
   last_seen: string | null
 }
@@ -47,7 +49,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   if (!username) throw new RequestError(404, 'No hay nadie con ese nombre de usuario.')
 
   const { rows } = await query<PersonRow>(
-    `SELECT id::text, name, username, bio, studies, institution, country, character_look,
+    `SELECT id::text, name, username, bio, studies, institution, country, character_look, stats_visibility,
        to_char(created_at, 'YYYY-MM-DD') AS member_since, last_seen_at AS last_seen
      FROM users WHERE username = $1`,
     [username],
@@ -55,12 +57,12 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
   const person = rows[0]
   if (!person) throw new RequestError(404, 'No hay nadie con ese nombre de usuario.')
 
+  // Sus estadísticas solo se mandan a quien puede verlas: tú siempre; los demás según lo que elegiste
+  const relation = await findRelation(account.id, person.id)
+  const canSeeStats = relation === 'self' || person.stats_visibility === 'public' || (person.stats_visibility === 'friends' && relation === 'friend')
   // Los días de la racha se cuentan en la zona horaria de quien mira
   const timeZone = url.searchParams.get('tz') ?? 'UTC'
-  const [stats, relation] = await Promise.all([
-    loadStats(person.id, TIME_ZONES.has(timeZone) ? timeZone : 'UTC'),
-    findRelation(account.id, person.id),
-  ])
+  const stats = canSeeStats ? await loadStats(person.id, TIME_ZONES.has(timeZone) ? timeZone : 'UTC') : null
 
   sendJson(response, 200, {
     id: person.id,
@@ -72,7 +74,9 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     country: person.country,
     character: describeCharacter(person.character_look, person.id),
     memberSince: person.member_since,
-    stats: { total: stats.total, week: stats.week, streak: stats.streak, days: stats.days },
+    stats: stats && { total: stats.total, week: stats.week, streak: stats.streak, days: stats.days },
+    statsVisibility: person.stats_visibility,
+    medals: stats && describeMedals(stats), // las ve quien puede ver sus estadísticas
     relation,
     // Dónde está ahora, solo para sus amigos (como en la lista de Amigos)
     presence: relation === 'friend' || relation === 'self' ? getPresence(person.id) : null,

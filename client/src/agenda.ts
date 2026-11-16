@@ -72,6 +72,11 @@ export function updateItem(id: string, draft: AgendaDraft) {
   return call<AgendaItem>('/editar', { id, ...draft })
 }
 
+// Cambia solo la fecha. Sin fecha sale del calendario y queda en su apartado, con su porcentaje y su nota.
+export function moveItem(item: AgendaItem, date: string | null) {
+  return updateItem(item.id, { ...item, date })
+}
+
 export function setItemDone(id: string, done: boolean) {
   return call<AgendaItem>('/hecha', { id, done })
 }

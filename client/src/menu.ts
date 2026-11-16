@@ -12,10 +12,12 @@ import { COUNTRIES, getFlag } from './countries'
 import { DEFAULT_ROOM_KIND, ROOM_KINDS, SOLO_ROOM_KIND } from './roomKinds'
 import { chooseDesign, getChosenDesign } from './choices'
 import { designsFor } from './voxel/designs'
-import { refreshStats, setUpStatsRange, setUpSummary, showSavedSummary } from './stats'
+import { refreshStats, setUpStatsPeople, setUpStatsRange, setUpSummary, showSavedSummary } from './stats'
 import { loadHistory } from './goals'
+import { showNotice } from './undoToast'
+import { LOCALE } from './i18n'
 
-type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person' | 'goals'
+type Panel = 'home' | 'schedule' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'settings' | 'person' | 'goals'
 
 interface MenuActions {
   createRoom(kind: string, design: string | null): void
@@ -28,6 +30,7 @@ interface MenuActions {
 // /perfil/<usuario> (profilePage.ts). El servidor entrega la misma página en todas (createPageHandler)
 const PANEL_PATHS: Record<Panel, string> = {
   home: '/',
+  schedule: '/horario',
   calendar: '/calendario',
   spaces: '/carpetas',
   rooms: '/estudiar',
@@ -35,6 +38,7 @@ const PANEL_PATHS: Record<Panel, string> = {
   stats: '/estadisticas',
   shop: '/tienda',
   profile: '/perfil',
+  settings: '/ajustes',
   person: '/perfil',
   goals: '/objetivos',
 }
@@ -64,8 +68,11 @@ const codeInput = document.querySelector<HTMLInputElement>('#code')!
 const profileForm = document.querySelector<HTMLFormElement>('#profile-form')!
 const profileNameInput = document.querySelector<HTMLInputElement>('#profile-name')!
 const profileMessage = document.querySelector<HTMLParagraphElement>('#profile-message')!
-const profileEmail = document.querySelector<HTMLParagraphElement>('#profile-email')!
-const profileUsername = document.querySelector<HTMLElement>('#profile-username')!
+const profileEmail = document.querySelector<HTMLElement>('#profile-email')!
+const profilePublic = document.querySelector<HTMLButtonElement>('#profile-public')!
+const settingsUsername = document.querySelector<HTMLElement>('#settings-username')!
+const ownProfileButton = document.querySelector<HTMLButtonElement>('#menu-own-profile')!
+let ownUsername: string | null = null // las cuentas de antes aún no lo eligen
 const profileNameHint = document.querySelector<HTMLSpanElement>('#profile-name-hint')!
 const profileSave = document.querySelector<HTMLButtonElement>('#profile-save')!
 const NAME_HINT = 'Es el que verán los demás en la sala. Puedes cambiarlo una vez al mes.'
@@ -74,10 +81,13 @@ const aboutStudies = document.querySelector<HTMLInputElement>('#about-studies')!
 const aboutInstitution = document.querySelector<HTMLInputElement>('#about-institution')!
 const aboutCountry = document.querySelector<HTMLSelectElement>('#about-country')!
 const aboutBio = document.querySelector<HTMLTextAreaElement>('#about-bio')!
+const aboutStatsVisibility = document.querySelector<HTMLSelectElement>('#about-stats-visibility')!
 const aboutBioCount = document.querySelector<HTMLSpanElement>('#about-bio-count')!
 const aboutMessage = document.querySelector<HTMLParagraphElement>('#about-message')!
-const dateFormat = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'long' })
+const dateFormat = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'long' })
 const logoutButton = document.querySelector<HTMLButtonElement>('#logout')!
+const userButton = document.querySelector<HTMLButtonElement>('#menu-user')!
+const userOptions = document.querySelector<HTMLDivElement>('#menu-user-options')!
 
 let selectedKind = DEFAULT_ROOM_KIND
 
@@ -146,6 +156,10 @@ function showPanel(panel: Panel, mode: 'push' | 'replace' | 'none' = 'push') {
   for (const section of panels) {
     section.hidden = section.dataset.panel !== panel
   }
+  // Tu foto se marca cuando estás en algo de su menú
+  if (panel === 'profile' || panel === 'settings') userButton.setAttribute('aria-current', 'page')
+  else userButton.removeAttribute('aria-current')
+  if (userOptions.matches(':popover-open')) userOptions.hidePopover()
   if (panel === 'stats') {
     refreshStats()
   } else if (panel === 'home') {
@@ -153,10 +167,11 @@ function showPanel(panel: Panel, mode: 'push' | 'replace' | 'none' = 'push') {
     refreshSpacesPanel() // su último espacio, con las horas al día
   } else if (panel === 'calendar') {
     refreshCalendar()
-  } else if (panel === 'spaces') {
-    refreshSpacesPanel()
+  } else if (panel === 'spaces' || panel === 'schedule') {
+    refreshSpacesPanel() // el horario se arma con las carpetas al día
   } else if (panel === 'goals') {
     loadHistory()
+
   }
   // La vista previa de la sala dibuja solo mientras se ve Estudiar
   if (panel === 'rooms') showRoomPreview()
@@ -249,9 +264,10 @@ async function chooseColor(color: string) {
 function showAccount(account: Account) {
   userNameText.textContent = account.name
   showCharacter(account.character)
-  profileUsername.textContent = account.username ? `@${account.username}` : ''
+  ownUsername = account.username
+  settingsUsername.textContent = account.username ? `@${account.username}` : '–'
   profileNameInput.value = account.name
-  profileEmail.textContent = account.email ? `Correo: ${account.email}` : 'Cuenta de Google'
+  profileEmail.textContent = account.email ? `Con correo: ${account.email}` : 'Con Google'
 
   // El apodo se cambia a lo más una vez al mes: mientras tanto, el campo queda bloqueado
   const nextChange = account.nextNameChange ? new Date(account.nextNameChange) : null
@@ -263,6 +279,7 @@ function showAccount(account: Account) {
   aboutInstitution.value = account.profile.institution ?? ''
   aboutCountry.value = account.profile.country ?? ''
   aboutBio.value = account.profile.bio ?? ''
+  aboutStatsVisibility.value = account.profile.statsVisibility
   showBioCount()
 }
 
@@ -286,7 +303,7 @@ function setNavCollapsed(isCollapsed: boolean) {
   toggle.setAttribute('aria-label', label)
   toggle.title = label
   for (const link of menuLinks) {
-    if (link.classList.contains('menu-user')) continue // siempre dice "Perfil"
+    if (userOptions.contains(link)) continue // el menú de tu foto siempre muestra los nombres
     link.title = isCollapsed ? (link.querySelector('.sf-nav-label')?.textContent ?? '') : ''
   }
   try {
@@ -341,6 +358,11 @@ export function setUpMenu(menuActions: MenuActions) {
   setUpFriendsDrawer()
   setUpSummary(() => showPanel('stats'))
   setUpStatsRange()
+  setUpStatsPeople((username) => showPersonPanel(username))
+  // "Perfil" en el menú de tu foto y "← Ver mi perfil" abren tu perfil público; desde ahí, "Editar perfil" lleva a editarlo
+  const showOwnProfile = () => (ownUsername ? showPersonPanel(ownUsername) : showPanel('profile'))
+  ownProfileButton.addEventListener('click', showOwnProfile)
+  profilePublic.addEventListener('click', showOwnProfile)
 
   joinForm.addEventListener('submit', (event) => {
     event.preventDefault()
@@ -365,6 +387,7 @@ export function setUpMenu(menuActions: MenuActions) {
       institution: aboutInstitution.value,
       country: aboutCountry.value,
       bio: aboutBio.value,
+      statsVisibility: aboutStatsVisibility.value,
     })
     if (!account) {
       aboutMessage.textContent = error
@@ -389,10 +412,25 @@ export function setUpMenu(menuActions: MenuActions) {
     actions.onAccountChange(account)
   })
 
+  // El menú de tu foto se abre hacia arriba, sobre ella; se cierra con un clic afuera o Esc
+  userButton.addEventListener('click', () => {
+    if (userOptions.matches(':popover-open')) {
+      userOptions.hidePopover()
+      return
+    }
+    userOptions.showPopover()
+    const rect = userButton.getBoundingClientRect()
+    userOptions.style.left = `${rect.left}px`
+    userOptions.style.bottom = `${innerHeight - rect.top + 6}px`
+  })
+  userOptions.addEventListener('toggle', (event) => {
+    userButton.setAttribute('aria-expanded', String((event as ToggleEvent).newState === 'open'))
+  })
+
   logoutButton.addEventListener('click', async () => {
     const { error } = await sendAccount('logout')
     if (error) {
-      profileMessage.textContent = error
+      showNotice(error)
       return
     }
     stopFriends()
@@ -418,6 +456,7 @@ export function showMenu(account: Account) {
 export function showPersonPanel(username: string) {
   showPanel('person')
   openProfilePage(username)
+  if (username === ownUsername) userButton.setAttribute('aria-current', 'page') // tu propio perfil
 }
 
 // El logo lleva a Inicio
