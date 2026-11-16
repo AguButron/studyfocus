@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { createServer, type RequestListener } from 'node:http'
+import { createServer, type RequestListener, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import sirv from 'sirv'
 import { Server, type Socket } from 'socket.io'
@@ -102,6 +102,12 @@ interface PlayerState extends PlayerStatus {
 
 type Room = Map<string, PlayerState>
 
+// Sin hacer nada en una sala: parada sin sentarse, o sentada sin estudiar ni descansar (sin empezar o en pausa)
+type IdleReason = 'standing' | 'idle'
+const IDLE_LIMITS: Record<IdleReason, number> = { standing: 5 * 60_000, idle: 30 * 60_000 } // milisegundos
+const IDLE_WARNING = 60_000 // milisegundos antes de sacarla, se le avisa
+const IDLE_CHECK_INTERVAL = 15_000 // milisegundos
+
 // El lugar de una persona, reconocida por un identificador secreto que guarda su navegador
 interface Session {
   token: string
@@ -109,7 +115,10 @@ interface Session {
   player: PlayerState
   code: string
   kind: string // el tipo de sala
-  kick?: () => void // la saca de la sala desde la pestaña que la tiene: otra ventana de la misma cuenta tomó su lugar
+  // La saca de la sala desde la pestaña que la tiene: otra ventana de la misma cuenta tomó su lugar, o (con reason)
+  // estuvo demasiado tiempo sin hacer nada
+  kick?: (reason?: IdleReason) => void
+  idle: { reason: IdleReason; since: number; warned: boolean } | null // desde cuándo no hace nada, y por qué
   socket: Socket | null // sin conexión mientras se espera que vuelva
   leaveTimer: NodeJS.Timeout | null
   joinedAt: number
@@ -308,6 +317,8 @@ function isFreeSeat(code: string, room: Room, seatId: unknown): seatId is number
   return true
 }
 
+const STATIC_FILE = /\.(js|mjs|css|map|json|html|svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|mp3|ogg|wav|mp4|webm|txt|xml|webmanifest)$/i
+
 function createPageHandler(): RequestListener {
   // Mientras se desarrolla puede no estar compilado: la página la entrega Vite
   if (!existsSync(CLIENT_DIR)) {
@@ -318,10 +329,23 @@ function createPageHandler(): RequestListener {
   }
 
   const servePage = sirv(CLIENT_DIR, { etag: true })
+  const notFound = (response: ServerResponse) => {
+    response.statusCode = 404
+    response.end()
+  }
   return (request, response) => {
     servePage(request, response, () => {
-      response.statusCode = 404
-      response.end()
+      // Las secciones tienen su propia dirección (/calendario, /objetivos, /perfil/ana.perez): todas son la misma
+      // página, que lee la dirección y muestra la sección. Un archivo que no existe (un .js, una imagen) sí es
+      // un 404, para no entregar HTML en su lugar. En /perfil/ no se mira: un usuario puede llamarse "ana.js"
+      const path = new URL(request.url ?? '/', 'http://localhost').pathname
+      const isFile = !path.startsWith('/perfil/') && STATIC_FILE.test(path)
+      if ((request.method !== 'GET' && request.method !== 'HEAD') || isFile) {
+        notFound(response)
+        return
+      }
+      request.url = '/'
+      servePage(request, response, () => notFound(response))
     })
   }
 }
@@ -469,6 +493,36 @@ setInterval(() => {
   }
 }, STUDY_SAVE_INTERVAL)
 
+// Por qué no está haciendo nada, o null si estudia o descansa. En el estudio individual se parte sentado,
+// así que solo cuenta estar sin estudiar ni descansar
+function idleReason(session: Session): IdleReason | null {
+  const { player } = session
+  if (player.seatId === null && session.kind !== SOLO_KIND) return 'standing'
+  return player.isRunning ? null : 'idle'
+}
+
+// Cada tanto: a quien lleva mucho rato sin hacer nada se le avisa un minuto antes, y después sale de la sala.
+// Así no ocupa una silla ni deja la sala abierta. Con la conexión cortada no cuenta: esa sale sola (RECONNECT_WAIT)
+setInterval(() => {
+  const now = Date.now()
+  for (const session of sessions.values()) {
+    const reason = session.socket ? idleReason(session) : null
+    if (!reason) {
+      session.idle = null
+      continue
+    }
+    if (session.idle?.reason !== reason) session.idle = { reason, since: now, warned: false }
+    const left = session.idle.since + IDLE_LIMITS[reason] - now
+    if (left <= 0) {
+      console.log(`Sale por inactividad (${reason}) de la sala ${session.code}`)
+      session.kick?.(reason)
+    } else if (left <= IDLE_WARNING && !session.idle.warned) {
+      session.idle.warned = true
+      session.socket?.emit('idle:warning', { reason, seconds: Math.round(left / 1000) })
+    }
+  }
+}, IDLE_CHECK_INTERVAL)
+
 function removeFromRoom(leavingSession: Session) {
   if (leavingSession.saveTimer) {
     clearTimeout(leavingSession.saveTimer)
@@ -576,6 +630,7 @@ io.on('connection', (socket) => {
       lastSave: Promise.resolve(),
       saveTimer: null,
       lastPersist: Promise.resolve(),
+      idle: null,
     }
     room.set(restoredPlayer.id, restoredPlayer)
     sessions.set(token, restored)
@@ -585,8 +640,9 @@ io.on('connection', (socket) => {
     return restored
   }
 
-  // Otra ventana de la misma cuenta tomó tu lugar en la sala: esta sale y su página vuelve al menú
-  function kickHere() {
+  // Otra ventana de la misma cuenta tomó tu lugar en la sala, o (con reason) estuviste mucho rato sin hacer
+  // nada: esta sale y su página vuelve al menú, diciendo por qué
+  function kickHere(reason?: IdleReason) {
     const leaving = session
     if (!leaving) return
     if (leaving.leaveTimer) {
@@ -598,8 +654,14 @@ io.on('connection', (socket) => {
     session = null
     currentCode = null
     player = { ...player, id: socket.id, seatId: null, x: 0, z: 0 }
-    socket.emit('session:replaced')
+    if (reason) socket.emit('idle:kicked', { reason })
+    else socket.emit('session:replaced')
   }
+
+  // "Sigo aquí" en el aviso: el rato sin hacer nada vuelve a contar desde cero
+  socket.on('idle:still-here', () => {
+    if (session?.idle) session.idle = { ...session.idle, since: Date.now(), warned: false }
+  })
 
   // Las sesiones de esta cuenta que ya están en esa sala, desde otra ventana
   function findOwnSessions(code: string) {
@@ -633,6 +695,7 @@ io.on('connection', (socket) => {
       saveTimer: null,
       lastPersist: Promise.resolve(),
       kick: kickHere,
+      idle: null,
     }
     sessions.set(token, session)
     setPresence(session.accountId, session)

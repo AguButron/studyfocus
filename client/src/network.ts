@@ -114,13 +114,18 @@ export async function joinRoom(
   return result === 'duplicate' ? 'duplicate' : 'failed'
 }
 
-// Otra ventana de tu cuenta entró a esta sala y te reemplazó: esta pestaña ya no está en ella
-let replacedListener = () => {}
-export function onSessionReplaced(listener: () => void) {
+// Por qué el servidor te saca de la sala sin que lo pidas: 'standing' (sin sentarte) o 'idle' (sentado sin
+// estudiar ni descansar) por mucho rato
+export type IdleReason = 'standing' | 'idle'
+
+// Esta pestaña ya no está en la sala: otra ventana de tu cuenta entró y te reemplazó (reason null), o
+// estuviste mucho rato sin hacer nada
+let replacedListener = (_reason: IdleReason | null) => {}
+export function onSessionReplaced(listener: (reason: IdleReason | null) => void) {
   replacedListener = listener
 }
 
-socket.on('session:replaced', () => {
+function endSession(reason: IdleReason | null) {
   session = null
   token = crypto.randomUUID()
   try {
@@ -128,8 +133,22 @@ socket.on('session:replaced', () => {
   } catch {
     // Sin almacenamiento no había nada guardado
   }
-  replacedListener()
-})
+  replacedListener(reason)
+}
+
+socket.on('session:replaced', () => endSession(null))
+socket.on('idle:kicked', ({ reason }: { reason: IdleReason }) => endSession(reason))
+
+// Un minuto antes de sacarte por no hacer nada, el servidor avisa; "Sigo aquí" (stillHere) vuelve a contar desde cero
+let idleWarningListener = (_reason: IdleReason, _seconds: number) => {}
+export function onIdleWarning(listener: (reason: IdleReason, seconds: number) => void) {
+  idleWarningListener = listener
+}
+socket.on('idle:warning', ({ reason, seconds }: { reason: IdleReason; seconds: number }) => idleWarningListener(reason, seconds))
+
+export function stillHere() {
+  socket.emit('idle:still-here')
+}
 
 // Espera la respuesta para que el aviso alcance a salir antes de recargar la página
 export async function leaveRoom() {

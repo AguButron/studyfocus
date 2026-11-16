@@ -66,7 +66,7 @@
     <!-- En la ventana que quedó atrás -->
     <dialog id="replaced-notice" class="leave-confirm sf-card" aria-labelledby="replaced-notice-title">
       <h2 id="replaced-notice-title">Seguiste en otra ventana</h2>
-      <p>Abriste esta sesión en otra ventana, así que aquí se cerró. Puedes seguir estudiando allá.</p>
+      <p id="replaced-notice-text">Abriste esta sesión en otra ventana, así que aquí se cerró. Puedes seguir estudiando allá.</p>
       <div class="sf-timer-actions">
         <button id="replaced-notice-ok" class="sf-btn sf-btn--primary" type="button" autofocus>Entendido</button>
       </div>
@@ -109,6 +109,9 @@
         <div class="sf-timer-head">
           <span id="timer-period" class="sf-badge sf-badge--period"></span>
           <button id="stand-up" class="sf-btn sf-btn--sm" type="button" title="Vuelve a la vista de la sala para elegir otra silla">Cambiar de asiento</button>
+          <button id="timer-fold" class="sf-btn sf-btn--sm sf-btn--quiet" type="button" aria-controls="study-panel" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+          </button>
         </div>
 
         <div id="timer-time" class="sf-timer-time"></div>
@@ -512,6 +515,7 @@
                 </div>
                 <ul id="home-goals" class="goals"></ul>
                 <p id="home-goals-empty" class="sf-row-detail" hidden>Ponte un objetivo, por ejemplo 8 horas de Cálculo antes de la prueba, y ve cómo avanzas mientras estudias.</p>
+                <button class="sf-btn sf-btn--sm sf-btn--quiet goals-history-link" type="button" data-open-panel="goals">Ver objetivos anteriores</button>
               </div>
 
               <div class="home-space">
@@ -698,16 +702,28 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
               </div>
             </div>
 
-            <h3 class="sf-section-title">Elige una sala</h3>
-            <div id="room-kinds" class="sf-rooms"></div>
-            <div id="room-designs-field" class="sf-section" hidden>
-              <h3 class="sf-section-title">Elige el diseño</h3>
-              <div id="room-designs" class="sf-seg sf-seg--wrap"></div>
-              <p id="room-design-text" class="sf-field-hint" style="margin-top:8px"></p>
-            </div>
-            <div class="panel-actions">
-              <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>
-              <p id="rooms-error" class="sf-error" role="alert"></p>
+            <!-- A la izquierda se elige la sala; a la derecha su diseño, cómo se ve y el botón para crearla -->
+            <div class="rooms-layout">
+              <div class="rooms-pick">
+                <h3 class="sf-section-title">Elige una sala</h3>
+                <div id="room-kinds" class="sf-rooms"></div>
+              </div>
+              <aside class="room-preview sf-card" aria-label="Vista previa de la sala">
+                <div id="room-designs-field" class="room-designs" hidden>
+                  <div id="room-designs" class="sf-seg sf-seg--wrap" role="group" aria-label="Elige el diseño"></div>
+                </div>
+                <div id="room-preview-view" class="room-preview-view">
+                  <div id="room-preview-plan" class="room-preview-plan sf-paper" aria-hidden="true"></div>
+                </div>
+                <div class="room-preview-info">
+                  <strong id="room-preview-name"></strong>
+                  <span id="room-preview-text" class="sf-row-detail"></span>
+                </div>
+                <div class="panel-actions">
+                  <button id="create-room" class="sf-btn sf-btn--primary sf-btn--lg" type="button">Crear sala</button>
+                  <p id="rooms-error" class="sf-error" role="alert"></p>
+                </div>
+              </aside>
             </div>
 
             <div class="sf-section">
@@ -867,6 +883,63 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
                 <div id="person-chart" class="stat-chart sf-card" role="list" aria-label="Minutos de estudio por día"></div>
               </div>
             </div>
+          </section>
+
+          <!-- Los objetivos anteriores: los que terminaron hace más de 12 horas y los que pasaste al historial con la X -->
+          <section class="menu-panel sf-panel" data-panel="goals" aria-labelledby="goals-title" hidden>
+            <header class="sf-panel-head home-head">
+              <div>
+                <button class="sf-btn sf-btn--sm sf-btn--quiet goals-back" type="button" data-open-panel="home">← Inicio</button>
+                <h2 id="goals-title">Objetivos anteriores</h2>
+                <p>Cómo resultó cada objetivo que te propusiste.</p>
+              </div>
+              <dl class="home-stats" aria-label="Tus objetivos">
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Propuestos</dt>
+                  <dd id="goals-total">–</dd>
+                </div>
+                <div class="home-stat sf-card">
+                  <dt class="stat-label">Cumplidos</dt>
+                  <dd id="goals-done">–</dd>
+                </div>
+              </dl>
+            </header>
+            <form id="goals-filters" class="goals-filters" aria-label="Filtrar los objetivos anteriores">
+              <label class="sf-field">
+                <span class="stat-label">Resultado</span>
+                <select id="goals-filter-result" class="sf-input">
+                  <option value="all">Todos</option>
+                  <option value="done">Cumplidos</option>
+                  <option value="missed">No alcanzados</option>
+                </select>
+              </label>
+              <label class="sf-field">
+                <span class="stat-label">Ramo</span>
+                <select id="goals-filter-section" class="sf-input"></select>
+              </label>
+              <label class="sf-field">
+                <span class="stat-label">Terminó</span>
+                <select id="goals-filter-period" class="sf-input">
+                  <option value="all">Cuando sea</option>
+                  <option value="30">En los últimos 30 días</option>
+                  <option value="90">En los últimos 3 meses</option>
+                  <option value="365">En el último año</option>
+                </select>
+              </label>
+              <label class="sf-field">
+                <span class="stat-label">Ordenar por</span>
+                <select id="goals-filter-order" class="sf-input">
+                  <option value="recent">Más recientes</option>
+                  <option value="oldest">Más antiguos</option>
+                  <option value="hours">Más horas</option>
+                  <option value="progress">Mayor avance</option>
+                </select>
+              </label>
+            </form>
+            <p id="goals-filter-count" class="sf-row-detail" hidden></p>
+            <ul id="goals-history-list" class="goals goals--history"></ul>
+            <p id="goals-history-empty" class="sf-row-detail" hidden>Todavía no tienes objetivos anteriores. Cuando uno termine, o lo pases aquí con la X, aparecerá con cómo resultó.</p>
+            <p id="goals-history-error" class="sf-error" role="alert"></p>
           </section>
 
           <section class="menu-panel sf-panel" data-panel="shop" aria-labelledby="shop-title" hidden>

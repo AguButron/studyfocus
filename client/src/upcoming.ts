@@ -81,8 +81,15 @@ function createRow(item: AgendaItem, isLate: boolean) {
   const detail = document.createElement('span')
   detail.className = 'sf-row-detail'
   const late = isLate && item.date ? ` · atrasada, hace ${daysFrom(item.date, todayText())} días` : ''
-  detail.textContent = `${[kindName(item.kind), section?.label, item.time].filter(Boolean).join(' · ')}${late}`
+  detail.textContent = `${[kindName(item.kind), item.time].filter(Boolean).join(' · ')}${late}`
   open.append(title, detail)
+  // El ramo en su propia línea, con su nombre completo y su color, como en el calendario
+  if (section) {
+    const name = document.createElement('span')
+    name.className = 'agenda-row-section'
+    name.textContent = section.name
+    open.append(name)
+  }
   open.addEventListener('click', () => openAgendaDialog(item, item.date))
   row.append(open)
   return row

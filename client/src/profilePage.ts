@@ -54,19 +54,27 @@ let current: PersonProfile | null = null
 let request = 0 // descarta la respuesta de un perfil que ya no está abierto
 let actions = { joinRoom: (_code: string) => {}, editOwnProfile: () => {} }
 
-// El link a la página del perfil de alguien
+const profilePath = (username: string) => `/perfil/${encodeURIComponent(username)}`
+
+// El link a la página del perfil de alguien: /perfil/<usuario>
 export function profileUrl(username: string) {
-  const url = new URL('/', window.location.origin)
-  url.searchParams.set(PARAM, username)
-  return url.toString()
+  return new URL(profilePath(username), window.location.origin).toString()
 }
 
-// El usuario de la página que se pidió al abrir, si viene en la dirección
+// El usuario de la página que se pidió al abrir, si viene en la dirección. Los links de antes usaban ?perfil=
 export function readProfileParam() {
+  const match = window.location.pathname.match(/^\/perfil\/([^/]+)\/?$/)
+  if (match) {
+    try {
+      return decodeURIComponent(match[1])
+    } catch {
+      return null
+    }
+  }
   return new URLSearchParams(window.location.search).get(PARAM)
 }
 
-// Al ir a otra sección, la dirección deja de apuntar al perfil
+// Al ir a otra sección deja de cargarse el perfil (la dirección la cambia la sección), y se quita el ?perfil= de antes
 export function clearProfileParam() {
   request++ // un perfil que aún se estaba cargando ya no se muestra
   document.title = 'StudyFocus'
@@ -146,7 +154,8 @@ function render(person: PersonProfile) {
 export async function openProfilePage(username: string) {
   // La dirección apunta a este perfil mientras está abierto, para recargarlo o compartirlo
   const url = new URL(window.location.href)
-  url.searchParams.set(PARAM, username)
+  url.pathname = profilePath(username)
+  url.searchParams.delete(PARAM)
   window.history.replaceState(window.history.state, '', url)
   const currentRequest = ++request
   current = null

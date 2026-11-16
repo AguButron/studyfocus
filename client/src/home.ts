@@ -5,7 +5,8 @@ import { chooseUsername, hideAuth, setUpAuth, showAuth } from './auth'
 import { hideLanding, setUpLanding, showLanding } from './landing'
 import { hideMenu, setUpMenu, showHomePanel, showMenu, showPersonPanel, showRoomsError } from './menu'
 import { readProfileParam } from './profilePage'
-import { createRoom, joinRoom, leaveRoom, onSessionReplaced, reconnect, resumeSavedRoom, socket, type ResumedPlayer } from './network'
+import { createRoom, joinRoom, leaveRoom, onIdleWarning, onSessionReplaced, reconnect, resumeSavedRoom, socket, stillHere, type IdleReason, type ResumedPlayer } from './network'
+import { showUndo } from './undoToast'
 import { hideMusic, setUpMusic } from './music'
 import { startFriends } from './friends'
 import { setDrawerInRoom } from './friendsDrawer'
@@ -29,6 +30,19 @@ const duplicateConfirm = document.querySelector<HTMLDialogElement>('#duplicate-c
 const duplicateTitle = document.querySelector<HTMLHeadingElement>('#duplicate-confirm-title')!
 const duplicateText = document.querySelector<HTMLParagraphElement>('#duplicate-confirm-text')!
 const replacedNotice = document.querySelector<HTMLDialogElement>('#replaced-notice')!
+const replacedTitle = document.querySelector<HTMLHeadingElement>('#replaced-notice-title')!
+const replacedText = document.querySelector<HTMLParagraphElement>('#replaced-notice-text')!
+
+// Lo que dice el aviso al volver al menú, según por qué saliste de la sala
+const LEFT_NOTICES: Record<'replaced' | IdleReason, { title: string; text: string }> = {
+  replaced: { title: 'Seguiste en otra ventana', text: 'Abriste esta sesión en otra ventana, así que aquí se cerró. Puedes seguir estudiando allá.' },
+  standing: { title: 'Desconectado/a por inactividad', text: '5 minutos sin sentarte.' },
+  idle: { title: 'Desconectado/a por inactividad', text: '30 minutos sin estudiar ni descansar.' },
+}
+const IDLE_WARNINGS: Record<IdleReason, string> = {
+  standing: 'Siéntate o saldrás de la sala en 1 minuto.',
+  idle: 'Llevas casi 30 minutos sin estudiar ni descansar: saldrás de la sala en 1 minuto.',
+}
 
 // "¿Cambiar la sesión a esta ventana?": responde true si se acepta. Sin código, es estudiando solo
 function askToTakeOver(code: string | null) {
@@ -264,12 +278,23 @@ export async function showHome(
   }
 
   // La ventana que quedó atrás vuelve al menú y avisa por qué
-  onSessionReplaced(() => {
+  onSessionReplaced((reason) => {
     if (!home.hidden) return // ya estaba en el menú. (La barra de arriba no sirve: sentado o en el escritorio se esconde)
     resetTimer()
     saveCodeInUrl(null)
     showMenuAgain()
+    const notice = LEFT_NOTICES[reason ?? 'replaced']
+    replacedTitle.textContent = notice.title
+    replacedText.textContent = notice.text
     replacedNotice.showModal()
+  })
+
+  // Un minuto antes de que el servidor te saque por no hacer nada; "Sigo aquí" vuelve a contar desde cero
+  onIdleWarning((reason) => {
+    showUndo(IDLE_WARNINGS[reason], async () => {
+      stillHere()
+      return null
+    }, 'Sigo aquí')
   })
 
   async function signedIn(nextAccount: Account) {

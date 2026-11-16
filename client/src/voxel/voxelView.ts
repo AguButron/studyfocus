@@ -58,7 +58,7 @@ export function voxelMesh(voxels: VoxelSet) {
   return { group, triangles }
 }
 
-const SKY_LIGHT: Record<Sky, { hemi: number; sky: number; ground: number; sun: number; sunColor: number; front: number; background: number; lamp: number }> = {
+export const SKY_LIGHT: Record<Sky, { hemi: number; sky: number; ground: number; sun: number; sunColor: number; front: number; background: number; lamp: number }> = {
   dia: { hemi: 1.1, sky: 0xdfe8ff, ground: 0x6b5a4a, sun: 2.2, sunColor: 0xfff1d6, front: 0.7, background: 0x1b2230, lamp: 0.6 },
   tarde: { hemi: 0.85, sky: 0xb8c4ff, ground: 0x4a3426, sun: 1.6, sunColor: 0xffc89a, front: 0.55, background: 0x121417, lamp: 1 },
   noche: { hemi: 0.28, sky: 0x8fa6ff, ground: 0x1a1424, sun: 0.3, sunColor: 0x8fa6ff, front: 0.18, background: 0x0b0c10, lamp: 1.5 },

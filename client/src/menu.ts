@@ -10,10 +10,12 @@ import { CHARACTER_COLORS, setCharacterPhoto, type Character } from './character
 import { drawRoomPlan } from './roomPlan'
 import { COUNTRIES, getFlag } from './countries'
 import { DEFAULT_ROOM_KIND, ROOM_KINDS, SOLO_ROOM_KIND } from './roomKinds'
+import { chooseDesign, getChosenDesign } from './choices'
 import { designsFor } from './voxel/designs'
 import { refreshStats, setUpStatsRange, setUpSummary, showSavedSummary } from './stats'
+import { loadHistory } from './goals'
 
-type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person'
+type Panel = 'home' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'person' | 'goals'
 
 interface MenuActions {
   createRoom(kind: string, design: string | null): void
@@ -22,7 +24,20 @@ interface MenuActions {
   onAccountChange(account: Account | null): void
 }
 
-const PANEL_KEY = 'studyfocus.panel'
+// La dirección de cada sección: se puede recargar, compartir o guardar. El perfil de otra persona es
+// /perfil/<usuario> (profilePage.ts). El servidor entrega la misma página en todas (createPageHandler)
+const PANEL_PATHS: Record<Panel, string> = {
+  home: '/',
+  calendar: '/calendario',
+  spaces: '/carpetas',
+  rooms: '/estudiar',
+  friends: '/amigos',
+  stats: '/estadisticas',
+  shop: '/tienda',
+  profile: '/perfil',
+  person: '/perfil',
+  goals: '/objetivos',
+}
 const NAV_KEY = 'studyfocus.navCollapsed'
 
 const menu = document.querySelector<HTMLDivElement>('#menu')!
@@ -38,8 +53,11 @@ const roomKindsList = document.querySelector<HTMLDivElement>('#room-kinds')!
 const createRoomButton = document.querySelector<HTMLButtonElement>('#create-room')!
 const roomDesignsField = document.querySelector<HTMLDivElement>('#room-designs-field')!
 const roomDesignsList = document.querySelector<HTMLDivElement>('#room-designs')!
-const roomDesignText = document.querySelector<HTMLParagraphElement>('#room-design-text')!
-const CHOSEN_DESIGNS_KEY = 'studyfocus.roomDesigns' // el diseño elegido por tipo de sala (también en salas.html)
+const previewView = document.querySelector<HTMLDivElement>('#room-preview-view')!
+const previewPlan = document.querySelector<HTMLDivElement>('#room-preview-plan')!
+const previewName = document.querySelector<HTMLElement>('#room-preview-name')!
+const previewText = document.querySelector<HTMLSpanElement>('#room-preview-text')!
+const roomsPanel = document.querySelector<HTMLElement>('[data-panel="rooms"]')!
 const roomsError = document.querySelector<HTMLParagraphElement>('#rooms-error')!
 const joinForm = document.querySelector<HTMLFormElement>('#join-form')!
 const codeInput = document.querySelector<HTMLInputElement>('#code')!
@@ -63,25 +81,17 @@ const logoutButton = document.querySelector<HTMLButtonElement>('#logout')!
 
 let selectedKind = DEFAULT_ROOM_KIND
 
-function loadChosenDesigns(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(CHOSEN_DESIGNS_KEY) ?? '{}')
-  } catch {
-    return {}
-  }
-}
-
 // El diseño en cubos de la sala que se va a crear: el último elegido para ese tipo, o el primero
 function selectedDesign() {
   const designs = designsFor(selectedKind)
-  const chosen = loadChosenDesigns()[selectedKind]
+  const chosen = getChosenDesign(selectedKind)
   return designs.find((design) => design.id === chosen) ?? designs[0] ?? null
 }
 
-// Los diseños del tipo elegido, para elegir cómo se ve la sala. Lo ven todos los que entran. El estudio
-// individual (tu escritorio) y las salas sin diseños todavía no muestran esta parte
+// Los diseños del tipo elegido, para elegir cómo se ve la sala: lo ven todos los que entran (en el estudio
+// individual, solo tú). Las salas sin diseños todavía no muestran esta parte
 function showRoomDesigns() {
-  const designs = selectedKind === SOLO_ROOM_KIND ? [] : designsFor(selectedKind)
+  const designs = designsFor(selectedKind)
   roomDesignsField.hidden = designs.length === 0
   const current = selectedDesign()
   roomDesignsList.replaceChildren(...designs.map((design) => {
@@ -90,16 +100,33 @@ function showRoomDesigns() {
     button.textContent = design.name
     button.setAttribute('aria-pressed', String(design.id === current?.id))
     button.addEventListener('click', () => {
-      try {
-        localStorage.setItem(CHOSEN_DESIGNS_KEY, JSON.stringify({ ...loadChosenDesigns(), [selectedKind]: design.id }))
-      } catch {
-        // Sin almacenamiento, se usa el primero la próxima vez
-      }
+      chooseDesign(selectedKind, design.id) // sin almacenamiento, la próxima vez parte con el primero
       showRoomDesigns()
     })
     return button
   }))
-  roomDesignText.textContent = current?.description ?? ''
+  showRoomPreview()
+}
+
+// La vista previa en cubos (con Three.js) se descarga la primera vez que se necesita
+let preview: typeof import('./voxel/roomPreview') | null = null
+
+// La vista previa a la derecha: la sala en cubos con el diseño elegido, o su plano si todavía no tiene
+// diseños (el Café, la Biblioteca y el Salón de estudio)
+async function showRoomPreview() {
+  const kind = ROOM_KINDS.find((option) => option.id === selectedKind)
+  const design = selectedDesign()
+  previewName.textContent = design ? `${kind?.name ?? ''} · ${design.name}` : (kind?.name ?? '')
+  previewText.textContent = design?.description ?? kind?.description ?? ''
+  previewView.dataset.mode = design ? '3d' : 'plan'
+  if (!design) {
+    previewPlan.innerHTML = drawRoomPlan(undefined, selectedKind)
+    preview?.pauseRoomPreview()
+    return
+  }
+  if (roomsPanel.hidden) return // se arma al abrir Estudiar
+  preview ??= await import('./voxel/roomPreview')
+  preview.showRoomPreview(previewView, design.id)
 }
 
 function isPanel(value: unknown): value is Panel {
@@ -128,34 +155,33 @@ function showPanel(panel: Panel, mode: 'push' | 'replace' | 'none' = 'push') {
     refreshCalendar()
   } else if (panel === 'spaces') {
     refreshSpacesPanel()
+  } else if (panel === 'goals') {
+    loadHistory()
   }
+  // La vista previa de la sala dibuja solo mientras se ve Estudiar
+  if (panel === 'rooms') showRoomPreview()
+  else preview?.pauseRoomPreview()
   // Volver a abrir la misma sección no suma otra entrada; un perfil distinto sí
   if (mode === 'push' && panel !== 'person' && window.history.state?.panel === panel) mode = 'replace'
-  if (mode === 'push') window.history.pushState({ panel }, '', window.location.href)
-  if (mode === 'replace') window.history.replaceState({ panel }, '', window.location.href)
-  // El perfil de otra persona se abre con su dirección; al ir a otra sección, la dirección deja de apuntarlo
-  if (panel === 'person') return
-  clearProfileParam()
+  // La dirección de la sección, sin cambiar lo demás (por ejemplo ?sala=). El perfil de otra persona la pone
+  // openProfilePage, con su usuario; viniendo de atrás/adelante, el navegador ya la puso
+  const url = new URL(window.location.href)
+  if (panel !== 'person' && mode !== 'none') url.pathname = PANEL_PATHS[panel]
+  if (mode === 'push') window.history.pushState({ panel }, '', url)
+  if (mode === 'replace') window.history.replaceState({ panel }, '', url)
+  if (panel !== 'person') clearProfileParam()
+}
 
-  try {
-    sessionStorage.setItem(PANEL_KEY, panel)
-  } catch {
-    // Sin almacenamiento, al recargar se vuelve al panel de salas
-  }
+// La sección que pide la dirección al abrir la página; una dirección que no existe lleva a Inicio
+function panelFromPath(): Panel {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/'
+  const found = (Object.keys(PANEL_PATHS) as Panel[]).find((panel) => panel !== 'person' && PANEL_PATHS[panel] === path)
+  return found ?? 'home'
 }
 
 // Al volver de una sala se abre el panel de salas, donde aparece el resumen
 function showSummaryFirst() {
   return !document.querySelector<HTMLDivElement>('#session-summary')!.hidden
-}
-
-function loadPanel(): Panel {
-  try {
-    const saved = sessionStorage.getItem(PANEL_KEY)
-    return isPanel(saved) ? saved : 'home'
-  } catch {
-    return 'home'
-  }
 }
 
 function showRoomKinds() {
@@ -383,7 +409,7 @@ export function showMenu(account: Account) {
   showAccount(account)
   showRoomKinds()
   showSavedSummary()
-  showPanel(showSummaryFirst() ? 'rooms' : loadPanel(), 'replace')
+  showPanel(showSummaryFirst() ? 'rooms' : panelFromPath(), 'replace')
   startFriends()
   menu.hidden = false
 }

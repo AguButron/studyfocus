@@ -70,6 +70,10 @@ Cada persona tiene su propio temporizador y estudia a su ritmo: elige los minuto
 - [x] [Ver al personaje desde atrás al elegir los minutos](decisiones/0004-camaras-al-estudiar.md)
 - [x] Cambiar entre las cámaras Escritorio, Mesa y Sala al comenzar el temporizador
 - [x] Al comenzar, achicar el temporizador arriba a la izquierda y dejar las cámaras arriba a la derecha
+- [x] [Salir de la sala por inactividad](decisiones/0035-salir-por-inactividad.md): 5 minutos sin sentarse o 30 sin estudiar ni descansar, con un aviso un minuto antes y "Sigo aquí"
+- [x] Vista previa de la sala en Estudiar: a la derecha, la sala en cubos con el diseño elegido (o su plano), antes de crearla
+- [x] [Cada sección con su dirección](decisiones/0034-direcciones-de-las-secciones.md): `/calendario`, `/objetivos`, `/perfil/usuario`…, para recargar, compartir o abrir en otra pestaña
+- [x] Plegar el temporizador mientras corre (botón Plegar o tecla T): queda una pastilla con el periodo y el tiempo, cada periodo de estudio empieza plegado y cada descanso desplegado
 - [x] Hacer que las sillas bloqueen el paso
 - [x] [Mostrar a los demás qué está haciendo cada persona, con sus manos en movimiento](decisiones/0005-compartir-actividad-ahora.md)
 - [x] Mostrar a los demás en qué periodo está cada persona
@@ -142,6 +146,7 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] Vincular la agenda a un apartado, con su color en el calendario
 - [x] Notas con porcentaje, escala y exigencia por apartado, el promedio y la nota que falta para aprobar
 - [x] [Objetivos de estudio](decisiones/0028-objetivos-de-estudio.md) en vez de una meta diaria: "8 h de Cálculo antes del viernes", desde Inicio o mientras se estudia, con una barra que avanza en vivo
+- [x] Pasar los objetivos terminados o cumplidos a los anteriores con una X (con Deshacer), una página de objetivos anteriores con cuántos te propusiste y cumpliste, y verlos en miniatura con el temporizador plegado
 - [x] Reordenar el menú: Inicio, Calendario, Estudiar, Amigos, Estadísticas, Tienda, Carpetas y Perfil
 - [x] Carpetas en tres pasos: la lista de carpetas, una carpeta con sus ramos, y el detalle de un ramo
 - [x] [Leer los programas con IA](decisiones/0019-programas-con-ia.md): subir varios PDF, revisar lo que sacó y crear los ramos con sus evaluaciones, fechas, porcentajes y requisitos
@@ -171,7 +176,7 @@ StudyFocus pasa de ser una sala para estudiar con amigos a ser la plataforma don
 - [x] Cubos de 2,5 cm en las salas de 1, 2 y 4 personas, con los muebles rehechos, la mesa de a dos más grande con una lata y un café, y el resto de las salas como "Próximamente"
 - [x] El computador, el cuaderno y el libro en cubos, con 10 variantes para elegir que ven todos en la sala, y espacio libre frente a cada asiento
 - [x] El arte en cubos en la sala de verdad: quien crea un Estudio de a dos o una Sala de grupo elige el diseño, el servidor lo guarda y lo ven todos
-- [ ] El Estudio individual (tu escritorio) con su diseño en cubos
+- [x] El Estudio individual (tu escritorio) con su diseño en cubos, elegido en Estudiar con su vista previa
 - [ ] Rehacer en 2,5 cm el Café, la Biblioteca y el Salón de estudio
 - [ ] Elegir el diseño al crear una sala, y usar el arte en cubos en la sala de verdad
 - [ ] Guardar en la cuenta la sala creada y poder abrirla como sala

@@ -1444,6 +1444,13 @@ body {
   cursor: pointer;
 }
 .agenda-row-open:hover strong { text-decoration: underline; }
+.agenda-row-section {
+  color: color-mix(in srgb, var(--kind) 55%, var(--ink));
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 
 .calendar { flex: 1; }
 .calendar-grid { flex: 1; }
@@ -2213,6 +2220,64 @@ input.section-item-grade:invalid { border-color: var(--danger); }
 .goal[data-missed] { opacity: 0.7; }
 .goals--compact .goal-open { padding: 6px var(--cell-1); }
 .goals--compact .goal-head strong { font-size: 14px; }
+/* El ojo para ocultar un objetivo con el temporizador plegado. Desplegado es un botón chico en la esquina que
+   aparece al pasar el mouse (los ocultos se ven apagados y con el ojo abierto siempre, para volver a mostrarlos).
+   Plegado cubre todo el cuadro, que se opaca, con el ojo tachado al medio (más abajo, en #study-panel.folded) */
+.goals--compact .goal { position: relative; }
+.goals--compact .goal-head { padding-right: 26px; } /* el ojo no tapa "para hoy" */
+.goal-eye {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: var(--stroke-1) solid var(--line);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink-soft);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.goal-eye svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; }
+.goal-eye:hover { color: var(--ink); }
+.goal:hover .goal-eye, .goal-eye:focus-visible, .goal[data-hidden] .goal-eye { opacity: 1; }
+.goal[data-hidden] .goal-open { opacity: 0.5; }
+
+/* La X de Inicio, para pasar un objetivo terminado o cumplido al historial */
+.goals:not(.goals--compact) .goal { position: relative; }
+.goal:has(.goal-dismiss) .goal-head { padding-right: 30px; }
+.goal-dismiss {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: var(--stroke-1) solid var(--line);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.goal-dismiss svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; }
+.goal-dismiss:hover { color: var(--ink); border-color: var(--edge); }
+
+/* El enlace a los objetivos anteriores, bajo la lista de Inicio, y su página */
+.goals-history-link { align-self: flex-start; margin-top: var(--cell-1); }
+.goals-back { margin: 0 0 var(--cell-1) calc(-1 * var(--cell-1)); }
+.goals--history { align-self: stretch; width: 100%; max-width: 720px; }
+/* Los filtros de los objetivos anteriores: en fila, y en pantallas angostas de a dos */
+.goals-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cell-1-5); align-self: stretch; max-width: 720px; }
+.goals-filters .sf-field { gap: 4px; }
+#goals-filter-count { margin-top: calc(-1 * var(--cell-2)); }
+.goals--history .goal-open { cursor: default; }
+.goals--history .goal-open:hover { border-color: var(--line); }
 @media (prefers-reduced-motion: reduce) { .goal-bar span { transition: none; } }
 
 /* Los requisitos de un ramo y cómo va cada uno */
@@ -3395,3 +3460,80 @@ body:has(#menu:not([hidden]) #friends-drawer:not([data-floating])[data-open="fal
 }
 .gpu-notice p { margin: 0; }
 .gpu-notice .sf-btn { flex: none; }
+
+/* El panel plegado (botón Plegar o tecla T, mientras corre el temporizador): una pastilla arriba a la izquierda
+   con el periodo, el tiempo y el botón para desplegar. Al final del archivo para ganarle a .compact y a los
+   anchos angostos */
+/* En el panel chico no caben el periodo, "Cambiar de asiento" y "Plegar" en una fila: Plegar baja a la derecha */
+#study-panel .sf-timer-head { flex-wrap: wrap; }
+#timer-fold { margin-left: auto; padding: 0 6px; }
+
+#study-panel.folded {
+  top: var(--cell-2);
+  right: auto;
+  bottom: auto;
+  left: var(--cell-2);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cell-1-5);
+  width: 288px; /* el mismo ancho del panel desplegado (.compact) */
+  min-width: 0;
+  max-width: calc(100% - 32px);
+  max-height: none;
+  padding: var(--cell-1) var(--cell-1) var(--cell-1) var(--cell-1-5);
+  overflow: visible;
+  border: var(--stroke-1) solid var(--line);
+  border-radius: var(--radius-2);
+  box-shadow: var(--lift-3);
+}
+#study-panel.folded { flex-wrap: wrap; row-gap: var(--cell-1); }
+#study-panel.folded > :not(.sf-timer-head, #timer-time, .study-goals) { display: none; }
+#study-panel.folded .sf-timer-head { display: contents; }
+#study-panel.folded #stand-up { display: none; }
+#study-panel.folded #timer-time { order: 1; margin: 0; font-size: 36px; line-height: 40px; letter-spacing: -0.04em; }
+#study-panel.folded #timer-fold { order: 2; }
+#study-panel.folded #timer-fold svg { transform: rotate(180deg); }
+/* Los objetivos en miniatura bajo el tiempo, sin el título ni "+ Objetivo" (si no hay, no se ve nada) */
+#study-panel.folded .study-goals { order: 3; flex-basis: 100%; gap: 0; }
+#study-panel.folded .study-goals-head,
+#study-panel.folded #study-goals-empty { display: none; }
+#study-panel.folded .goals { gap: 4px; }
+#study-panel.folded .goal-open { gap: 3px; padding: 4px 6px; }
+#study-panel.folded .goal-head strong { font-size: 12px; line-height: 16px; }
+#study-panel.folded .goal-when,
+#study-panel.folded .goal-detail { font-size: 11px; line-height: 14px; }
+#study-panel.folded .goal-bar { height: 5px; }
+#study-panel.folded .goal[data-hidden] { display: none; }
+/* Si están todos ocultos, la pastilla queda solo con el tiempo, sin un espacio vacío abajo */
+#study-panel.folded .study-goals:not(:has(.goal:not([data-hidden]))) { display: none; }
+#study-panel.folded .goal-head { padding-right: 0; }
+#study-panel.folded .goal-eye {
+  inset: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: var(--radius-1);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  color: var(--ink);
+  pointer-events: none;
+}
+#study-panel.folded .goal:hover .goal-eye,
+#study-panel.folded .goal-eye:focus-visible { pointer-events: auto; }
+#study-panel.folded .goal-eye svg { width: 18px; height: 18px; }
+
+/* Estudiar: a la izquierda las salas y su diseño, a la derecha la vista previa con el botón para crearla.
+   En pantallas angostas la vista previa baja, bajo las salas */
+.menu-panel[data-panel="rooms"] { max-width: 1180px; }
+.rooms-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--cell-3); align-self: stretch; align-items: start; }
+.rooms-pick { display: flex; flex-direction: column; gap: var(--cell-2); min-width: 0; }
+.rooms-pick .sf-rooms { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.room-preview { position: sticky; top: var(--cell-2); display: flex; flex-direction: column; gap: var(--cell-1-5); padding: var(--cell-1-5); }
+.room-preview-view { position: relative; overflow: hidden; aspect-ratio: 4 / 3; border-radius: var(--radius-1); background: #121417; }
+.room-preview-view canvas { display: block; width: 100%; height: 100%; }
+.room-preview-plan { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--cell-2); }
+.room-preview-plan svg { width: 100%; height: 100%; }
+.room-preview-view[data-mode="3d"] .room-preview-plan { display: none; }
+.room-preview-view[data-mode="plan"] canvas { display: none; }
+.room-preview-info { display: flex; flex-direction: column; gap: 2px; }
+.room-preview .panel-actions { margin: 0; }

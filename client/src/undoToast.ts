@@ -16,11 +16,12 @@ function hide() {
   undo = null
 }
 
-// onUndo devuelve un error para mostrar, o null si salió bien
-export function showUndo(message: string, onUndo: () => Promise<string | null>) {
+// onUndo devuelve un error para mostrar, o null si salió bien. label cambia el texto del botón ("Sigo aquí")
+export function showUndo(message: string, onUndo: () => Promise<string | null>, label = 'Deshacer') {
   clearTimeout(hideTimer)
   undo = onUndo
   text.textContent = message
+  button.textContent = label
   button.hidden = false
   button.disabled = false
   toast.hidden = false

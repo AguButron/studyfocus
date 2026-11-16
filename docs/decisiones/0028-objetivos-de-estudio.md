@@ -25,7 +25,9 @@ Se pensó en una meta diaria fija, como "2 horas al día". Pero lo que se quiere
   - en Inicio, cuánto sería por día hasta la fecha.
 - **Avanza en vivo:** el servidor guarda el estudio recién cuando termina el periodo, así que mientras corre un periodo la barra suma lo que va de él. Al cambiar de periodo se vuelven a pedir los objetivos.
 - **Al cumplirse** aparece una sola vez el aviso "¡Cumpliste tu objetivo!", aunque sea a mitad de un periodo.
-- **Después del día límite** se sigue viendo 3 días en Inicio como "Cumplido" o "No alcanzado", y después desaparece. En el temporizador solo se ven los que siguen corriendo.
+- **Después del día límite** se sigue viendo 12 horas en Inicio como "Cumplido" o "No alcanzado", y después pasa sola a los objetivos anteriores. En el temporizador solo se ven los que siguen corriendo.
+- **La X y los objetivos anteriores (2026-11-16):** los objetivos terminados, y los cumplidos antes de su fecha, tienen una X en Inicio que los pasa a los anteriores, con un aviso para deshacerlo. "Ver objetivos anteriores", bajo la lista de Inicio, abre su propia página: arriba cuántos objetivos te has propuesto y cuántos cumpliste (contando los activos), y abajo cada uno con cómo resultó, por ejemplo "No alcanzado: 6 h de 8 h (75 %)". No se borran: se marcan con `archived_at` en `study_goals`, y los archivados no cuentan para el límite de 20 a la vez. La página los pide aparte (`GET /api/objetivos/historial`), así Inicio y el temporizador no cargan todos los anteriores. Parten ordenados por fecha de término (el más reciente primero) y se pueden filtrar por resultado (cumplidos o no alcanzados), por ramo y por cuándo terminaron (últimos 30 días, 3 meses o el último año), y ordenar por más antiguos, más horas o mayor avance. Los filtros se aplican en la página, sin volver a pedir los datos.
+- **Con el temporizador plegado** se ven en miniatura bajo el tiempo. Cada uno se puede ocultar ahí con el ojo (solo en ese navegador, `studyfocus.goalsHidden`) y volver a mostrar con el panel desplegado.
 
 ## Alternativas descartadas
 

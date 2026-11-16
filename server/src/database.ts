@@ -172,6 +172,8 @@ const SCHEMA = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
   CREATE INDEX IF NOT EXISTS study_goals_user ON study_goals (user_id, deadline);
+  -- Archivado con la X: sale de la lista y queda en el historial
+  ALTER TABLE study_goals ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
   -- Cada programa leído con IA, para el límite diario de cada persona
   CREATE TABLE IF NOT EXISTS syllabus_reads (

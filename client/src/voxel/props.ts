@@ -201,8 +201,10 @@ export const PROPS: PropDef[] = [
     // La de la sala de a dos: 1,6 × 1,3 m, un poco más grande que antes, para que quepan las cosas de los dos
     id: 'table2', name: 'Mesa de 2', category: 'mesas', width: 64, depth: 52,
     colors: { top: { label: 'Cubierta', value: 0xc9925f }, legs: { label: 'Patas', value: 0x74543a } },
-    options: { shape: { label: 'Forma', values: ['cuadrada', 'redonda'] } },
+    options: { shape: { label: 'Forma', values: ['cuadrada', 'redonda'] }, size: { label: 'Tamaño', values: ['normal', 'grande'] } },
     build(set, c, o) {
+      // La grande (solo cuadrada) mide 1,8 × 1,4 m: 4 cubos más por lado a lo ancho y 2 a lo hondo
+      const [w, d] = o.size === 'grande' ? [36, 28] : [32, 26]
       if (o.shape === 'redonda') {
         disc(set, 0, 0, 30, 32, 27, (x, y, z) => ((x + 0.5) ** 2 + (z + 0.5) ** 2 > 26 ** 2 ? shade(c.top, y === 31 ? -0.08 : -0.18) : c.top), flat)
         disc(set, 0, 0, 27, 30, 6, shade(c.legs, 0.08))
@@ -210,13 +212,13 @@ export const PROPS: PropDef[] = [
         disc(set, 0, 0, 2, 4, 5, c.legs)
         disc(set, 0, 0, 0, 2, 11, shade(c.legs, -0.2))
       } else {
-        woodTop(set, -32, 30, -26, 32, 26, c.top)
+        woodTop(set, -w, 30, -d, w, d, c.top)
         const apron = shade(c.top, -0.22)
-        set.fill(-27, 25, -22, 27, 30, -21, apron)
-        set.fill(-27, 25, 21, 27, 30, 22, apron)
-        set.fill(-28, 25, -22, -27, 30, 22, apron)
-        set.fill(27, 25, -22, 28, 30, 22, apron)
-        legs(set, -32, -26, 32, 26, 30, c.legs, 3, 3)
+        set.fill(5 - w, 25, 4 - d, w - 5, 30, 5 - d, apron)
+        set.fill(5 - w, 25, d - 5, w - 5, 30, d - 4, apron)
+        set.fill(4 - w, 25, 4 - d, 5 - w, 30, d - 4, apron)
+        set.fill(w - 5, 25, 4 - d, w - 4, 30, d - 4, apron)
+        legs(set, -w, -d, w, d, 30, c.legs, 3, 3)
       }
     },
   },
@@ -525,6 +527,166 @@ export const PROPS: PropDef[] = [
     },
   },
   {
+    id: 'fireplace', name: 'Chimenea', category: 'muebles', width: 76, depth: 20,
+    colors: { stone: { label: 'Piedra', value: 0x8f8a80 }, mantel: { label: 'Repisa', value: 0x5b3d2a } },
+    build(set, c) {
+      // Piedras de 7,5 × 22,5 cm corridas en cada fila, cada una de un solo tono (así sus caras se juntan al dibujar)
+      const stone = (x: number, y: number, z: number) => {
+        const row = Math.floor(y / 4)
+        const shifted = x + z + 64 + (row % 2) * 5
+        if (y % 4 === 3 || shifted % 10 === 0) return shade(c.stone, -0.3)
+        return shade(c.stone, (hash(Math.floor(shifted / 10), row, 4) - 0.5) * 0.2)
+      }
+      // El cuerpo, con el hueco del fuego tiznado al fondo, y la losa de adelante
+      set.fill(-34, 0, -10, 34, 40, 6, stone, flat)
+      for (let x = -16; x < 16; x++) for (let y = 2; y < 26; y++) for (let z = -6; z < 6; z++) set.remove(x, y, z)
+      set.fill(-16, 2, -7, 16, 26, -6, 0x2a2420, flat)
+      set.fill(-16, 1, -6, 16, 2, 6, shade(c.stone, -0.5), flat)
+      set.fill(-30, 0, 6, 30, 2, 10, shade(c.stone, -0.18), flat)
+      // La repisa de madera con su moldura, y el tiro que sube hasta el techo
+      set.fill(-36, 38, -10, 36, 40, 8, shade(c.mantel, -0.18), flat)
+      set.fill(-38, 40, -10, 38, 44, 10, (_x, y) => (y === 43 ? shade(c.mantel, 0.08) : c.mantel), flat)
+      set.fill(-26, 44, -10, 26, 100, -2, stone, flat)
+      // Un cuadro sobre el tiro: un atardecer sobre los cerros
+      set.fill(-14, 58, -2, 14, 82, -1, (x, y) => {
+        if (y < 64 + Math.round(Math.sin(x * 0.3) * 2)) return 0x3e5c55
+        if ((x - 5) ** 2 + (y - 72) ** 2 < 14) return 0xf6e7c1
+        return mix(0xe8a87c, 0x6b5b95, (y - 62) / 20)
+      }, flat)
+      frameRing(set, -14, 58, 14, 82, -2, 0, 0xc9a227, 2)
+      // Los leños y las llamas, más altas al medio
+      set.fill(-10, 2, -3, 10, 5, 0, BARK)
+      set.fill(-8, 2, 1, 8, 5, 4, shade(BARK, -0.15))
+      set.fill(-6, 5, -2, 6, 8, 2, BARK)
+      for (let x = -8; x < 8; x += 2) {
+        const height = 4 + Math.floor(hash(x, 3, 9) * 6) + (4 - Math.abs(x + 1) / 2)
+        set.fill(x, 8, -1, x + 2, 8 + Math.floor(height), 1, (_x, y) => (y < 8 + height * 0.4 ? 0xff7a1a : y < 8 + height * 0.75 ? 0xffb347 : 0xffe08a), { glow: 1, jitter: 0 })
+      }
+      for (const [x, z] of [[-9, 0], [6, 2], [-3, 4]]) set.put(x, 5, z, 0xff7a1a, { glow: 1, jitter: 0 })
+      // Sobre la repisa: unos libros y dos candelabros
+      books(set, 6, 24, 44, -4, 4, 7, 10)
+      for (const x of [-32, -24]) {
+        set.fill(x - 1, 44, -1, x + 2, 45, 2, 0xc9a227, flat)
+        set.fill(x, 45, 0, x + 1, 52, 1, CREAM, flat)
+        set.put(x, 52, 0, 0xffb347, { glow: 1, jitter: 0 })
+      }
+      return [{ x: 0, y: 14, z: 12, color: 0xff9a4a, intensity: 2, distance: 5.5 }]
+    },
+  },
+  {
+    id: 'globe', name: 'Globo terráqueo', category: 'muebles', width: 20, depth: 20,
+    colors: { sea: { label: 'Mar', value: 0x4f81bd }, wood: { label: 'Pie', value: 0x74543a } },
+    build(set, c) {
+      // Un pie de madera, el arco de bronce y el globo: los continentes salen por bloques de 10 cm y los polos, blancos
+      disc(set, 0, 0, 0, 2, 6, shade(c.wood, -0.15))
+      disc(set, 0, 0, 2, 22, 1.5, c.wood)
+      disc(set, 0, 0, 22, 24, 4, shade(c.wood, 0.1))
+      for (let x = -9; x < 9; x++)
+        for (let y = -9; y < 9; y++)
+          for (let z = -9; z < 9; z++) {
+            const d = (x + 0.5) ** 2 + (y + 0.5) ** 2 + (z + 0.5) ** 2
+            if (d <= 64) set.put(x, y + 33, z, Math.abs(y + 0.5) > 6.5 ? WHITE : hash((x + 16) >> 2, (y + 16) >> 2, (z + 16) >> 2) < 0.42 ? 0x6fa36f : c.sea, flat)
+            else if (z === 0 && x < 2 && d > 81 && d <= 100) set.put(x, y + 33, z, 0xc9a227, flat)
+          }
+      set.fill(-1, 42, -1, 1, 44, 1, 0xc9a227, flat)
+    },
+  },
+  {
+    id: 'waterCooler', name: 'Dispensador de agua', category: 'muebles', width: 14, depth: 14,
+    colors: { body: { label: 'Mueble', value: 0xf4f4f0 } },
+    build(set, c) {
+      // El mueble con el nicho de las dos llaves y su bandeja, y arriba el bidón
+      set.fill(-6, 0, -6, 6, 2, 6, shade(c.body, -0.35), flat)
+      set.fill(-7, 2, -7, 7, 40, 7, c.body, flat)
+      for (let x = -5; x < 5; x++) for (let y = 24; y < 34; y++) for (let z = 4; z < 7; z++) set.remove(x, y, z)
+      set.fill(-5, 24, 3, 5, 34, 4, shade(c.body, -0.22), flat)
+      set.fill(-5, 24, 4, 5, 25, 7, METAL, flat)
+      set.fill(-3, 31, 4, -2, 33, 5, 0x4f81bd, flat)
+      set.fill(2, 31, 4, 3, 33, 5, 0xc0504d, flat)
+      disc(set, 0, 0, 40, 42, 3, shade(c.body, -0.12), flat)
+      disc(set, 0, 0, 42, 58, 5.6, (_x, y) => (y < 53 ? 0x7fb8e6 : 0xbfe0f5), { glow: 0.15, jitter: 0 })
+      disc(set, 0, 0, 58, 59, 4.4, 0xbfe0f5, { glow: 0.15, jitter: 0 })
+    },
+  },
+  {
+    id: 'guitar', name: 'Guitarra', category: 'muebles', width: 16, depth: 8,
+    colors: { body: { label: 'Caja', value: 0xd9822b } },
+    build(set, c) {
+      // Parada contra la pared: la caja en dos curvas, la boca, el puente, el mástil con sus trastes y el clavijero
+      const edge = shade(c.body, -0.3)
+      for (let x = -7; x < 7; x++)
+        for (let y = 0; y < 26; y++) {
+          const low = (x + 0.5) ** 2 + (y + 0.5 - 9) ** 2
+          const high = (x + 0.5) ** 2 + (y + 0.5 - 19) ** 2
+          if (low > 49 && high > 25) continue
+          const rim = low > 36 && high > 16
+          set.fill(x, y, -4, x + 1, y + 1, -1, rim ? edge : c.body, flat)
+          if (!rim && (x + 0.5) ** 2 + (y + 0.5 - 15) ** 2 < 4.5) set.put(x, y, -1, INK, flat)
+        }
+      set.fill(-3, 7, -1, 3, 8, 0, 0x3a2a1e, flat)
+      set.fill(-1, 26, -3, 1, 46, -1, 0x5b3d2a, flat)
+      for (let y = 28; y < 46; y += 3) set.fill(-1, y, -1, 1, y + 1, 0, 0xc9ccd2, flat)
+      set.fill(-2, 46, -3, 2, 52, -1, 0x3a2a1e, flat)
+      for (const y of [47, 49, 51]) for (const x of [-3, 2]) set.put(x, y, -2, 0xc9ccd2, flat)
+    },
+  },
+  {
+    id: 'coatRack', name: 'Perchero', category: 'muebles', width: 20, depth: 20,
+    colors: { wood: { label: 'Madera', value: 0x5b3d2a }, coat: { label: 'Chaqueta', value: 0x4f5d8a }, scarf: { label: 'Bufanda', value: 0xc0504d } },
+    build(set, c) {
+      // El pie en cruz, el poste, cuatro ganchos arriba con un gorro, una chaqueta colgando y una bufanda a rayas
+      set.fill(-8, 0, -1, 8, 2, 1, c.wood)
+      set.fill(-1, 0, -8, 1, 2, 8, c.wood)
+      set.fill(-1, 2, -1, 1, 70, 1, c.wood)
+      disc(set, 0, 0, 70, 72, 2, shade(c.wood, 0.1))
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (let k = 1; k < 5; k++) set.put(dx * k, 64 + (k > 2 ? 1 : 0), dz * k, c.wood, flat)
+      disc(set, 0, 0, 72, 75, 4, 0x3a3a42)
+      disc(set, 0, 0, 72, 73, 5.5, 0x3a3a42)
+      // La chaqueta: hombros en el gancho de adelante y el cuerpo cayendo, con la abertura y dos botones
+      set.fill(-4, 40, 2, 5, 64, 6, (_x, y) => (y < 44 ? shade(c.coat, -0.15) : c.coat))
+      set.fill(-6, 44, 2, -4, 62, 5, shade(c.coat, -0.08))
+      set.fill(5, 44, 2, 7, 62, 5, shade(c.coat, -0.08))
+      set.fill(0, 40, 6, 1, 62, 7, shade(c.coat, -0.3), flat)
+      for (const y of [50, 56]) set.put(1, y, 6, 0xd9c9a8, flat)
+      // La bufanda en el gancho del costado, con flecos
+      set.fill(-6, 42, -1, -4, 66, 1, (_x, y) => ((y >> 2) % 2 ? c.scarf : CREAM))
+      for (const z of [-1, 0]) set.put(-6 + (z + 1), 41, z, CREAM, flat)
+    },
+  },
+  {
+    id: 'radio', name: 'Radio antigua', category: 'muebles', width: 18, depth: 10, y: ON_TABLE,
+    colors: { wood: { label: 'Madera', value: 0x8a5a3c } },
+    build(set, c) {
+      // Una caja de madera con la parte de arriba redondeada, el parlante en tela, el dial encendido, dos perillas y la antena
+      set.fill(-9, 0, -4, 9, 10, 4, c.wood)
+      set.fill(-8, 10, -4, 8, 12, 4, c.wood)
+      set.fill(-6, 12, -4, 6, 13, 4, c.wood)
+      set.fill(-7, 3, 4, 1, 10, 5, (x, y) => ((x + y) % 2 ? 0xd9c9a8 : 0xc9b48f), flat)
+      set.fill(3, 7, 4, 8, 10, 5, 0xffd27f, { glow: 0.8, jitter: 0 })
+      set.put(5, 8, 5, 0xc0304d, flat)
+      for (const x of [3, 6]) set.fill(x, 2, 4, x + 2, 4, 6, 0xd9c9a8, flat)
+      for (let k = 0; k < 10; k++) set.put(6 + Math.floor(k / 3), 13 + k, -2, 0xc9ccd2, flat)
+    },
+  },
+  {
+    id: 'cat', name: 'Gato durmiendo', category: 'muebles', width: 16, depth: 16,
+    colors: { fur: { label: 'Pelaje', value: 0xd9822b }, bed: { label: 'Cojín', value: 0x7f8cc4 } },
+    build(set, c) {
+      // Un cojín redondo con borde, y el gato enrollado encima: lomo a rayas, la cabeza con orejas y la cola alrededor
+      disc(set, 0, 0, 0, 2, 7.6, c.bed)
+      disc(set, 0, 0, 2, 4, 7.6, shade(c.bed, -0.12), undefined, 6)
+      for (let x = -6; x < 6; x++)
+        for (let y = 2; y < 9; y++)
+          for (let z = -5; z < 5; z++)
+            if (((x + 0.5) / 5.5) ** 2 + ((y - 2) / 6) ** 2 + ((z + 0.5 + 0.5) / 4.2) ** 2 <= 1) set.put(x, y, z, (x >> 1) % 2 ? shade(c.fur, -0.2) : c.fur, flat)
+      disc(set, 3.5, 2.5, 3, 7, 2.8, c.fur, flat)
+      for (const x of [2, 5]) set.put(x, 7, 2, shade(c.fur, -0.25), flat)
+      set.fill(2, 5, 5, 6, 6, 6, INK, flat) // los ojos cerrados: una línea
+      set.put(3, 4, 5, 0xe8a0a0, flat)
+      for (let t = 0; t < 10; t++) set.put(-5 + t, 3, 4 + (t > 2 && t < 8 ? 1 : 0), t > 7 ? CREAM : shade(c.fur, -0.1), flat)
+    },
+  },
+  {
     id: 'books', name: 'Libros apilados', category: 'muebles', width: 12, depth: 12, y: ON_TABLE,
     colors: {},
     build(set) {
@@ -745,6 +907,92 @@ export const PROPS: PropDef[] = [
     },
   },
   {
+    id: 'kanban', name: 'Tablero de tareas', category: 'pared', width: 80, depth: 4, onWall: true, y: 40,
+    colors: { frame: { label: 'Marco', value: 0x3c3f4a } },
+    build(set, c) {
+      // Un tablero blanco con tres columnas (por hacer, haciendo, listo): cada una con su título y sus notas pegadas
+      set.fill(-38, 2, -2, 38, 42, -1, WHITE, flat)
+      frameRing(set, -38, 2, 38, 42, -2, 0, c.frame, 2)
+      const notes = [0xfff1a8, 0xa8e6cf, 0xffb7b2, 0xc7ceea, 0xffd6a5]
+      for (const [column, title, count] of [[0, 0xc0504d, 5], [1, 0xf2c14e, 3], [2, 0x3a7a48, 2]]) {
+        const x = -35 + column * 25
+        if (column > 0) set.fill(x - 3, 4, -1, x - 2, 40, 0, 0xc9ccd2, flat)
+        set.fill(x, 37, -1, x + 14, 39, 0, title, flat)
+        for (let i = 0; i < count; i++) {
+          const nx = x + (i % 2) * 11
+          const ny = 26 - Math.floor(i / 2) * 11
+          const color = pick(set, notes)
+          set.fill(nx, ny, -1, nx + 9, ny + 9, 0, color, flat)
+          set.fill(nx + 2, ny + 5, -1, nx + 7, ny + 6, 0, shade(color, -0.35), flat)
+          set.fill(nx + 2, ny + 3, -1, nx + 5, ny + 4, 0, shade(color, -0.35), flat)
+        }
+      }
+    },
+  },
+  {
+    id: 'tvScreen', name: 'Pantalla', category: 'pared', width: 68, depth: 4, onWall: true, y: 48,
+    colors: { frame: { label: 'Marco', value: 0x1a1a1e } },
+    build(set, c) {
+      // Una pantalla colgada con una presentación: el título, un gráfico de barras y uno de torta
+      const bars = [8, 12, 7, 16, 19]
+      set.fill(-34, 0, -2, 34, 40, 0, c.frame, flat)
+      frameRing(set, -32, 2, 32, 38, 0, 1, c.frame, 2)
+      set.fill(-32, 2, 0, 32, 38, 1, (x, y) => {
+        if (y >= 32 && y < 35 && x >= -28 && x < -2) return WHITE
+        if (y === 29 && x >= -28 && x < 4) return 0x9fb4d8
+        if (y === 5 && x >= -29 && x < 3) return 0x9fb4d8
+        const bar = Math.floor((x + 28) / 6)
+        if (x >= -28 && x < 2 && (x + 28) % 6 < 4 && y >= 6 && y < 8 + bars[bar]) return bar === 4 ? 0xf2c14e : 0x5aa0e6
+        const d = (x - 17.5) ** 2 + (y - 16.5) ** 2
+        if (d < 90 && d > 20) return Math.atan2(y - 16.5, x - 17.5) > 0.6 ? 0xf2c14e : x < 17 ? 0x5aa0e6 : 0x7fd3a0
+        return 0x1f2a44
+      }, { glow: 0.8, jitter: 0 })
+      set.put(30, 1, 0, 0x7fd3a0, { glow: 1, jitter: 0 })
+      return [{ x: 0, y: 20, z: 6, color: 0x8fb4ff, intensity: 0.5, distance: 3 }]
+    },
+  },
+  {
+    id: 'trellis', name: 'Enrejado con enredadera', category: 'pared', width: 48, depth: 4, onWall: true, y: 0,
+    colors: { wood: { label: 'Listones', value: 0xe8e4da }, flower: { label: 'Flores', value: 0xe8738f } },
+    build(set, c) {
+      // Listones cruzados cada 20 cm, y cinco guías que suben con sus hojas y algunas flores
+      for (let x = -24; x < 24; x += 8) set.fill(x, 0, -2, x + 2, 84, -1, c.wood, flat)
+      set.fill(22, 0, -2, 24, 84, -1, c.wood, flat)
+      for (let y = 6; y < 84; y += 8) set.fill(-24, y, -1, 24, y + 2, 0, shade(c.wood, -0.08), flat)
+      for (let i = 0; i < 5; i++) {
+        let x = -20 + i * 10
+        const top = 50 + Math.floor(set.next() * 32)
+        for (let y = 0; y < top; y++) {
+          if (y % 6 === 5) x = Math.max(-22, Math.min(21, x + (set.next() < 0.5 ? -1 : 1)))
+          set.put(x, y, 0, STEM, { jitter: 0.06 })
+          if (y % 3 === 1) {
+            const lx = set.next() < 0.5 ? x - 2 : x + 1
+            set.fill(lx, y, 0, lx + 2, y + 2, 1, pick(set, [LEAF, LEAF_DARK, LEAF_LIGHT]), { jitter: 0.06 })
+          }
+          if (set.next() < 0.07) set.put(x, y, 1, c.flower, flat)
+        }
+      }
+    },
+  },
+  {
+    id: 'calendar', name: 'Calendario', category: 'pared', width: 24, depth: 2, onWall: true, y: 44,
+    colors: { header: { label: 'Encabezado', value: 0xc0504d } },
+    build(set, c) {
+      // La hoja del mes colgada de un clavo: el encabezado, las 5 semanas de 7 días y algunos días marcados
+      set.fill(-11, 0, -1, 11, 26, 0, WHITE, flat)
+      set.fill(-11, 20, -1, 11, 26, 0, c.header, flat)
+      set.fill(-6, 22, 0, 6, 24, 1, WHITE, flat)
+      for (let row = 0; row < 5; row++)
+        for (let day = 0; day < 7; day++) {
+          const x = -10 + day * 3
+          const y = 16 - row * 3
+          const marked = (row * 7 + day) % 9 === 4
+          set.fill(x, y, 0, x + 2, y + 2, 1, marked ? c.header : day > 4 ? 0xc9ccd2 : 0xe8e2d4, flat)
+        }
+      set.put(0, 27, -1, METAL, flat)
+    },
+  },
+  {
     id: 'clock', name: 'Reloj', category: 'pared', width: 20, depth: 4, onWall: true, y: 76,
     colors: { rim: { label: 'Borde', value: 0x2f2f36 } },
     build(set, c) {
@@ -893,8 +1141,36 @@ export const PROPS: PropDef[] = [
       return [{ x: 0, y: 16, z: 0, color: 0xffb347, intensity: 0.4, distance: 1.6 }]
     },
   },
+  {
+    id: 'lantern', name: 'Farol', category: 'luces', width: 10, depth: 10,
+    colors: { metal: { label: 'Fierro', value: 0x2f2f36 } },
+    build(set, c) {
+      // Un farol de fierro: la base, cuatro postes, el vidrio encendido, el techo en punta y su argolla
+      set.fill(-5, 0, -5, 5, 2, 5, c.metal, flat)
+      for (const [x, z] of [[-5, -5], [4, -5], [-5, 4], [4, 4]]) set.fill(x, 2, z, x + 1, 14, z + 1, c.metal, flat)
+      set.fill(-4, 2, -4, 4, 14, 4, (_x, y) => (y < 7 ? 0xffc27a : 0xffe2a8), { glow: 0.9, jitter: 0 })
+      set.fill(-5, 14, -5, 5, 16, 5, c.metal, flat)
+      set.fill(-3, 16, -3, 3, 18, 3, c.metal, flat)
+      set.fill(-1, 18, -1, 1, 20, 1, c.metal, flat)
+      frameRing(set, -1, 21, 1, 23, 0, 1, c.metal)
+      return [{ x: 0, y: 9, z: 0, color: 0xffc27a, intensity: 1.6, distance: 5 }]
+    },
+  },
 
   // ─── Plantas ───
+  {
+    id: 'planterBox', name: 'Jardinera', category: 'plantas', width: 64, depth: 14,
+    colors: { wood: { label: 'Madera', value: 0x8a6a4f } },
+    build(set, c) {
+      // Un cajón de tablas con patas cortas, la tierra, cuatro matas y flores sueltas
+      for (const x of [-32, 30]) for (const z of [-7, 5]) set.fill(x, 0, z, x + 2, 2, z + 2, shade(c.wood, -0.35), flat)
+      set.fill(-32, 2, -7, 32, 14, 7, (_x, y) => ((y - 2) % 4 === 3 ? shade(c.wood, -0.22) : shade(c.wood, (hash(y >> 2, 3) - 0.5) * 0.14)), flat)
+      set.fill(-32, 13, -7, 32, 14, 7, shade(c.wood, 0.1), flat)
+      set.fill(-30, 13, -5, 30, 14, 5, SOIL, flat)
+      for (const x of [-22, -8, 8, 22]) foliage(set, x, 15, 0, 7, 14)
+      for (let i = 0; i < 12; i++) set.put(-28 + Math.floor(set.next() * 56), 17 + Math.floor(set.next() * 5), -4 + Math.floor(set.next() * 8), pick(set, [0xe8738f, 0xf2c14e, WHITE, 0xb79dcf]), flat)
+    },
+  },
   {
     id: 'plant', name: 'Planta chica', category: 'plantas', width: 16, depth: 16,
     colors: { pot: { label: 'Macetero', value: 0xb5654a } },

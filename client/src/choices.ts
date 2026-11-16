@@ -99,3 +99,31 @@ export function chooseCamera(kind: CameraKind) {
 export function chooseNextCamera() {
   chooseCamera(CAMERAS[(CAMERAS.indexOf(chosenCamera) + 1) % CAMERAS.length])
 }
+
+// El diseño en cubos elegido para cada tipo de sala (voxel/designs.ts): con él se crean las salas y se arma
+// el estudio individual. Se elige en Estudiar o en la galería (salas.html)
+const DESIGNS_KEY = 'studyfocus.roomDesigns' // { [tipo]: id del diseño }
+
+function loadChosenDesigns(): Record<string, string> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DESIGNS_KEY) ?? '{}')
+    return saved && typeof saved === 'object' ? saved : {}
+  } catch {
+    return {}
+  }
+}
+
+export function getChosenDesign(kind: string): string | null {
+  const id = loadChosenDesigns()[kind]
+  return typeof id === 'string' ? id : null
+}
+
+// Responde si se pudo guardar
+export function chooseDesign(kind: string, id: string) {
+  try {
+    localStorage.setItem(DESIGNS_KEY, JSON.stringify({ ...loadChosenDesigns(), [kind]: id }))
+    return true
+  } catch {
+    return false
+  }
+}

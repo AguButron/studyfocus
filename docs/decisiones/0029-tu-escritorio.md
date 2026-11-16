@@ -12,7 +12,7 @@ Estudiar solo era solo el temporizador al centro, sin 3D. Se quiere algo más ac
 
 ## Decisión
 
-- **Un rincón, no una pieza completa:** el escritorio contra la ventana, la silla, una lámpara, una repisa con libros, una planta, un afiche y una alfombra. Es de noche, y la luz principal es la de la lámpara.
+- **Tu pieza en cubos (desde 2026-11-16):** el diseño del Estudio individual que eliges en Estudiar (Rincón de noche, Estudio luminoso o Ático de madera), con su luz según la hora. Antes era un rincón de bloques lisos, de noche. Ver [0033](0033-arte-en-cubos.md).
 - **Ya sentado:** al entrar, el personaje está en su silla. No hay que elegir asiento ni existe "Cambiar de asiento".
 - **Hace lo que eliges:** computador, leyendo o escribiendo, igual que en la sala. En el descanso se duerme sobre el escritorio.
 - **Las cámaras (2026-11-11):**
@@ -41,5 +41,5 @@ Estudiar solo era solo el temporizador al centro, sin 3D. Se quiere algo más ac
   - Se descarga recién al entrar, igual que la sala.
   - Al volver al menú libera el lienzo.
 - **`activity.ts` toma las medidas de `roomLayout.ts`, no de `room.ts`:** importar `room.ts` arma la sala completa, con sus mesas y sillas.
-- **Lo que hay en el rincón está en `DESK_ITEMS`**, con su tipo y su lugar. Más adelante puede guardarse por cuenta para que cada persona arme el suyo.
+- **Lo que hay en la pieza sale del diseño** (`voxel/designs.ts`). Más adelante, con Crea tu sala, cada persona podrá armar la suya.
 - **El modo de la página sigue siendo `solo`.** El de respaldo se llama `simple`.

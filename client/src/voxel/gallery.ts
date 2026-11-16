@@ -1,6 +1,6 @@
 import './voxelPages.css'
 import * as THREE from 'three'
-import { ACTIVITY_ITEMS, type ActivityKind } from '../choices'
+import { ACTIVITY_ITEMS, chooseDesign, getChosenDesign, type ActivityKind } from '../choices'
 import { getRoomLayout, layoutSeats } from '../roomLayout'
 import { ROOM_KINDS } from '../roomKinds'
 import { designsFor, getDesign } from './designs'
@@ -9,9 +9,8 @@ import { placeItem } from './studyItemMesh'
 import { createVoxelView, type ViewName } from './voxelView'
 
 // La galería de diseños de sala: se elige el tipo, se recorren sus diseños y se elige uno. Lo elegido se guarda
-// en este navegador (CHOSEN_KEY), listo para cuando la sala de verdad use estos diseños.
+// en este navegador (chooseDesign en choices.ts), y con él se crean las salas de ese tipo.
 
-const CHOSEN_KEY = 'studyfocus.roomDesigns' // { [tipo]: id del diseño }
 
 const kindsBox = document.querySelector<HTMLDivElement>('#kinds')!
 const designsBox = document.querySelector<HTMLDivElement>('#designs')!
@@ -23,14 +22,6 @@ const view = createVoxelView(document.querySelector<HTMLDivElement>('#view')!)
 
 let kind = new URLSearchParams(location.search).get('tipo') ?? 'duo'
 let designId = designsFor(kind)[0]?.id ?? ''
-
-function loadChosen(): Record<string, string> {
-  try {
-    return JSON.parse(localStorage.getItem(CHOSEN_KEY) ?? '{}')
-  } catch {
-    return {}
-  }
-}
 
 function swatches(colors: number[]) {
   const box = document.createElement('span')
@@ -52,7 +43,7 @@ function renderKinds() {
     button.setAttribute('aria-pressed', String(option.id === kind))
     button.addEventListener('click', () => {
       kind = option.id
-      designId = loadChosen()[kind] ?? designsFor(kind)[0]?.id ?? ''
+      designId = getChosenDesign(kind) ?? designsFor(kind)[0]?.id ?? ''
       renderKinds()
       renderDesigns()
       show()
@@ -62,7 +53,7 @@ function renderKinds() {
 }
 
 function renderDesigns() {
-  const chosen = loadChosen()[kind]
+  const chosen = getChosenDesign(kind)
   designsBox.replaceChildren(...designsFor(kind).map((design) => {
     const card = document.createElement('button')
     card.type = 'button'
@@ -155,12 +146,9 @@ document.querySelector('#study-next')!.addEventListener('click', () => {
 })
 
 chooseButton.addEventListener('click', () => {
-  try {
-    localStorage.setItem(CHOSEN_KEY, JSON.stringify({ ...loadChosen(), [kind]: designId }))
-    chosenText.textContent = 'Guardado en este navegador: al crear una sala de este tipo, partirá con este diseño.'
-  } catch {
-    chosenText.textContent = 'No se pudo guardar en este navegador.'
-  }
+  chosenText.textContent = chooseDesign(kind, designId)
+    ? 'Guardado en este navegador: al crear una sala de este tipo, partirá con este diseño.'
+    : 'No se pudo guardar en este navegador.'
   renderDesigns()
 })
 

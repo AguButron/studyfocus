@@ -12,7 +12,8 @@ import { TIME_ZONES } from './stats.ts'
 const MAX_ACTIVE = 20
 const MAX_MINUTES = 1000 * 60 // mil horas
 const MAX_DAYS_AHEAD = 2 * 366
-const SHOW_ENDED_DAYS = 3 // los terminados se siguen viendo unos días, para saber cómo resultó
+const SHOW_ENDED_HOURS = 12 // los terminados se siguen viendo en Inicio unas horas, para saber cómo resultó; después van al historial
+const HISTORY_LIMIT = 500 // los anteriores que se muestran, los más recientes primero (de sobra: es para no traer miles)
 const MAX_CHANGES = 120 // por cuenta cada 15 minutos
 const DATE = /^\d{4}-\d{2}-\d{2}$/
 const DAY = 24 * 60 * 60 * 1000
@@ -25,13 +26,19 @@ interface Goal {
   startsAt: string
   seconds: number // lo estudiado para el objetivo
   isEnded: boolean // ya pasó el día límite
+  isArchived: boolean // se sacó de la lista con la X
 }
 
-// Cada objetivo con lo estudiado para él: los tramos que caen entre su creación y el fin del día límite
-async function listGoals(accountId: string, timeZone: string) {
+// Los que se ven en la lista: sin archivar, y si ya terminaron, solo los que terminaron hace pocas horas
+const ACTIVE = `goals.archived_at IS NULL AND now() < limits.until + make_interval(hours => $3)`
+
+// Cada objetivo con lo estudiado para él: los tramos que caen entre su creación y el fin del día límite.
+// La lista (activos) o los anteriores (archivados, o terminados hace más de unas horas), los más recientes primero
+async function listGoals(accountId: string, timeZone: string, history = false) {
   const { rows } = await query<Goal>(
     `SELECT goals.id::text, goals.section_id::text AS "sectionId", goals.minutes, goals.deadline::text AS deadline,
        goals.starts_at AS "startsAt", (now() AT TIME ZONE $2)::date > goals.deadline AS "isEnded",
+       goals.archived_at IS NOT NULL AS "isArchived",
        coalesce((
          SELECT sum(extract(epoch FROM least(segments.ended_at, limits.until) - greatest(segments.started_at, goals.starts_at)))
          FROM study_segments segments
@@ -41,11 +48,18 @@ async function listGoals(accountId: string, timeZone: string) {
        ), 0)::int AS seconds
      FROM study_goals goals
      CROSS JOIN LATERAL (SELECT ((goals.deadline + 1)::timestamp AT TIME ZONE $2) AS until) limits
-     WHERE goals.user_id = $1 AND goals.deadline >= (now() AT TIME ZONE $2)::date - $3::int
-     ORDER BY "isEnded", goals.deadline, goals.id`,
-    [accountId, timeZone, SHOW_ENDED_DAYS],
+     WHERE goals.user_id = $1 AND ${history ? `NOT (${ACTIVE})` : ACTIVE}
+     ORDER BY ${history ? 'goals.deadline DESC, goals.id DESC LIMIT $4' : '"isEnded", goals.deadline, goals.id'}`,
+    history ? [accountId, timeZone, SHOW_ENDED_HOURS, HISTORY_LIMIT] : [accountId, timeZone, SHOW_ENDED_HOURS],
   )
   return rows
+}
+
+// La página de objetivos anteriores: la lista, cuántos te has propuesto y cuántos cumpliste (contando los activos)
+async function listHistory(accountId: string, timeZone: string) {
+  const [goals, history] = await Promise.all([listGoals(accountId, timeZone), listGoals(accountId, timeZone, true)])
+  const all = [...goals, ...history]
+  return { history, total: all.length, done: all.filter((goal) => goal.seconds >= goal.minutes * 60).length }
 }
 
 function readTimeZone(value: unknown) {
@@ -94,6 +108,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     sendJson(response, 200, { goals: await listGoals(account.id, timeZone) })
     return
   }
+  if (route === 'GET /api/objetivos/historial') {
+    const timeZone = readTimeZone(url.searchParams.get('tz'))
+    sendJson(response, 200, await listHistory(account.id, timeZone))
+    return
+  }
 
   if (request.method !== 'POST') throw new RequestError(404, 'No encontrado.')
   if (!allowAttempt(`goals:${account.id}`, MAX_CHANGES)) {
@@ -110,7 +129,7 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const { rowCount } = await query(
       `INSERT INTO study_goals (user_id, section_id, minutes, deadline)
        SELECT $1, $2, $3, $4
-       WHERE (SELECT count(*) FROM study_goals WHERE user_id = $1 AND deadline >= $5::date) < $6`,
+       WHERE (SELECT count(*) FROM study_goals WHERE user_id = $1 AND deadline >= $5::date AND archived_at IS NULL) < $6`,
       [account.id, sectionId, minutes, deadline, today, MAX_ACTIVE],
     )
     if (!rowCount) throw new RequestError(409, `Puedes tener hasta ${MAX_ACTIVE} objetivos a la vez.`)
@@ -121,6 +140,14 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
     const { rowCount } = await query(
       'UPDATE study_goals SET minutes = $3, deadline = $4, section_id = $5 WHERE id = $1 AND user_id = $2',
       [parseId(body.id), account.id, minutes, deadline, sectionId],
+    )
+    if (!rowCount) throw new RequestError(404, 'Ese objetivo ya no existe.')
+  } else if (route === 'POST /api/objetivos/archivar') {
+    // archived: true lo pasa al historial; false lo devuelve a la lista (el "Deshacer")
+    if (typeof body.archived !== 'boolean') throw new RequestError(400, 'Falta si se archiva o no.')
+    const { rowCount } = await query(
+      'UPDATE study_goals SET archived_at = CASE WHEN $3 THEN now() END WHERE id = $1 AND user_id = $2',
+      [parseId(body.id), account.id, body.archived],
     )
     if (!rowCount) throw new RequestError(404, 'Ese objetivo ya no existe.')
   } else if (route === 'POST /api/objetivos/borrar') {

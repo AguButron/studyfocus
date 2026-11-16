@@ -48,6 +48,32 @@ const miniTime = document.querySelector<HTMLSpanElement>('#mini-time')!
 const sectionField = document.querySelector<HTMLDivElement>('#study-section-field')!
 const sectionSelect = document.querySelector<HTMLSelectElement>('#study-section')!
 const SECTION_KEY = 'studyfocus.section'
+const foldButton = document.querySelector<HTMLButtonElement>('#timer-fold')!
+const FOLDED_KEY = 'studyfocus.panelFolded'
+
+// Plegado, el panel queda en una pastilla con el periodo y el tiempo, para estudiar con la pantalla limpia.
+// Solo se pliega mientras corre el temporizador: en pausa hacen falta los botones. Cada periodo de estudio
+// empieza plegado y cada descanso desplegado, para ver que empezó; entremedio, la flecha o la T lo cambian
+let isFolded = loadFolded()
+
+function loadFolded() {
+  try {
+    return localStorage.getItem(FOLDED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function toggleFolded() {
+  if (!getTimer().isRunning) return
+  isFolded = !isFolded
+  try {
+    localStorage.setItem(FOLDED_KEY, String(isFolded))
+  } catch {
+    // Sin almacenamiento, vale solo hasta recargar
+  }
+  render()
+}
 
 let isConfirmingAbandon = false
 
@@ -124,6 +150,14 @@ function render() {
   timerActions.hidden = isConfirmingAbandon
   abandonConfirm.hidden = !isConfirmingAbandon
   activitySection.hidden = timer.isRunning // para no distraer: solo se cambia detenido
+
+  const folded = isFolded && timer.isRunning
+  studyPanel.classList.toggle('folded', folded)
+  foldButton.hidden = !timer.isRunning
+  // Una flecha: hacia arriba pliega y, plegado, hacia abajo despliega (style.css la da vuelta)
+  foldButton.setAttribute('aria-label', folded ? 'Desplegar el panel' : 'Plegar el panel')
+  foldButton.title = `${folded ? 'Muestra todo el panel' : 'Deja solo el tiempo, para estudiar con la pantalla limpia'} (tecla T)`
+  foldButton.setAttribute('aria-expanded', String(!folded))
 
   studyInput.disabled = !isIdle
   breakInput.disabled = !isIdle
@@ -224,7 +258,10 @@ export function setUpTimerPanel(onStandUp: () => void) {
   breakInput.addEventListener('input', applyMinutes)
 
   toggleButton.addEventListener('click', () => {
+    const isStarting = isTimerIdle()
     toggleTimer()
+    // Al empezar a estudiar se pliega de una; al reanudar una pausa queda como estaba
+    if (isStarting && getTimer().period === 'study') isFolded = true
     render()
   })
 
@@ -245,6 +282,15 @@ export function setUpTimerPanel(onStandUp: () => void) {
   })
 
   standUpButton.addEventListener('click', onStandUp)
+
+  foldButton.addEventListener('click', toggleFolded)
+  onKeyPress('KeyT', () => {
+    if (!studyScreen.hidden) toggleFolded()
+  })
+  onPeriodChange((period) => {
+    isFolded = period === 'study'
+    render()
+  })
 
   for (const button of activityButtons) {
     button.addEventListener('click', () => {

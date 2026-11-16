@@ -5,7 +5,7 @@ import { addDays, todayText } from './agenda'
 import { callApi } from './api'
 import { describeKind, ensureSpaces, findSection, getSpaces } from './spaces'
 import { formatDuration } from './stats'
-import { showNotice } from './undoToast'
+import { showNotice, showUndo } from './undoToast'
 
 export interface Goal {
   id: string
@@ -15,12 +15,16 @@ export interface Goal {
   startsAt: string
   seconds: number
   isEnded: boolean
+  isArchived: boolean // se pasó al historial con la X
 }
 
 // Lo que va del periodo de estudio en curso, que todavía no está guardado: lo da el temporizador
 type LiveStudy = { sectionId: string | null; seconds: number } | null
 
 const CELEBRATED_KEY = 'studyfocus.goalsCelebrated'
+const HIDDEN_KEY = 'studyfocus.goalsHidden' // los que no se muestran con el temporizador plegado
+const EYE = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />'
+const EYE_OFF = `${EYE}<path d="M4 4l16 16" />`
 const GENERAL_COLOR = 'var(--marker)'
 
 const dialog = document.querySelector<HTMLDialogElement>('#goal-dialog')!
@@ -31,11 +35,47 @@ const deadlineInput = document.querySelector<HTMLInputElement>('#goal-deadline')
 const sectionSelect = document.querySelector<HTMLSelectElement>('#goal-section')!
 const errorText = document.querySelector<HTMLParagraphElement>('#goal-error')!
 const deleteButton = document.querySelector<HTMLButtonElement>('#goal-delete')!
+const historyList = document.querySelector<HTMLUListElement>('#goals-history-list')!
+const historyEmpty = document.querySelector<HTMLParagraphElement>('#goals-history-empty')!
+const historyError = document.querySelector<HTMLParagraphElement>('#goals-history-error')!
+const totalText = document.querySelector<HTMLElement>('#goals-total')!
+const doneText = document.querySelector<HTMLElement>('#goals-done')!
+const filtersForm = document.querySelector<HTMLFormElement>('#goals-filters')!
+const resultFilter = document.querySelector<HTMLSelectElement>('#goals-filter-result')!
+const sectionFilter = document.querySelector<HTMLSelectElement>('#goals-filter-section')!
+const periodFilter = document.querySelector<HTMLSelectElement>('#goals-filter-period')!
+const orderFilter = document.querySelector<HTMLSelectElement>('#goals-filter-order')!
+const filterCount = document.querySelector<HTMLParagraphElement>('#goals-filter-count')!
+
+let history: Goal[] = [] // los objetivos anteriores, como llegan: por fecha de término, el más reciente primero
+const X = '<path d="M6 6l12 12M18 6L6 18" />'
 
 const weekdayFormat = new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', timeZone: 'UTC' })
 const dateFormat = new Intl.DateTimeFormat('es', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 let goals: Goal[] = []
+let hiddenIds = loadHidden()
+
+function loadHidden(): string[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]')
+    return Array.isArray(saved) ? saved.filter((id) => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+// Ocultar un objetivo solo lo saca del temporizador plegado: desplegado sigue ahí, para volver a mostrarlo
+function toggleHidden(goal: Goal) {
+  hiddenIds = hiddenIds.includes(goal.id) ? hiddenIds.filter((id) => id !== goal.id) : [...hiddenIds, goal.id]
+  try {
+    // Solo se recuerdan los que siguen existiendo
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(hiddenIds.filter((id) => goals.some((other) => other.id === id))))
+  } catch {
+    // Sin almacenamiento, vale solo hasta recargar
+  }
+  renderAll()
+}
 let editing: Goal | null = null
 let liveSource: () => LiveStudy = () => null
 const containers: { list: HTMLElement; empty: HTMLElement | null; compact: boolean }[] = []
@@ -52,6 +92,57 @@ async function call(path: string, body?: Record<string, unknown>) {
 
 export function loadGoals() {
   return call(`/api/objetivos?tz=${encodeURIComponent(timeZone())}`)
+}
+
+// La página de objetivos anteriores: cuántos te propusiste, cuántos cumpliste y cómo resultó cada uno
+export async function loadHistory() {
+  const result = await callApi<{ history: Goal[]; total: number; done: number }>(`/api/objetivos/historial?tz=${encodeURIComponent(timeZone())}`)
+  historyError.textContent = result.error ?? ''
+  if (!result.value) return
+  await ensureSpaces() // los nombres de los ramos, para el filtro
+  const { total, done } = result.value
+  history = result.value.history
+  totalText.textContent = String(total)
+  doneText.textContent = total > 0 ? `${done} (${Math.round((done / total) * 100)} %)` : '0'
+  fillSectionFilter()
+  renderHistory()
+}
+
+const share = (goal: Goal) => goal.seconds / (goal.minutes * 60)
+
+// Los ramos de los objetivos anteriores, para filtrar; se mantiene el elegido si sigue en la lista
+function fillSectionFilter() {
+  const chosen = sectionFilter.value
+  const ids = [...new Set(history.map((goal) => goal.sectionId).filter((id): id is string => id !== null))]
+  const options = ids.flatMap((id) => {
+    const found = findSection(id)
+    return found ? [new Option(found.section.name, id)] : []
+  })
+  sectionFilter.replaceChildren(new Option('Todos', 'all'), new Option('En general (sin ramo)', 'general'), ...options)
+  sectionFilter.value = [...sectionFilter.options].some((option) => option.value === chosen) ? chosen : 'all'
+}
+
+// La lista con los filtros elegidos. Parte por fecha de término, el más reciente primero, como llega del servidor
+function renderHistory() {
+  const since = periodFilter.value === 'all' ? null : addDays(todayText(), -Number(periodFilter.value))
+  const shown = history.filter((goal) => {
+    const isDone = share(goal) >= 1
+    if (resultFilter.value === 'done' && !isDone) return false
+    if (resultFilter.value === 'missed' && isDone) return false
+    if (sectionFilter.value === 'general' && goal.sectionId !== null) return false
+    if (sectionFilter.value !== 'all' && sectionFilter.value !== 'general' && goal.sectionId !== sectionFilter.value) return false
+    return since === null || goal.deadline >= since
+  })
+  if (orderFilter.value === 'oldest') shown.reverse()
+  else if (orderFilter.value === 'hours') shown.sort((a, b) => b.minutes - a.minutes)
+  else if (orderFilter.value === 'progress') shown.sort((a, b) => share(b) - share(a))
+  historyList.replaceChildren(...shown.map(createHistoryRow))
+  historyEmpty.hidden = history.length > 0
+  filtersForm.hidden = history.length === 0
+  filterCount.hidden = history.length === 0
+  filterCount.textContent = shown.length === history.length
+    ? `${history.length} ${history.length === 1 ? 'objetivo' : 'objetivos'}`
+    : `${shown.length} de ${history.length} objetivos${shown.length === 0 ? ': ninguno con estos filtros' : ''}`
 }
 
 // ── El avance ──────────────────────────────────────────────────────────
@@ -78,6 +169,57 @@ function describeGoal(goal: Goal) {
   const found = goal.sectionId ? findSection(goal.sectionId) : null
   const target = formatDuration(goal.minutes * 60)
   return { title: found ? `${target} de ${found.section.name}` : target, color: found?.section.color ?? GENERAL_COLOR }
+}
+
+// La X: pasa un objetivo terminado o cumplido al historial, con un aviso para deshacerlo
+async function archive(goal: Goal) {
+  const error = await call('/api/objetivos/archivar', { id: goal.id, archived: true })
+  if (error) {
+    showNotice(error)
+    return
+  }
+  loadHistory()
+  showUndo('Objetivo pasado a los anteriores', async () => {
+    const undoError = await call('/api/objetivos/archivar', { id: goal.id, archived: false })
+    loadHistory()
+    return undoError
+  })
+}
+
+// En el historial: cómo resultó, sin poder editarlo (ya terminó)
+function createHistoryRow(goal: Goal) {
+  const studied = goal.seconds
+  const target = goal.minutes * 60
+  const isDone = studied >= target
+  const { title, color } = describeGoal(goal)
+  const row = document.createElement('li')
+  row.className = 'goal'
+  row.style.setProperty('--goal', color)
+  row.toggleAttribute('data-done', isDone)
+  row.toggleAttribute('data-missed', !isDone)
+  const box = document.createElement('div')
+  box.className = 'goal-open'
+  const head = document.createElement('span')
+  head.className = 'goal-head'
+  const name = document.createElement('strong')
+  name.textContent = title
+  const when = document.createElement('span')
+  when.className = 'goal-when'
+  when.textContent = `hasta el ${dateFormat.format(new Date(`${goal.deadline}T00:00:00Z`)).replace('.', '')}`
+  head.append(name, when)
+  const bar = document.createElement('span')
+  bar.className = 'goal-bar'
+  const fill = document.createElement('span')
+  fill.style.width = `${Math.min(1, studied / target) * 100}%`
+  bar.append(fill)
+  const detail = document.createElement('span')
+  detail.className = 'goal-detail'
+  detail.textContent = isDone
+    ? `Cumplido ✓ · ${formatDuration(studied)}`
+    : `No alcanzado: ${formatDuration(studied)} de ${formatDuration(target)} (${Math.floor((studied / target) * 100)} %)`
+  box.append(head, bar, detail)
+  row.append(box)
+  return row
 }
 
 function createGoalRow(goal: Goal, compact: boolean) {
@@ -134,6 +276,30 @@ function createGoalRow(goal: Goal, compact: boolean) {
 
   button.append(head, bar, detail)
   row.append(button)
+
+  // En el temporizador: un ojo para ocultarlo (o volver a mostrarlo) en la vista plegada. Aparece al pasar el mouse
+  if (compact) {
+    const isHidden = hiddenIds.includes(goal.id)
+    row.toggleAttribute('data-hidden', isHidden)
+    const eye = document.createElement('button')
+    eye.type = 'button'
+    eye.className = 'goal-eye'
+    eye.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${isHidden ? EYE : EYE_OFF}</svg>`
+    eye.title = isHidden ? 'Mostrar con el temporizador plegado' : 'Ocultar con el temporizador plegado'
+    eye.setAttribute('aria-label', `${eye.title}: ${title}`)
+    eye.addEventListener('click', () => toggleHidden(goal))
+    row.append(eye)
+  } else if (goal.isEnded || isDone) {
+    // En Inicio: los terminados y los cumplidos se pueden pasar al historial
+    const dismiss = document.createElement('button')
+    dismiss.type = 'button'
+    dismiss.className = 'goal-dismiss'
+    dismiss.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${X}</svg>`
+    dismiss.title = 'Pasar a los objetivos anteriores'
+    dismiss.setAttribute('aria-label', `Pasar a los objetivos anteriores: ${title}`)
+    dismiss.addEventListener('click', () => archive(goal))
+    row.append(dismiss)
+  }
   return row
 }
 
@@ -208,6 +374,8 @@ export async function openGoalDialog(goal: Goal | null, sectionId: string | null
 }
 
 export function setUpGoals() {
+  filtersForm.addEventListener('change', renderHistory)
+  filtersForm.addEventListener('submit', (event) => event.preventDefault())
   hoursInput.addEventListener('input', () => hoursInput.setCustomValidity(''))
   form.addEventListener('submit', async (event) => {
     event.preventDefault()

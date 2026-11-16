@@ -1,6 +1,6 @@
 # 0033: El arte de las salas, en cubos
 
-**Estado:** aceptada para el Estudio de a dos y la Sala de grupo: quien crea la sala elige su diseño y lo ven todos. Faltan el Estudio individual (tu escritorio tiene su propia escena), el Café, la Biblioteca y el Salón de estudio.
+**Estado:** aceptada para el Estudio individual, el Estudio de a dos y la Sala de grupo: quien crea la sala elige su diseño y lo ven todos. Faltan el Café, la Biblioteca y el Salón de estudio.
 
 **Fecha:** 2026-11-14
 
@@ -17,7 +17,7 @@ Está en `client/src/voxel/`, escrito para usarse en la sala real y no solo en u
 | Archivo | Qué hace | ¿Usa Three.js? |
 |---|---|---|
 | `voxels.ts` | El conjunto de cubos de 2,5 cm: poner, llenar, girar, juntar, y sacar las caras que se ven juntando las vecinas del mismo color (`faceQuads`) | No |
-| `props.ts` | El catálogo: 32 muebles y adornos, cada uno con sus colores y opciones que se pueden cambiar, y algunos con su propia luz | No |
+| `props.ts` | El catálogo: 45 muebles y adornos, cada uno con sus colores y opciones que se pueden cambiar, y algunos con su propia luz | No |
 | `roomBuilder.ts` | Arma una sala completa: el piso (5 estilos), las paredes (5 estilos), las mesas y sillas de su tipo y los muebles del diseño | No |
 | `designs.ts` | Los 9 diseños: tres por cada sala de 1, 2 y 4 personas | No |
 | `voxelView.ts` | Dibuja con Three.js: toda la sala en dos figuras con solo las caras que se ven (`voxelMesh`), con sombras, la luz según la hora y las lámparas | Sí |
@@ -113,6 +113,49 @@ El computador, el cuaderno y el libro que cada persona tiene frente a ella al es
 
 **Frente a cada asiento queda libre el espacio para estudiar:** 35 cm a cada lado de la persona, desde 35 cm más allá del objeto hasta el borde de la mesa. Las lámparas, velas, libros, la lata y el café de los diseños se movieron a los costados de las mesas (o a la franja del medio en la Sala de grupo), y se revisó con un script que ninguno caiga en esa zona. El pie del computador de escritorio no pasa del centro de la mesa, para no chocar con el de quien se sienta enfrente.
 
+### 13 muebles nuevos, repartidos en los 9 diseños
+
+**Fecha:** 2026-11-16
+
+Se probó rehacer los tres diseños de la Sala de grupo y se descartó: se veían parecidos a los de antes y costaban más. Se quedaron los muebles nuevos, se hicieron más y se repartieron entre los 9 diseños, sin cambiar sus nombres, pisos, paredes ni horas.
+
+| Mueble | Categoría | Dónde está |
+|---|---|---|
+| Chimenea (con fuego y luz propia, un cuadro y el tiro hasta el techo) | Muebles | Club de lectura |
+| Globo terráqueo | Muebles | Junto a la ventana, Club de lectura |
+| Dispensador de agua | Muebles | Sala de proyectos |
+| Guitarra | Muebles | Rincón de noche, Ático de madera, Noche de estudio |
+| Perchero (con gorro, chaqueta y bufanda) | Muebles | Café de esquina |
+| Radio antigua (dial encendido) | Muebles | Café de esquina, sobre la banca |
+| Gato durmiendo en su cojín | Muebles | Rincón de noche, Estudio luminoso, Junto a la ventana, Noche de estudio, Club de lectura |
+| Tablero de tareas (por hacer, haciendo, listo) | Pared | Sala de proyectos |
+| Pantalla con una presentación | Pared | Sala de proyectos |
+| Calendario | Pared | Rincón de noche, Estudio luminoso, Junto a la ventana, Noche de estudio |
+| Enrejado con enredadera | Pared | Terraza cubierta (dos) |
+| Farol (con luz propia) | Luces | Ático de madera, Terraza cubierta (dos) |
+| Jardinera con flores | Plantas | Terraza cubierta (dos, bajo los enrejados) |
+
+- **Café de esquina:** la mesa ya no es redonda: es la mesa de a dos cuadrada, en su tamaño grande (1,8 × 1,4 m, la opción "Tamaño" de `table2`), y en vez de las velas tiene una lámpara de banquero roja. Los otros dos diseños de a dos siguen con la de 1,6 × 1,3 m.
+- **Están en el catálogo de Crea tu sala,** con sus colores para cambiar, como los demás.
+- **Pintados para que sus caras se junten:** cada piedra, tabla o franja tiene un solo tono (sin la variación por bloques), así el dibujo junta las caras vecinas.
+- **Nada choca:** un script revisó que ningún cubo de los muebles nuevos caiga sobre otro mueble, y ninguno va sobre las mesas, así queda libre el espacio de estudio.
+
+Medido con `npx tsx` (en Node, sin dibujar):
+
+| Diseño | Triángulos antes | Triángulos ahora | ms ahora |
+|---|---|---|---|
+| `solo-noche` | 39.670 | 41.298 | 180 |
+| `solo-luz` | 33.024 | 34.642 | 98 |
+| `solo-atico` | 27.502 | 28.130 | 139 |
+| `duo-ventana` | 45.080 | 47.770 | 198 |
+| `duo-cafe` | 51.376 | 53.220 | 166 |
+| `duo-noche` | 71.798 | 72.928 | 159 |
+| `group-proyectos` | 41.908 | 43.606 | 168 |
+| `group-lectura` | 69.374 | 74.840 | 340 |
+| `group-terraza` | 80.836 | 94.666 | 225 |
+
+La más pesada (Terraza cubierta) queda en ~95.000 triángulos, lejos del límite de 400.000.
+
 ### Los 9 diseños
 
 | Sala | Diseños |
@@ -135,10 +178,10 @@ Ninguna de las dos se publica: `vite build` solo arma `index.html`.
 
 **Fecha:** 2026-11-15
 
-- **Se elige al crear la sala:** en Estudiar, al elegir el Estudio de a dos o la Sala de grupo aparece "Elige el diseño" con sus tres diseños y la descripción del elegido. Se recuerda el último por tipo (`studyfocus.roomDesigns`, la misma llave que "Elegir este diseño" en `salas.html`).
+- **Se elige al crear la sala:** en Estudiar, al elegir el Estudio de a dos o la Sala de grupo aparece a la derecha una tarjeta con la barra de sus tres diseños arriba y, debajo, la vista previa de la sala en cubos, quieta, con su nombre, su descripción y el botón para crearla (`voxel/roomPreview.ts`, que se descarga recién al abrir Estudiar). Las salas sin diseños en la app muestran su plano. Se recuerda el último por tipo (`studyfocus.roomDesigns`, la misma llave que "Elegir este diseño" en `salas.html`).
 - **El servidor lo guarda con la sala:** `room:create` recibe `{ kind, design }` (las páginas de antes mandan solo el tipo), revisa que el diseño sea de ese tipo (`ROOM_DESIGNS` en `server/src/index.ts`, la misma lista de `designs.ts`) y lo guarda en la columna `design` de `rooms`, así sigue tras un reinicio. Al unirse o volver a una sala, la respuesta trae `design` junto a `kind`.
 - **`room.ts` arma la sala con el diseño de la sala** (`getRoomDesign` en `network.ts`), el mismo para todos. Las salas sin diseño guardado usan el primero de su tipo. Los tipos sin diseños (Café, Biblioteca, Salón de estudio) siguen con la sala de siempre.
-- **El Estudio individual no cambia todavía:** se estudia en tu escritorio (`deskScene.ts`), que es otra escena. Sus tres diseños solo se ven en la galería.
+- **El Estudio individual (2026-11-16):** tu escritorio (`deskScene.ts`) es ahora la pieza en cubos del diseño que elegiste en Estudiar, con su propia vista previa. Es la misma pieza de la sala "solo", movida para que su silla quede donde se sienta el personaje, y baja 5 cm como las otras salas. La pared de la ventana (con lo que cuelga de ella) va aparte, para esconderla en la vista de frente, que mira desde afuera. Las cámaras se ajustaron a la pieza: la de frente sube para mirar por encima de lo que hay en el escritorio, y las otras no pasan por detrás de las paredes. La luz sale del diseño: el cielo según la hora, el sol por la ventana y hasta 4 lámparas. Solo lo ves tú, así que el diseño no se guarda en el servidor: se lee de este navegador (`getChosenDesign` en `choices.ts`).
 - Probado con @prueba.ana, que creó un Estudio de a dos con "Noche de estudio", y @prueba.benja por script: al unirse recibió `{"kind":"duo","design":"duo-noche"}`.
 
 - Las sillas de cubos se ven siempre. Para elegir asiento, cada silla libre se envuelve en una caja verde transparente, más fuerte bajo el mouse. Es la misma caja que recibe el clic.
@@ -149,7 +192,7 @@ Ninguna de las dos se publica: `vite build` solo arma `index.html`.
 ## Cómo llevarlo a la sala de verdad
 
 1. ~~Elegir el diseño al crear una sala~~ y ~~que `room.ts` use el de la sala~~: hecho (ver "En la sala de verdad").
-2. **El Estudio individual con su diseño:** que `deskScene.ts` use el escritorio y la pieza en cubos.
+2. ~~El Estudio individual con su diseño~~: hecho.
 3. **La pared alta de adelante en cubos,** en vez de la caja lisa.
 4. ~~Las salas de antes usan el primero de su tipo~~: hecho.
 5. **Crea tu sala, en la cuenta:** guardar el diseño propio en la base (por ejemplo, `custom_rooms` con el JSON) y permitir abrirlo como sala. Sus sillas son los asientos, así que el cupo es la cantidad de sillas.
