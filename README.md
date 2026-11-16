@@ -20,12 +20,22 @@ Publicada en <https://studyfocus-yukw.onrender.com/>. Con el plan gratis se duer
 
 Creo una sala, le paso un link a un amigo, cada uno elige con un clic una silla de la misma mesa y cada uno estudia a su ritmo con su propio temporizador.
 
-## Tecnologías previstas
+## Tecnologías
 
 - **Cliente:** TypeScript, Three.js y Vite
 - **Servidor:** TypeScript, Node.js y Socket.IO
 
 Las decisiones importantes y sus motivos están en [docs/decisiones](docs/decisiones).
+
+## Idiomas
+
+La página está en español e inglés. Parte en el idioma del navegador y se cambia en Ajustes, o con el globo de la portada y de la ventana de iniciar sesión.
+
+El código y `client/index.html` se escriben en español. El inglés sale del diccionario de [client/src/en.ts](client/src/en.ts), que traduce lo que aparece en pantalla, incluidos los mensajes de error del servidor. Al agregar o cambiar un texto visible, agrega o actualiza su traducción ahí. Lo que escriben las personas va dentro de `translate="no"` para que no se traduzca. Las fechas usan `LOCALE` de [client/src/i18n.ts](client/src/i18n.ts).
+
+## Medallas
+
+Las medallas del perfil se definen en [server/src/medals.ts](server/src/medals.ts), con su meta y lo que cuentan. Se calculan con las estadísticas, así que valen también para lo estudiado antes de crearlas. Por ahora no hay ninguna, y sin medallas el perfil no muestra su tarjeta. Cada medalla nueva necesita además su nombre y su descripción en inglés en `client/src/en.ts`.
 
 ## Requisitos para desarrollar
 
