@@ -105,6 +105,8 @@ const SCHEMA = `
   );
 
   CREATE INDEX IF NOT EXISTS spaces_user ON spaces (user_id);
+  -- El orden en que la persona dejó sus carpetas al arrastrarlas; las nuevas (sin posición) van primero
+  ALTER TABLE spaces ADD COLUMN IF NOT EXISTS position INT;
 
   CREATE TABLE IF NOT EXISTS sections (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -210,7 +212,44 @@ const SCHEMA = `
     read_at TIMESTAMPTZ
   );
   CREATE INDEX IF NOT EXISTS messages_pair ON messages (from_id, to_id, id);
+  -- Administración (admin.ts). El rol: 'admin', 'moderator' o 'analyst'; el dueño se define en .env (OWNER_USERNAME)
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT;
+  -- Las sanciones vigentes: silenciado (no escribe en los chats), suspendido o bloqueado (no entra)
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_until TIMESTAMPTZ;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
+
+  -- Los reportes de una persona a otra. Una persona tiene a lo más un reporte abierto contra otra
+  CREATE TABLE IF NOT EXISTS reports (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    reporter_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    reported_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    reason TEXT NOT NULL,
+    details TEXT,
+    status TEXT NOT NULL DEFAULT 'open', -- 'open', 'resolved' (se actuó) o 'dismissed' (sin acción)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_by BIGINT REFERENCES users (id) ON DELETE SET NULL,
+    resolved_at TIMESTAMPTZ
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS reports_one_open ON reports (reporter_id, reported_id) WHERE status = 'open';
+  CREATE INDEX IF NOT EXISTS reports_status ON reports (status, created_at);
+
+  -- Todo lo que hace el equipo: sanciones, reportes cerrados y cambios de rol. Las advertencias se marcan al verlas
+  CREATE TABLE IF NOT EXISTS admin_actions (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    actor_id BIGINT REFERENCES users (id) ON DELETE SET NULL,
+    target_id BIGINT REFERENCES users (id) ON DELETE CASCADE,
+    action TEXT NOT NULL, -- warning, mute, suspend, ban, lift, report_resolved, report_dismissed, role
+    reason TEXT,
+    until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    seen_at TIMESTAMPTZ
+  );
+  CREATE INDEX IF NOT EXISTS admin_actions_target ON admin_actions (target_id, created_at);
+
   CREATE INDEX IF NOT EXISTS messages_unread ON messages (to_id, from_id) WHERE read_at IS NULL;
+  -- Una invitación a una sala: el mensaje lleva su código y va sin texto
+  ALTER TABLE messages ADD COLUMN IF NOT EXISTS room_code TEXT;
 `
 
 // Sin esta variable no hay cuentas, y sin cuenta no se puede entrar a una sala

@@ -60,6 +60,18 @@ export function isConnected(accountId: string) {
   return connections.has(accountId)
 }
 
+// Lo que pasa ahora, para las métricas del panel de administración
+export function countLive() {
+  const players = [...presences.values()]
+  return {
+    connectedIds: [...connections.keys()],
+    connected: connections.size,
+    inRooms: players.length,
+    studying: players.filter((presence) => presence.player.isRunning && presence.player.period === 'study').length,
+    openRooms: new Set(players.filter((presence) => presence.kind !== SOLO_KIND).map((presence) => presence.code)).size,
+  }
+}
+
 // status: 'room' (en una sala), 'solo' (estudiando solo), 'online' o 'away'. Nulo: desconectada
 export function getPresence(accountId: string) {
   const presence = presences.get(accountId)

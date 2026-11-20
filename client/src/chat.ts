@@ -3,7 +3,7 @@
 // Los mensajes llegan al instante por la conexión con el servidor; al abrir una conversación se cargan los últimos
 // 50, y subiendo se cargan los anteriores. Muestra "Visto" en tu último mensaje leído y "Escribiendo…".
 import { createCharacterPhoto } from './character'
-import { describePresence, findPerson, setUnread, type Person } from './friends'
+import { describePresence, enterRoom, findPerson, setUnread, type Person } from './friends'
 import { socket } from './network'
 import { profileUrl } from './profilePage'
 import { LOCALE } from './i18n'
@@ -20,6 +20,8 @@ interface Message {
   to: string
   body: string
   createdAt: string
+  room: string | null // una invitación a esta sala
+  roomOpen: boolean
 }
 
 const chatBox = document.querySelector<HTMLElement>('#chat')!
@@ -100,6 +102,42 @@ export function describeDay(date: Date) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
+// Una invitación a una sala: con "Entrar" mientras sigue abierta
+function createInvite(message: Message, mine: boolean) {
+  const box = document.createElement('div')
+  box.className = 'chat-bubble chat-invite'
+  const text = document.createElement('span')
+  text.textContent = mine ? 'Invitaste a tu sala' : 'Te invitó a su sala'
+  box.append(text)
+  if (!message.roomOpen) {
+    const closed = document.createElement('span')
+    closed.className = 'chat-invite-closed'
+    closed.textContent = 'La sala se cerró'
+    box.append(closed)
+  } else if (!mine) {
+    const join = document.createElement('button')
+    join.type = 'button'
+    join.className = 'sf-btn sf-btn--sm sf-btn--primary'
+    join.textContent = 'Unirme'
+    join.addEventListener('click', () => enterRoom(message.room!))
+    box.append(join)
+  }
+  return box
+}
+
+// Invitar a un amigo a tu sala: llega como un mensaje. Después se abre su conversación (openChat), que ya la trae
+export async function sendInvite(to: string, openChat: () => void) {
+  let error: string | undefined
+  try {
+    const result: { error?: string } = await socket.volatile.timeout(10_000).emitWithAck('chat:invite', { to })
+    error = result.error
+  } catch {
+    error = 'No se pudo invitar. Revisa tu conexión y prueba de nuevo.'
+  }
+  openChat()
+  if (error) errorText.textContent = error
+}
+
 function render() {
   const items: HTMLLIElement[] = []
   let lastDay = ''
@@ -123,10 +161,12 @@ function render() {
     const item = document.createElement('li')
     const mine = isMine(message)
     item.className = mine ? 'chat-message chat-message--mine' : 'chat-message'
-    const bubble = document.createElement('p')
-    bubble.className = 'chat-bubble'
-    bubble.translate = false // lo que escribe la persona no se traduce
-    bubble.append(renderBody(message.body))
+    const bubble = message.room ? createInvite(message, mine) : document.createElement('p')
+    if (!message.room) {
+      bubble.className = 'chat-bubble'
+      bubble.translate = false // lo que escribe la persona no se traduce
+      bubble.append(renderBody(message.body))
+    }
     const time = document.createElement('time')
     time.dateTime = message.createdAt
     time.textContent = timeFormat.format(date)

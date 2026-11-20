@@ -373,6 +373,11 @@ function sendTyping() {
   socket.volatile.emit('room-chat:typing') // un aviso viejo no sirve: si no hay conexión, se descarta
 }
 
+// La sala con otros en que estás, para invitar amigos; nula fuera de una o al estudiar solo
+export function getSharedRoomCode() {
+  return code
+}
+
 // Al entrar a una sala con otros (no al estudiar solo)
 export function startRoomChat(roomCode: string) {
   code = roomCode

@@ -18,6 +18,7 @@ export function isPressed(...codes: string[]) {
 export function onKeyPress(code: string, action: () => void) {
   window.addEventListener('keydown', (event) => {
     if (isTextField(event.target)) return
+    if (document.querySelector('dialog:modal')) return // la tecla es de la ventana abierta (Esc la cierra a ella sola)
     if (event.code === code && !event.repeat) {
       action()
     }

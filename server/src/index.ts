@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import sirv from 'sirv'
 import { Server, type Socket } from 'socket.io'
 import { createAccountsHandler, findAccount, type Account } from './accounts.ts'
+import { createAdminHandler } from './admin.ts'
 import { describeCharacter, type Character } from './character.ts'
 import { deleteAbandonedSessions, deleteSession, loadSession, saveSession } from './activeSessions.ts'
 import { createAgendaHandler } from './agenda.ts'
@@ -360,6 +361,7 @@ const handleSpaces = createSpacesHandler()
 const handleSyllabus = createSyllabusHandler()
 const handleGoals = createGoalsHandler()
 const handlePage = createPageHandler()
+const handleAdmin = createAdminHandler(() => io)
 
 const httpServer = createServer((request, response) => {
   if (request.url?.startsWith('/api/friends')) {
@@ -378,6 +380,8 @@ const httpServer = createServer((request, response) => {
     handleSyllabus(request, response)
   } else if (request.url?.startsWith('/api/objetivos')) {
     handleGoals(request, response)
+  } else if (request.url?.startsWith('/api/admin') || request.url?.startsWith('/api/reportes')) {
+    handleAdmin(request, response)
   } else if (request.url?.startsWith('/api/')) {
     handleAccounts(request, response)
   } else {

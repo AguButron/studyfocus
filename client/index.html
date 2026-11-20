@@ -179,6 +179,9 @@
         <img id="player-card-photo" class="character-photo character-photo--card" alt="" />
         <!-- Su nombre abre su perfil en otra pestaña, para no salir de la sala -->
         <a id="player-card-name" class="sf-player-name player-card-name" target="_blank" rel="noopener" title="Ver su perfil en otra pestaña"></a>
+        <button id="player-card-report" class="player-card-report" type="button" title="Reportar" aria-label="Reportar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4M4 4h12l-2 4 2 4H4" /></svg>
+        </button>
       </div>
       <span id="player-card-status" class="sf-presence"></span>
       <span id="player-card-subject" class="player-card-subject" hidden></span>
@@ -481,6 +484,12 @@
             <button class="sf-nav-link" data-panel="spaces" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" /></svg>
               <span class="sf-nav-label">Carpetas</span>
+            </button>
+            <!-- Solo para el equipo (admin.ts) -->
+            <button class="sf-nav-link" data-panel="admin" type="button" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>
+              <span class="sf-nav-label">Administración</span>
+              <span id="admin-badge" class="sf-badge sf-badge--count" hidden></span>
             </button>
           </div>
           <!-- Tu foto y nombre: abre un menú con tu perfil, los ajustes y cerrar sesión -->
@@ -897,6 +906,14 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
                   <button id="person-friend-cancel" class="sf-btn" type="button" hidden>Cancelar solicitud</button>
                   <button id="person-join" class="sf-btn" type="button" hidden>Entrar a su sala</button>
                 </div>
+                <!-- Más opciones con otra persona: eliminarla de tus amigos y reportarla -->
+                <button id="person-more" class="sf-more-btn person-more" type="button" aria-label="Más opciones" title="Más opciones" aria-haspopup="menu" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+                </button>
+                <div id="person-more-menu" class="sf-more-menu sf-card" popover role="menu">
+                  <button id="person-remove" class="sf-more-item sf-more-item--danger" type="button" role="menuitem">Eliminar amigo</button>
+                  <button id="person-report" class="sf-more-item sf-more-item--danger" type="button" role="menuitem">Reportar</button>
+                </div>
                 <p id="person-stats-hidden" class="sf-row-detail person-stats-hidden" hidden></p>
                 <dl id="person-stats" class="profile-hero-stats" aria-label="Su estudio">
                   <div>
@@ -1000,8 +1017,87 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
             </form>
             <p id="goals-filter-count" class="sf-row-detail" hidden></p>
             <ul id="goals-history-list" class="goals goals--history"></ul>
+            <nav id="goals-pager" class="goals-pager" aria-label="Páginas" hidden>
+              <button id="goals-prev" class="sf-btn sf-btn--sm calendar-arrow" type="button" aria-label="Anterior">‹</button>
+              <span id="goals-page" class="sf-row-detail"></span>
+              <button id="goals-next" class="sf-btn sf-btn--sm calendar-arrow" type="button" aria-label="Siguiente">›</button>
+            </nav>
             <p id="goals-history-empty" class="sf-row-detail" hidden>Todavía no tienes objetivos anteriores. Cuando uno termine, o lo pases aquí con la X, aparecerá con cómo resultó.</p>
             <p id="goals-history-error" class="sf-error" role="alert"></p>
+          </section>
+
+          <!-- El panel de administración: métricas, reportes, usuarios, registro y roles, según el rol (admin.ts) -->
+          <section class="menu-panel sf-panel admin-panel" data-panel="admin" aria-labelledby="admin-title" hidden>
+            <header class="sf-panel-head">
+              <div>
+                <h2 id="admin-title">Administración</h2>
+                <p id="admin-role"></p>
+              </div>
+            </header>
+            <div id="admin-tabs" class="sf-seg admin-tabs">
+              <button data-admin-tab="metrics" type="button">Métricas</button>
+              <button data-admin-tab="reports" type="button">Reportes</button>
+              <button data-admin-tab="users" type="button">Usuarios</button>
+              <button data-admin-tab="log" type="button">Registro</button>
+              <button data-admin-tab="roles" type="button">Roles</button>
+            </div>
+            <p id="admin-error" class="sf-error" role="alert"></p>
+
+            <div data-admin-view="metrics" class="admin-view" hidden>
+              <!-- Las métricas de cada día entre dos fechas, en CSV para Excel o Google Sheets -->
+              <form id="admin-export" class="admin-search admin-export">
+                <input id="admin-export-from" class="sf-input" type="date" aria-label="Desde" required />
+                <span aria-hidden="true">a</span>
+                <input id="admin-export-to" class="sf-input" type="date" aria-label="Hasta" required />
+                <button class="sf-btn" type="submit">Exportar CSV</button>
+              </form>
+              <div id="admin-metrics" class="admin-metrics"></div>
+            </div>
+
+            <div data-admin-view="reports" class="admin-view" hidden>
+              <div class="sf-seg admin-filter">
+                <button data-report-status="open" type="button">Abiertos</button>
+                <button data-report-status="resolved" type="button">Resueltos</button>
+                <button data-report-status="dismissed" type="button">Descartados</button>
+                <button data-report-status="all" type="button">Todos</button>
+              </div>
+              <ul id="admin-reports" class="admin-list"></ul>
+              <p id="admin-reports-empty" class="sf-row-detail" hidden>Sin reportes</p>
+            </div>
+
+            <div data-admin-view="users" class="admin-view" hidden>
+              <form id="admin-search" class="admin-search">
+                <input id="admin-search-input" class="sf-input" type="search" placeholder="Usuario, nombre o ID" aria-label="Buscar" />
+                <button class="sf-btn" type="submit">Buscar</button>
+              </form>
+              <div class="admin-users">
+                <ul id="admin-users" class="admin-list"></ul>
+                <div id="admin-user" class="admin-user sf-card" hidden></div>
+              </div>
+            </div>
+
+            <div data-admin-view="log" class="admin-view" hidden>
+              <ul id="admin-log" class="admin-list"></ul>
+            </div>
+
+            <div data-admin-view="roles" class="admin-view" hidden>
+              <form id="admin-roles-unlock" class="admin-search">
+                <input id="admin-roles-password" class="sf-input" type="password" placeholder="Clave de roles" aria-label="Clave de roles" autocomplete="off" required />
+                <button class="sf-btn sf-btn--primary" type="submit">Entrar</button>
+              </form>
+              <div id="admin-roles" hidden>
+                <form id="admin-role-form" class="admin-search">
+                  <input id="admin-role-username" class="sf-input" placeholder="Usuario" aria-label="Usuario" required />
+                  <select id="admin-role-select" class="sf-input" aria-label="Rol">
+                    <option value="admin">Admin</option>
+                    <option value="moderator">Moderador</option>
+                    <option value="analyst">Analista</option>
+                  </select>
+                  <button class="sf-btn sf-btn--primary" type="submit">Asignar</button>
+                </form>
+                <ul id="admin-staff" class="admin-list"></ul>
+              </div>
+            </div>
           </section>
 
           <section class="menu-panel sf-panel" data-panel="shop" aria-labelledby="shop-title" hidden>
@@ -1340,11 +1436,101 @@ Promedio = (nota₁ × %₁ + nota₂ × %₂ + …) ÷ (%₁ + %₂ + …)</spa
       <div class="agenda-form">
         <h2 id="goal-remove-title">¿Eliminar este objetivo?</h2>
         <p id="goal-remove-text"></p>
-        <p class="sf-row-detail">Se borra con su avance y no queda en tus objetivos anteriores. No se puede deshacer.</p>
+        <p class="sf-row-detail">No se puede deshacer</p>
         <p id="goal-remove-error" class="sf-error" role="alert"></p>
         <div class="agenda-form-actions">
           <button id="goal-remove-confirm" class="sf-btn sf-btn--danger" type="button">Eliminar</button>
           <button id="goal-remove-cancel" class="sf-btn" type="button">Cancelar</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Reportar a alguien (report.ts) -->
+    <dialog id="report-dialog" class="agenda-dialog sf-card" aria-labelledby="report-title">
+      <form id="report-form" class="agenda-form">
+        <h2 id="report-title"></h2>
+        <fieldset class="report-reasons">
+          <legend class="sf-label">Motivo</legend>
+          <label><input type="radio" name="report-reason" value="spam" required /> Spam</label>
+          <label><input type="radio" name="report-reason" value="abuse" /> Acoso u ofensas</label>
+          <label><input type="radio" name="report-reason" value="inappropriate" /> Nombre, foto o perfil inapropiado</label>
+          <label><input type="radio" name="report-reason" value="cheating" /> Trampa con el tiempo de estudio</label>
+          <label><input type="radio" name="report-reason" value="other" /> Otro</label>
+        </fieldset>
+        <label class="sf-field">
+          <span class="sf-label">Detalles</span>
+          <textarea id="report-details" class="sf-input" rows="3" maxlength="500" placeholder="Opcional"></textarea>
+        </label>
+        <p id="report-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button class="sf-btn sf-btn--danger" type="submit">Reportar</button>
+          <button id="report-cancel" class="sf-btn" type="button">Cancelar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Una advertencia del equipo, al entrar -->
+    <dialog id="warning-dialog" class="agenda-dialog sf-card" aria-labelledby="warning-title">
+      <div class="agenda-form">
+        <h2 id="warning-title">Advertencia</h2>
+        <p id="warning-text"></p>
+        <p class="sf-row-detail">Si se repite, tu cuenta puede ser suspendida.</p>
+        <div class="agenda-form-actions">
+          <button id="warning-ok" class="sf-btn sf-btn--primary" type="button">Entendido</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Sancionar desde el panel (admin.ts) -->
+    <dialog id="sanction-dialog" class="agenda-dialog sf-card" aria-labelledby="sanction-title">
+      <form id="sanction-form" class="agenda-form">
+        <h2 id="sanction-title"></h2>
+        <label id="sanction-days-field" class="sf-field">
+          <span class="sf-label">Duración</span>
+          <select id="sanction-days" class="sf-input">
+            <option value="1">1 día</option>
+            <option value="3">3 días</option>
+            <option value="7">7 días</option>
+            <option value="30">30 días</option>
+          </select>
+        </label>
+        <label class="sf-field">
+          <span class="sf-label">Motivo</span>
+          <textarea id="sanction-reason" class="sf-input" rows="3" maxlength="300"></textarea>
+        </label>
+        <p id="sanction-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button id="sanction-confirm" class="sf-btn sf-btn--danger" type="submit"></button>
+          <button id="sanction-cancel" class="sf-btn" type="button">Cancelar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Borrar una cuenta desde el panel (admin.ts): pide la clave de roles -->
+    <dialog id="delete-user-dialog" class="agenda-dialog sf-card" aria-labelledby="delete-user-title">
+      <form id="delete-user-form" class="agenda-form">
+        <h2 id="delete-user-title"></h2>
+        <p class="sf-row-detail">No se puede deshacer</p>
+        <label class="sf-field">
+          <span>Clave de roles</span>
+          <input id="delete-user-password" class="sf-input" type="password" autocomplete="off" required />
+        </label>
+        <p id="delete-user-error" class="sf-error" role="alert"></p>
+        <div class="agenda-form-actions">
+          <button class="sf-btn sf-btn--danger" type="submit">Borrar cuenta</button>
+          <button id="delete-user-cancel" class="sf-btn" type="button">Cancelar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Confirmar algo que no se deshace (moreMenu.ts): eliminar un amigo, borrar una carpeta -->
+    <dialog id="confirm-dialog" class="agenda-dialog sf-card" aria-labelledby="confirm-title">
+      <div class="agenda-form">
+        <h2 id="confirm-title"></h2>
+        <p id="confirm-detail" class="sf-row-detail"></p>
+        <div class="agenda-form-actions">
+          <button id="confirm-yes" class="sf-btn sf-btn--danger" type="button"></button>
+          <button id="confirm-no" class="sf-btn" type="button">Cancelar</button>
         </div>
       </div>
     </dialog>

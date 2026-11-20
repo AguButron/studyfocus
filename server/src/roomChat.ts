@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { describeMute } from './admin.ts'
 import type { Server, Socket } from 'socket.io'
 import { MAX_MESSAGE_LENGTH } from './chat.ts'
 import { allowAttempt } from './requests.ts'
@@ -63,6 +64,8 @@ export function setUpRoomChatSocket(io: Server, socket: Socket, getContext: () =
     const body = (raw ?? {}) as Record<string, unknown>
     const text = typeof body.body === 'string' ? body.body.trim() : ''
     if (!text) return reply({ error: 'Escribe un mensaje.' })
+    const mute = describeMute(context.accountId)
+    if (mute) return reply({ error: mute })
     if (text.length > MAX_MESSAGE_LENGTH) return reply({ error: `Usa hasta ${MAX_MESSAGE_LENGTH} caracteres.` })
     if (!allowAttempt(`room-chat:${context.accountId}`, MAX_MESSAGES)) {
       return reply({ error: 'Estás enviando demasiados mensajes. Espera unos minutos.' })

@@ -14,13 +14,18 @@ export const MUSIC_RECOMMENDATIONS: MusicRecommendation[] = [
     url: 'https://www.youtube.com/watch?v=h8UpC5JbMU0',
   },
   {
-    title: 'relax, everything will be okay',
-    channel: 'BeforePhantoms',
+    title: 'ㅤ',
+    channel: 'ㅤ',
     url: 'https://www.youtube.com/watch?v=MQK1gFcDJ-I&list=RDMQK1gFcDJ-I&start_radio=1',
   },
   {
-    title: 'relax, everything will be okay',
-    channel: 'BeforePhantoms',
-    url: 'https://www.youtube.com/watch?v=u1cV6nmXOsY&list=RDu1cV6nmXOsY&start_radio=1',
+    title: 'stop scrolling. your daily dose of background music is here.',
+    channel: 'Ksu4000',
+    url: 'https://www.youtube.com/watch?v=EG1NVBOtmEs&list=RDEG1NVBOtmEs&start_radio=1',
+  },
+  {
+    title: 'ㅤ',
+    channel: 'ㅤ',
+    url: 'https://www.youtube.com/watch?v=MQQqZ-N_qhY&list=RDMQQqZ-N_qhY&start_radio=1',
   },
 ]

@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Server, Socket } from 'socket.io'
 import { requireAccount } from './accounts.ts'
 import { hasDatabase, query } from './database.ts'
+import { getPresence } from './presence.ts'
+import { describeMute } from './admin.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 
 // El chat entre amigos. Los mensajes se guardan en la base y llegan al instante por la conexión de cada
@@ -19,9 +21,12 @@ export interface Message {
   to: string
   body: string
   createdAt: string
+  room: string | null // una invitación a esta sala
+  roomOpen: boolean // si esa sala sigue abierta: se borra de la base al quedar vacía
 }
 
-const MESSAGE_COLUMNS = `id::text, from_id::text AS "from", to_id::text AS "to", body, created_at AS "createdAt"`
+const MESSAGE_COLUMNS = `id::text, from_id::text AS "from", to_id::text AS "to", body, created_at AS "createdAt",
+  room_code AS room, EXISTS (SELECT 1 FROM rooms WHERE rooms.code = messages.room_code) AS "roomOpen"`
 
 // El grupo de Socket.IO de cada cuenta: ahí le llega todo lo del chat
 export const accountRoom = (accountId: string) => `cuenta:${accountId}`
@@ -130,6 +135,8 @@ export function setUpChatSocket(io: Server, socket: Socket, accountId: string) {
     const otherId = parseId(to)
     const text = typeof body === 'string' ? body.trim() : ''
     if (!otherId || !text) return reply({ error: 'Escribe un mensaje.' })
+    const mute = describeMute(accountId)
+    if (mute) return reply({ error: mute })
     if (text.length > MAX_MESSAGE_LENGTH) return reply({ error: `Usa hasta ${MAX_MESSAGE_LENGTH} caracteres.` })
     if (!allowAttempt(`chat:${accountId}`, MAX_MESSAGES)) {
       return reply({ error: 'Estás enviando demasiados mensajes. Espera unos minutos.' })
@@ -147,6 +154,30 @@ export function setUpChatSocket(io: Server, socket: Socket, accountId: string) {
     } catch (error) {
       console.error('No se pudo guardar el mensaje:', error)
       reply({ error: 'No se pudo enviar. Prueba de nuevo.' })
+    }
+  })
+
+  // Invitar a un amigo a la sala en que estás (no a estudiar solo, que es privada): llega como un mensaje
+  socket.on('chat:invite', async (raw: unknown, reply: unknown) => {
+    if (typeof reply !== 'function') return
+    const otherId = parseId((raw as Record<string, unknown> | null)?.to)
+    const code = getPresence(accountId)?.code
+    if (!otherId) return reply({ error: 'No encontrado.' })
+    if (!code) return reply({ error: 'Entra a una sala para invitar.' })
+    if (!allowAttempt(`chat:${accountId}`, MAX_MESSAGES)) {
+      return reply({ error: 'Estás enviando demasiados mensajes. Espera unos minutos.' })
+    }
+    try {
+      if (!(await areFriends(accountId, otherId))) return reply({ error: 'Solo puedes invitar a tus amigos.' })
+      const { rows } = await query<Message>(
+        `INSERT INTO messages (from_id, to_id, body, room_code) VALUES ($1, $2, '', $3) RETURNING ${MESSAGE_COLUMNS}`,
+        [accountId, otherId, code],
+      )
+      io.to([accountRoom(accountId), accountRoom(otherId)]).emit('chat:message', rows[0])
+      reply({ message: rows[0] })
+    } catch (error) {
+      console.error('No se pudo guardar la invitación:', error)
+      reply({ error: 'No se pudo invitar. Prueba de nuevo.' })
     }
   })
 

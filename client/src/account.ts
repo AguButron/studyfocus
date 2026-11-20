@@ -26,6 +26,9 @@ export interface Account {
   profile: Profile
   character: Character // cómo se ve su personaje, y con él su foto
   nextNameChange: string | null // desde cuándo se puede volver a cambiar el apodo
+  staff: string[] // qué puede hacer en el panel de administración; vacío si no es del equipo
+  mutedUntil: string | null
+  warning?: { id: string; reason: string | null } | null // una advertencia del equipo que aún no ve
 }
 
 // Solo mientras se desarrolla: se entra a ellas sin contraseña

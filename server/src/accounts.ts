@@ -6,6 +6,7 @@ import { describeCharacter, parseCharacter } from './character.ts'
 import { hasDatabase, query } from './database.ts'
 import { allowAttempt, createJsonHandler, readBody, RequestError, sendJson } from './requests.ts'
 import { findTestAccountId, listTestAccounts, TEST_USERNAME_PREFIX } from './testPeople.ts'
+import { getRole, listPermissions } from './roles.ts'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || null // vacía en el .env es lo mismo que no tenerla
 const COOKIE_NAME = 'studyfocus_account'
@@ -48,7 +49,8 @@ const TOO_MANY_ATTEMPTS = 'Demasiados intentos. Prueba de nuevo en unos minutos.
 const WRONG_LOGIN = 'El usuario o la contraseña no coinciden.'
 const PROFILE_COLUMNS = 'users.id, users.bio, users.studies, users.institution, users.country, users.character_look, users.stats_visibility'
 export const STATS_VISIBILITY = ['public', 'friends', 'private']
-const ACCOUNT_COLUMNS = `users.name, users.email, users.username, users.name_changed_at, ${PROFILE_COLUMNS}`
+const ACCOUNT_COLUMNS = `users.name, users.email, users.username, users.name_changed_at, ${PROFILE_COLUMNS},
+  users.role, users.muted_until, users.suspended_until, users.banned_at`
 
 export interface Account {
   id: string
@@ -62,6 +64,22 @@ export interface Account {
   country: string | null // código de dos letras, como CL
   character_look: unknown
   stats_visibility: string // quién ve tus estadísticas: STATS_VISIBILITY
+  role: string | null // en el equipo: roles.ts
+  muted_until: Date | null
+  suspended_until: Date | null
+  banned_at: Date | null
+}
+
+// "27-11-2026": solo números, igual en español y en inglés
+export const formatSanctionDate = (date: Date) => date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago' })
+
+// Por qué una cuenta no puede entrar ahora; nulo si puede
+export function describeBlock(account: Pick<Account, 'suspended_until' | 'banned_at'>) {
+  if (account.banned_at) return 'Tu cuenta fue bloqueada por no respetar las normas de StudyFocus.'
+  if (account.suspended_until && account.suspended_until > new Date()) {
+    return `Tu cuenta está suspendida hasta el ${formatSanctionDate(account.suspended_until)}.`
+  }
+  return null
 }
 
 type PublicPerson = Pick<Account, 'id' | 'name' | 'username' | 'bio' | 'studies' | 'institution' | 'country' | 'character_look' | 'stats_visibility'>
@@ -114,6 +132,8 @@ function describeAccount(account: Account) {
     profile: describeProfile(account),
     character: describeCharacter(account.character_look, account.id),
     nextNameChange: nextNameChange && nextNameChange > new Date() ? nextNameChange.toISOString() : null,
+    staff: listPermissions(getRole(account)), // qué puede hacer en el panel de administración; vacío si no es del equipo
+    mutedUntil: account.muted_until && account.muted_until > new Date() ? account.muted_until.toISOString() : null,
   }
 }
 
@@ -260,13 +280,16 @@ export async function findAccount(cookieHeader: string | undefined): Promise<Acc
   const { rows } = await query<Account>(
     `SELECT ${ACCOUNT_COLUMNS} FROM account_sessions
      JOIN users ON users.id = account_sessions.user_id
-     WHERE token_hash = $1 AND expires_at > now()`,
+     WHERE token_hash = $1 AND expires_at > now()
+       AND users.banned_at IS NULL AND (users.suspended_until IS NULL OR users.suspended_until <= now())`,
     [hashToken(token)],
   )
   return rows[0] ?? null
 }
 
 async function startSession(request: IncomingMessage, response: ServerResponse, account: Account) {
+  const block = describeBlock(account)
+  if (block) throw new RequestError(403, block)
   await query('DELETE FROM account_sessions WHERE expires_at <= now()')
 
   const token = randomBytes(KEY_SIZE).toString('hex')
@@ -382,16 +405,33 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
 
   if (route === 'GET /api/account') {
     const account = await findAccount(request.headers.cookie)
+    // Una advertencia del equipo que todavía no ha visto: se le muestra al entrar
+    const warnings = account
+      ? (await query<{ id: string; reason: string | null }>(
+          `SELECT id::text, reason FROM admin_actions WHERE target_id = $1 AND action = 'warning' AND seen_at IS NULL
+           ORDER BY created_at LIMIT 1`,
+          [account.id],
+        )).rows
+      : []
     sendJson(response, 200, {
       isAvailable: hasDatabase(),
       googleClientId: hasDatabase() ? GOOGLE_CLIENT_ID : null,
-      account: account ? describeAccount(account) : null,
+      account: account ? { ...describeAccount(account), warning: warnings[0] ?? null } : null,
       testAccounts: listTestAccounts(), // nulo fuera del modo de desarrollo
     })
     return
   }
 
   // El apodo se cambia a lo más una vez cada 30 días. El primer cambio no espera.
+  if (route === 'POST /api/account/warning-seen') {
+    const account = await requireAccount(request)
+    const id = (await readBody(request)).id
+    if (typeof id !== 'string' || !/^\d{1,19}$/.test(id)) throw new RequestError(400, 'Formato no válido.')
+    await query(`UPDATE admin_actions SET seen_at = now() WHERE id = $1 AND target_id = $2 AND action = 'warning'`, [id, account.id])
+    sendJson(response, 200, {})
+    return
+  }
+
   if (route === 'POST /api/account/name') {
     const account = await requireAccount(request)
 

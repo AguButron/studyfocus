@@ -38,6 +38,12 @@ const removeDialog = document.querySelector<HTMLDialogElement>('#goal-remove-dia
 const removeText = document.querySelector<HTMLParagraphElement>('#goal-remove-text')!
 const removeError = document.querySelector<HTMLParagraphElement>('#goal-remove-error')!
 const historyList = document.querySelector<HTMLUListElement>('#goals-history-list')!
+const pager = document.querySelector<HTMLElement>('#goals-pager')!
+const pageText = document.querySelector<HTMLSpanElement>('#goals-page')!
+const prevButton = document.querySelector<HTMLButtonElement>('#goals-prev')!
+const nextButton = document.querySelector<HTMLButtonElement>('#goals-next')!
+const PAGE_SIZE = 10 // objetivos anteriores por página
+let page = 0
 const historyEmpty = document.querySelector<HTMLParagraphElement>('#goals-history-empty')!
 const historyError = document.querySelector<HTMLParagraphElement>('#goals-history-error')!
 const totalText = document.querySelector<HTMLElement>('#goals-total')!
@@ -138,7 +144,13 @@ function renderHistory() {
   if (orderFilter.value === 'oldest') shown.reverse()
   else if (orderFilter.value === 'hours') shown.sort((a, b) => b.minutes - a.minutes)
   else if (orderFilter.value === 'progress') shown.sort((a, b) => share(b) - share(a))
-  historyList.replaceChildren(...shown.map(createHistoryRow))
+  const pages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE))
+  page = Math.min(page, pages - 1)
+  historyList.replaceChildren(...shown.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(createHistoryRow))
+  pager.hidden = pages === 1
+  pageText.textContent = `${page + 1} / ${pages}`
+  prevButton.disabled = page === 0
+  nextButton.disabled = page === pages - 1
   historyEmpty.hidden = history.length > 0
   filtersForm.hidden = history.length === 0
   filterCount.hidden = history.length === 0
@@ -216,9 +228,8 @@ function createHistoryRow(goal: Goal) {
   bar.append(fill)
   const detail = document.createElement('span')
   detail.className = 'goal-detail'
-  detail.textContent = isDone
-    ? `Cumplido ✓ · ${formatDuration(studied)}`
-    : `No alcanzado: ${formatDuration(studied)} de ${formatDuration(target)} (${Math.floor((studied / target) * 100)} %)`
+  detail.textContent = isDone ? 'Cumplido ✓' : `${formatDuration(studied)} · ${Math.floor((studied / target) * 100)} %`
+  detail.title = `${formatDuration(studied)} / ${formatDuration(target)}`
   box.append(head, bar, detail)
   row.append(box)
   return row
@@ -380,7 +391,18 @@ export async function openGoalDialog(sectionId: string | null = null) {
 }
 
 export function setUpGoals() {
-  filtersForm.addEventListener('change', renderHistory)
+  filtersForm.addEventListener('change', () => {
+    page = 0
+    renderHistory()
+  })
+  prevButton.addEventListener('click', () => {
+    page--
+    renderHistory()
+  })
+  nextButton.addEventListener('click', () => {
+    page++
+    renderHistory()
+  })
   filtersForm.addEventListener('submit', (event) => event.preventDefault())
   hoursInput.addEventListener('input', () => hoursInput.setCustomValidity(''))
   form.addEventListener('submit', async (event) => {

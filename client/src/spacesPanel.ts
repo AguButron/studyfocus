@@ -2,6 +2,7 @@
 // con sus notas, su promedio y lo estudiado
 import { kindName, loadSectionItems, reorderSectionItems, todayText, updateItem, type AgendaItem } from './agenda'
 import { notifyAgendaChange, onAgendaChange, openAgendaDialog } from './agendaDialog'
+import { askConfirm, setUpMoreMenu } from './moreMenu'
 import {
   archiveSpace,
   computeAverage,
@@ -18,6 +19,7 @@ import {
   ensureSpaces,
   findSection,
   reorderSections,
+  reorderSpaces,
   formatGrade,
   roundGrade,
   getColors,
@@ -521,6 +523,53 @@ function createSpaceCard(space: Space) {
   return card
 }
 
+// En la lista de carpetas: la tarjeta, la manilla para ordenarla (las activas) y el menú de 3 puntos
+function createSpaceItem(space: Space, canReorder: boolean) {
+  const item = document.createElement('div')
+  item.className = 'space-card-item'
+  item.dataset.id = space.id
+  const actions = document.createElement('div')
+  actions.className = 'space-card-actions'
+  if (canReorder) {
+    const handle = createHandle(space.name)
+    makeDraggable(item, handle, spacesList, saveSpaceOrder)
+    actions.append(handle)
+  }
+
+  const more = document.createElement('button')
+  more.type = 'button'
+  more.className = 'sf-more-btn'
+  more.title = 'Más opciones'
+  more.setAttribute('aria-label', `Más opciones de ${space.name}`)
+  more.setAttribute('aria-haspopup', 'menu')
+  more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>'
+  const menu = document.createElement('div')
+  menu.className = 'sf-more-menu sf-card'
+  menu.popover = 'auto'
+  menu.setAttribute('role', 'menu')
+  const option = (label: string, action: () => void, isDanger = false) => {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = isDanger ? 'sf-more-item sf-more-item--danger' : 'sf-more-item'
+    button.setAttribute('role', 'menuitem')
+    button.textContent = label
+    button.addEventListener('click', action)
+    return button
+  }
+  const showError = (error: string | null) => (errorText.textContent = error ?? '')
+  menu.append(
+    option('Editar', () => openSpaceDialog(space)),
+    option(space.archived ? 'Desarchivar' : 'Archivar', async () => showError(await archiveSpace(space.id, !space.archived))),
+    option('Borrar', async () => {
+      if (await askConfirm(`¿Borrar «${space.name}»?`, 'Borrar', 'No se puede deshacer')) showError(await deleteSpace(space.id))
+    }, true),
+  )
+  setUpMoreMenu(more, menu)
+  actions.append(more)
+  item.append(createSpaceCard(space), actions, menu)
+  return item
+}
+
 // ── Una carpeta abierta ────────────────────────────────────────────────
 
 function showView(view: HTMLElement) {
@@ -576,8 +625,8 @@ function renderSpaces() {
   const spaces = getSpaces()
   const active = spaces.filter((space) => !space.archived)
   const archived = spaces.filter((space) => space.archived)
-  spacesList.replaceChildren(...active.map(createSpaceCard))
-  archivedList.replaceChildren(...archived.map(createSpaceCard))
+  spacesList.replaceChildren(...active.map((space) => createSpaceItem(space, active.length > 1)))
+  archivedList.replaceChildren(...archived.map((space) => createSpaceItem(space, false)))
   archivedBox.hidden = archived.length === 0
   emptyText.hidden = spaces.length > 0
   renderRecentSpace()
@@ -602,6 +651,16 @@ async function saveItemOrder(before: string[]) {
   }
 }
 
+async function saveSpaceOrder(before: string[]) {
+  const ids = readOrder(spacesList)
+  if (ids.join() === before.join()) return
+  const error = await reorderSpaces(ids)
+  if (error) {
+    errorText.textContent = error
+    renderSpaces() // vuelve al orden guardado
+  }
+}
+
 async function saveSectionOrder(before: string[]) {
   const ids = readOrder(folderSections)
   if (!openSpaceId || ids.join() === before.join()) return
@@ -614,27 +673,62 @@ async function saveSectionOrder(before: string[]) {
 }
 
 // Se toma de la manilla: con el mouse o el dedo se arrastra, y con el teclado se mueve con las flechas.
-// Sirve en una lista y en una grilla: al pasar sobre otra fila, se pone antes o después según hacia dónde va
+// Sirve en una lista y en una grilla: al pasar sobre otra fila, se pone antes o después según hacia dónde va.
+// La que se arrastra se levanta y sigue al puntero; las demás se corren con una animación, y al soltarla cae en su lugar
 function makeDraggable(row: HTMLElement, handle: HTMLButtonElement, list: HTMLElement, save: (before: string[]) => void) {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   handle.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return
     event.preventDefault()
     const before = readOrder(list)
+    const start = row.getBoundingClientRect()
+    const grab = { x: event.clientX - start.left, y: event.clientY - start.top } // dónde se tomó, dentro de la fila
+    let offset = { x: 0, y: 0 } // cuánto está corrida de su lugar en la lista
+    row.style.transition = 'none'
     row.setAttribute('data-dragging', '')
 
+    // Sigue al puntero: su lugar en la lista menos dónde está el puntero
+    const follow = (x: number, y: number) => {
+      const rect = row.getBoundingClientRect()
+      offset = { x: x - grab.x - (rect.left - offset.x), y: y - grab.y - (rect.top - offset.y) }
+      row.style.translate = `${offset.x}px ${offset.y}px`
+    }
+
+    // Las demás se mueven desde donde estaban hasta su nuevo lugar
+    const slideOthers = (change: () => void) => {
+      const others = [...list.children].filter((child) => child !== row) as HTMLElement[]
+      const old = new Map(others.map((other) => [other, other.getBoundingClientRect()]))
+      change()
+      if (reduceMotion.matches) return
+      for (const other of others) {
+        const was = old.get(other)!
+        const now = other.getBoundingClientRect()
+        if (was.left === now.left && was.top === now.top) continue
+        other.animate([{ translate: `${was.left - now.left}px ${was.top - now.top}px` }, { translate: '0 0' }], { duration: 180, easing: 'ease-out' })
+      }
+    }
+
     const move = (moveEvent: PointerEvent) => {
+      row.style.visibility = 'hidden' // para ver qué hay debajo del puntero, no la fila que se arrastra
       let target = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)
+      row.style.visibility = ''
       while (target && target.parentElement !== list) target = target.parentElement
-      if (!target || target === row) return
-      const children = [...list.children]
-      const isForward = children.indexOf(target) > children.indexOf(row)
-      list.insertBefore(row, isForward ? target.nextSibling : target)
+      // Una que se está corriendo todavía puede pasar bajo el puntero: se espera a que llegue, si no se devolverían
+      if (target && target !== row && (target as HTMLElement).getAnimations().length === 0) {
+        const children = [...list.children]
+        const isForward = children.indexOf(target) > children.indexOf(row)
+        slideOthers(() => list.insertBefore(row, isForward ? target!.nextSibling : target))
+      }
+      follow(moveEvent.clientX, moveEvent.clientY)
     }
     // En toda la ventana: el puntero sale de la manilla apenas se empieza a mover
     const end = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', end)
       window.removeEventListener('pointercancel', end)
+      // Cae en su lugar
+      row.style.transition = reduceMotion.matches ? 'none' : 'translate 180ms ease-out, scale 180ms ease-out, rotate 180ms ease-out'
+      row.style.translate = ''
       row.removeAttribute('data-dragging')
       save(before)
     }

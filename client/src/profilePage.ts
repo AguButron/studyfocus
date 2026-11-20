@@ -5,10 +5,12 @@ import { callApi } from './api'
 import type { Character } from './character'
 import { createCharacterPhoto } from './character'
 import { getCountryName, getFlag } from './countries'
-import { describePresence, type Friend } from './friends'
+import { describePresence, refresh as refreshFriends, type Friend } from './friends'
 import { formatDuration, renderChart } from './stats'
 import type { StatsVisibility } from './account'
 import { LOCALE } from './i18n'
+import { askConfirm, setUpMoreMenu } from './moreMenu'
+import { openReport } from './report'
 
 const PARAM = 'perfil'
 
@@ -42,6 +44,9 @@ const sinceText = document.querySelector<HTMLSpanElement>('#person-since')!
 const friendButton = document.querySelector<HTMLButtonElement>('#person-friend')!
 const cancelButton = document.querySelector<HTMLButtonElement>('#person-friend-cancel')!
 const joinButton = document.querySelector<HTMLButtonElement>('#person-join')!
+const moreButton = document.querySelector<HTMLButtonElement>('#person-more')!
+const moreMenu = document.querySelector<HTMLDivElement>('#person-more-menu')!
+const removeButton = document.querySelector<HTMLButtonElement>('#person-remove')!
 const messageText = document.querySelector<HTMLParagraphElement>('#person-message')!
 const aboutTitle = document.querySelector<HTMLHeadingElement>('#person-about-title')!
 const studiesText = document.querySelector<HTMLSpanElement>('#person-studies')!
@@ -130,6 +135,8 @@ function showRelation(person: PersonProfile) {
   friendButton.disabled = person.relation === 'sent' || person.relation === 'friend'
   friendButton.classList.toggle('sf-btn--primary', !friendButton.disabled)
   cancelButton.hidden = person.relation !== 'sent'
+  moreButton.hidden = person.relation === 'self'
+  removeButton.hidden = person.relation !== 'friend'
 }
 
 function render(person: PersonProfile) {
@@ -224,6 +231,7 @@ async function changeFriendship(path: string, body: Record<string, string>, done
     return
   }
   messageText.textContent = done
+  refreshFriends() // la lista de amigos también cambia al tiro
   const updated = await fetchProfile(person.username)
   if (current === person && !('error' in updated)) render(updated)
 }
@@ -238,6 +246,16 @@ export function setUpProfilePage(pageActions: typeof actions) {
   })
   cancelButton.addEventListener('click', () => {
     if (current) changeFriendship('cancel', { id: current.id }, 'Cancelaste la solicitud.')
+  })
+  setUpMoreMenu(moreButton, moreMenu)
+  document.querySelector('#person-report')!.addEventListener('click', () => {
+    if (current) openReport(current)
+  })
+  removeButton.addEventListener('click', async () => {
+    const person = current
+    if (person && (await askConfirm(`¿Eliminar a ${person.name} de tus amigos?`, 'Eliminar')) && current === person) {
+      changeFriendship('remove', { id: person.id }, `Ya no eres amigo de ${person.name}.`)
+    }
   })
   joinButton.addEventListener('click', () => {
     const code = current?.presence?.code

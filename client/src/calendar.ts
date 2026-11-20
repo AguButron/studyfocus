@@ -68,7 +68,7 @@ function acceptDrops(target: HTMLElement, date: string) {
       return
     }
     notifyAgendaChange()
-    showUndo(`«${item.title}» pasó al ${dayMonthFormat.format(fromDateText(date))}.`, async () => {
+    showUndo(`«${item.title}» pasó al ${formatCapitalized(dayMonthFormat, fromDateText(date))}.`, async () => {
       const restored = await moveItem(item, item.date)
       if (!restored.error) notifyAgendaChange()
       return restored.error
@@ -87,6 +87,14 @@ function loadView(): View {
 
 function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+// El día de la semana y el mes con mayúscula ("Viernes, 20 de Noviembre")
+function formatCapitalized(format: Intl.DateTimeFormat, date: Date) {
+  return format
+    .formatToParts(date)
+    .map((part) => (part.type === 'month' || part.type === 'weekday' ? capitalize(part.value) : part.value))
+    .join('')
 }
 
 // Lo que se ve: la semana de lunes a domingo, o el mes completo con las semanas de sus bordes
@@ -112,13 +120,13 @@ function describeRange(from: string, to: string) {
   const end = fromDateText(to)
   const year = end.getFullYear()
   if (start.getMonth() === end.getMonth()) {
-    return `${start.getDate()} al ${dayMonthFormat.format(end)} de ${year}`
+    return `${start.getDate()} al ${formatCapitalized(dayMonthFormat, end)} de ${year}`
   }
-  return `${dayMonthFormat.format(start)} al ${dayMonthFormat.format(end)} de ${year}`
+  return `${formatCapitalized(dayMonthFormat, start)} al ${formatCapitalized(dayMonthFormat, end)} de ${year}`
 }
 
 export function describeToday() {
-  return capitalize(longFormat.format(new Date()))
+  return formatCapitalized(longFormat, new Date())
 }
 
 function createChip(item: AgendaItem, isCompact: boolean) {
@@ -345,7 +353,7 @@ function showDayPopover(cell: HTMLElement, date: string, items: AgendaItem[]) {
   popover.popover = 'auto'
   popover.className = 'calendar-day-popover sf-card'
   const title = document.createElement('strong')
-  title.textContent = capitalize(longFormat.format(fromDateText(date)))
+  title.textContent = formatCapitalized(longFormat, fromDateText(date))
   const list = document.createElement('div')
   list.className = 'calendar-day-items'
   list.append(...items.map((item) => createChip(item, false)))

@@ -154,6 +154,8 @@ export const deleteSpace = (id: string) => change('/api/espacios/borrar', { id }
 export const createSection = (spaceId: string, draft: SectionDraft) => change('/api/apartados', { spaceId, ...draft })
 export const updateSection = (id: string, draft: SectionDraft) => change('/api/apartados/editar', { id, ...draft })
 export const deleteSection = (id: string) => change('/api/apartados/borrar', { id })
+// El orden de las carpetas, como quedaron al arrastrarlas
+export const reorderSpaces = (ids: string[]) => change('/api/espacios/ordenar', { ids })
 // El orden de los apartados de una carpeta, como quedaron al arrastrarlos
 export const reorderSections = (spaceId: string, ids: string[]) => change('/api/apartados/ordenar', { spaceId, ids })
 export const updateRules = (id: string, rules: Rule[]) => change('/api/apartados/reglas', { id, rules })

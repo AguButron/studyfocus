@@ -213,7 +213,7 @@ export function parseSection(body: Record<string, unknown>) {
 async function listSpaces(accountId: string) {
   const [spaces, sections, seconds] = await Promise.all([
     query<{ id: string; kind: string; name: string; archived: boolean }>(
-      `SELECT ${SPACE_COLUMNS} FROM spaces WHERE user_id = $1 ORDER BY archived_at IS NOT NULL, created_at DESC`,
+      `SELECT ${SPACE_COLUMNS} FROM spaces WHERE user_id = $1 ORDER BY archived_at IS NOT NULL, position NULLS FIRST, created_at DESC`,
       [accountId],
     ),
     query<SectionRow>(`SELECT ${SECTION_COLUMNS} FROM sections WHERE user_id = $1 ORDER BY position NULLS LAST, created_at`, [accountId]),
@@ -388,6 +388,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
        FROM unnest($3::bigint[]) WITH ORDINALITY AS ordered (id, position)
        WHERE sections.id = ordered.id AND sections.space_id = $2 AND sections.user_id = $1`,
       [account.id, parseId(body.spaceId), ids],
+    ))
+  } else if (route === 'POST /api/espacios/ordenar') {
+    // El orden de las carpetas, como quedaron al arrastrarlas
+    const ids = Array.isArray(body.ids) ? body.ids : null
+    if (!ids || ids.length > MAX_SPACES || !ids.every((value) => typeof value === 'string' && /^\d{1,19}$/.test(value))) {
+      throw new RequestError(400, 'Formato no válido.')
+    }
+    ;({ rowCount } = await query(
+      `UPDATE spaces SET position = ordered.position - 1
+       FROM unnest($2::bigint[]) WITH ORDINALITY AS ordered (id, position)
+       WHERE spaces.id = ordered.id AND spaces.user_id = $1`,
+      [account.id, ids],
     ))
   } else if (route === 'POST /api/apartados/borrar') {
     ;({ rowCount } = await query('DELETE FROM sections WHERE id = $1 AND user_id = $2', [parseId(body.id), account.id]))

@@ -8,6 +8,7 @@ import { findRemotePlayerAt, getRemotePlayerPosition, getRemotePlayerState } fro
 import { getCountryName, getFlag } from './countries'
 import { camera, getRenderer } from './scene'
 import { profileUrl } from './profilePage'
+import { openReport } from './report'
 
 const UPDATE_INTERVAL = 500 // milisegundos
 const ACTIVITY_NAMES: Record<ActivityKind, string> = {
@@ -24,6 +25,11 @@ const statusText = document.querySelector<HTMLSpanElement>('#player-card-status'
 const activityText = document.querySelector<HTMLSpanElement>('#player-card-activity')!
 const studiesText = document.querySelector<HTMLSpanElement>('#player-card-studies')!
 const bioText = document.querySelector<HTMLSpanElement>('#player-card-bio')!
+const reportButton = document.querySelector<HTMLButtonElement>('#player-card-report')!
+reportButton.addEventListener('click', () => {
+  const state = selectedId ? getRemotePlayerState(selectedId) : null
+  if (state?.username) openReport({ username: state.username, name: state.nickname })
+})
 
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
@@ -59,6 +65,7 @@ function renderCard() {
   // Sin nombre de usuario no hay página de perfil
   if (state.username) nameText.href = profileUrl(state.username)
   else nameText.removeAttribute('href')
+  reportButton.hidden = !state.username
   // El ramo que está estudiando, con su color
   const subject = state.subject
   subjectText.hidden = !subject

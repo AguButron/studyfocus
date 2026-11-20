@@ -2,9 +2,13 @@
 // sale en una ventana a la izquierda de la pestaña. En el menú de escritorio va a la derecha, plegada: una franja
 // con las fotos de los conectados que se abre encima del contenido al pasar el mouse. En la sala y en el
 // celular es flotante: se abre con un botón, encima de lo demás, y se cierra con ✕.
-import { closeChat, getOpenChatId, markRead, openChat, refreshChatHeader, setUpChat } from './chat'
+import { closeChat, getOpenChatId, markRead, openChat, refreshChatHeader, sendInvite, setUpChat } from './chat'
+import { getSharedRoomCode } from './roomChat'
+import { showPersonPanel } from './menu'
+import { setUpMoreMenu } from './moreMenu'
+import { profileUrl } from './profilePage'
 import { createCharacterPhoto } from './character'
-import { describePresence, getUnreadTotal, onFriendsChange, setChatOpener, type Friend, type PastChat, type Person } from './friends'
+import { describePresence, enterRoom, getUnreadTotal, onFriendsChange, setChatOpener, type Friend, type PastChat, type Person } from './friends'
 
 const COLLAPSE_DELAY = 250 // milisegundos: alcanza para pasar el mouse de la pestaña al chat sin que se pliegue
 const narrowScreen = window.matchMedia('(max-width: 720px)') // en el celular el menú no tiene la columna de la derecha
@@ -96,6 +100,7 @@ function showRoomButtonsExpanded(expanded: boolean) {
 
 // El botón de Amigos en la sala, o "Escribir" en el celular
 export function showDrawer() {
+  if (lastFriends.length > 0) render(lastFriends, lastPastChats) // el botón Invitar depende de si estás en una sala
   if (isFloating()) drawer.hidden = false
   else setOpen(true)
   placePopover()
@@ -190,13 +195,35 @@ function createOnlinePhoto(friend: Friend) {
   return item
 }
 
+// Su perfil: en el menú se abre ahí mismo; en una sala, en otra pestaña para no cortar la sesión
+function openPersonProfile(username: string) {
+  if (isInRoom) {
+    window.open(profileUrl(username), '_blank', 'noopener')
+    return
+  }
+  closeChat() // si no, la ventana del chat tapa el perfil
+  showPersonPanel(username)
+}
+
+function createMenuItem(label: string, action: () => void) {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'sf-more-item'
+  button.setAttribute('role', 'menuitem')
+  button.textContent = label
+  button.addEventListener('click', action)
+  return button
+}
+
+// Una persona de la lista: su foto y nombre abren su perfil; los 3 puntos, unirse a su sala, invitarla o el chat
 function createRow(person: Friend | PastChat, detail: { text: string; kind: string } | null) {
   const item = document.createElement('li')
+  item.className = 'drawer-friend-item'
   const button = document.createElement('button')
   button.type = 'button'
   button.className = 'drawer-friend'
   button.dataset.personId = person.id
-  button.title = `Escribirle a ${person.name}`
+  button.title = person.username ? `Ver el perfil de ${person.name}` : `Escribirle a ${person.name}`
   button.toggleAttribute('data-unread', person.unread > 0)
   button.toggleAttribute('data-active', getOpenChatId() === person.id)
   button.append(createCharacterPhoto(person.character, 'character-photo--small'))
@@ -215,15 +242,38 @@ function createRow(person: Friend | PastChat, detail: { text: string; kind: stri
   }
   button.append(text)
   if (person.unread > 0) button.append(createUnreadBadge(person.unread))
+  // Las cuentas de antes sin nombre de usuario no tienen perfil: se abre el chat
+  button.addEventListener('click', () => (person.username ? openPersonProfile(person.username) : showChat(person, button)))
 
-  button.addEventListener('click', () => showChat(person, button))
-  item.append(button)
+  const more = document.createElement('button')
+  more.type = 'button'
+  more.className = 'sf-more-btn drawer-more'
+  more.title = 'Más opciones'
+  more.setAttribute('aria-label', `Más opciones con ${person.name}`)
+  more.setAttribute('aria-haspopup', 'menu')
+  more.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>'
+  const menu = document.createElement('div')
+  menu.className = 'sf-more-menu sf-card'
+  menu.popover = 'auto'
+  menu.setAttribute('role', 'menu')
+  const friendCode = 'presence' in person ? person.presence?.code : null
+  const roomCode = getSharedRoomCode()
+  // Unirse a su sala solo desde el menú: desde una sala no se cambia a otra
+  if (friendCode && !isInRoom) menu.append(createMenuItem('Unirme', () => enterRoom(friendCode)))
+  if (roomCode && 'presence' in person && friendCode !== roomCode) {
+    menu.append(createMenuItem('Invitar', () => sendInvite(person.id, () => showChat(person, button))))
+  }
+  menu.append(createMenuItem('Chat', () => showChat(person, button)))
+  setUpMoreMenu(more, menu)
+  item.append(button, more, menu)
   return item
 }
 
 function render(friends: Friend[], pastChats: PastChat[]) {
   lastFriends = friends
   lastPastChats = pastChats
+  // Con el menú de 3 puntos abierto no se redibuja (se cerraría); se dibuja en la próxima consulta
+  if (drawer.querySelector('.sf-more-menu:popover-open')) return
   const online = friends.filter((friend) => friend.presence)
   const offline = friends.filter((friend) => !friend.presence)
 

@@ -16,8 +16,10 @@ import { refreshStats, setUpStatsPeople, setUpStatsRange, setUpSummary, showSave
 import { loadHistory } from './goals'
 import { showNotice } from './undoToast'
 import { LOCALE } from './i18n'
+import { refreshAdmin, setStaff } from './admin'
+import { callApi } from './api'
 
-type Panel = 'home' | 'schedule' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'settings' | 'person' | 'goals'
+type Panel = 'home' | 'schedule' | 'calendar' | 'spaces' | 'rooms' | 'friends' | 'stats' | 'shop' | 'profile' | 'settings' | 'person' | 'goals' | 'admin'
 
 interface MenuActions {
   createRoom(kind: string, design: string | null): void
@@ -41,6 +43,7 @@ const PANEL_PATHS: Record<Panel, string> = {
   settings: '/ajustes',
   person: '/perfil',
   goals: '/objetivos',
+  admin: '/admin',
 }
 const NAV_KEY = 'studyfocus.navCollapsed'
 
@@ -61,7 +64,7 @@ const previewView = document.querySelector<HTMLDivElement>('#room-preview-view')
 const previewPlan = document.querySelector<HTMLDivElement>('#room-preview-plan')!
 const previewName = document.querySelector<HTMLElement>('#room-preview-name')!
 const previewText = document.querySelector<HTMLSpanElement>('#room-preview-text')!
-const roomsPanel = document.querySelector<HTMLElement>('[data-panel="rooms"]')!
+const roomsPanel = document.querySelector<HTMLElement>('section[data-panel="rooms"]')! // no el botón del menú, que también lo lleva
 const roomsError = document.querySelector<HTMLParagraphElement>('#rooms-error')!
 const joinForm = document.querySelector<HTMLFormElement>('#join-form')!
 const codeInput = document.querySelector<HTMLInputElement>('#code')!
@@ -134,7 +137,7 @@ async function showRoomPreview() {
     preview?.pauseRoomPreview()
     return
   }
-  if (roomsPanel.hidden) return // se arma al abrir Estudiar
+  if (!roomsPanel.checkVisibility()) return // se arma al abrir Estudiar: oculto, el lienzo quedaría de 0×0
   preview ??= await import('./voxel/roomPreview')
   preview.showRoomPreview(previewView, design.id)
 }
@@ -171,6 +174,8 @@ function showPanel(panel: Panel, mode: 'push' | 'replace' | 'none' = 'push') {
     refreshSpacesPanel() // el horario se arma con las carpetas al día
   } else if (panel === 'goals') {
     loadHistory()
+  } else if (panel === 'admin') {
+    refreshAdmin()
 
   }
   // La vista previa de la sala dibuja solo mientras se ve Estudiar
@@ -262,6 +267,7 @@ async function chooseColor(color: string) {
 }
 
 function showAccount(account: Account) {
+  setStaff(account.staff ?? [])
   userNameText.textContent = account.name
   showCharacter(account.character)
   ownUsername = account.username
@@ -443,13 +449,33 @@ export function showRoomsError(message: string) {
   roomsError.textContent = message
 }
 
+// Una advertencia del equipo: se muestra una vez, y al cerrarla (Entendido o Esc) queda vista
+function showWarning(warning: { id: string; reason: string | null }) {
+  const dialog = document.querySelector<HTMLDialogElement>('#warning-dialog')!
+  const ok = document.querySelector<HTMLButtonElement>('#warning-ok')!
+  document.querySelector('#warning-text')!.textContent = warning.reason ?? ''
+  const markSeen = () => {
+    dialog.close()
+    ok.removeEventListener('click', markSeen)
+    dialog.removeEventListener('cancel', markSeen)
+    callApi('/api/account/warning-seen', { id: warning.id })
+  }
+  ok.addEventListener('click', markSeen)
+  dialog.addEventListener('cancel', markSeen)
+  dialog.showModal()
+}
+
 export function showMenu(account: Account) {
   showAccount(account)
   showRoomKinds()
   showSavedSummary()
+  if (account.warning) {
+    showWarning(account.warning)
+    account.warning = null // al volver al menú en esta visita no se muestra otra vez
+  }
+  menu.hidden = false // antes de elegir la sección: la vista previa de Estudiar solo se arma si se ve
   showPanel(showSummaryFirst() ? 'rooms' : panelFromPath(), 'replace')
   startFriends()
-  menu.hidden = false
 }
 
 // La página del perfil de alguien, por su nombre de usuario

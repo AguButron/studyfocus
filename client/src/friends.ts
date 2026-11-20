@@ -249,6 +249,9 @@ function render() {
     state.received.length > 0 ? `${state.received.length} ${state.received.length === 1 ? 'solicitud' : 'solicitudes'}` : '',
     getUnreadTotal() > 0 ? `${getUnreadTotal()} sin leer` : '',
   ].filter(Boolean).join(' · ')
+  // En la pestaña: "(3) StudyFocus" con mensajes sin leer
+  const unread = getUnreadTotal()
+  document.title = (unread > 0 ? `(${unread}) ` : '') + document.title.replace(/^\(\d+\) /, '')
 
   receivedSection.hidden = state.received.length === 0
   receivedList.replaceChildren(
@@ -268,7 +271,7 @@ function render() {
       buttons.unshift(createButton(friend.unread > 0 ? `Escribir · ${friend.unread}` : 'Escribir', null, () => openChat(friend)))
       const code = friend.presence?.code
       if (code) {
-        buttons.unshift(createButton('Entrar', null, () => joinRoom(code)))
+        buttons.unshift(createButton('Unirme', null, () => joinRoom(code)))
       }
       return createPersonItem(friend, presence.text, presence.kind, buttons, friend.presence)
     }),
@@ -293,7 +296,7 @@ async function change(path: string, body: unknown, successMessage = '') {
   render()
 }
 
-async function refresh() {
+export async function refresh() {
   const next = await request('')
   if (next) {
     state = next
@@ -313,6 +316,11 @@ async function copyCode() {
   setTimeout(() => {
     copyCodeButton.textContent = 'Copiar'
   }, COPY_FEEDBACK_TIME)
+}
+
+// Entrar a la sala de una invitación del chat
+export function enterRoom(code: string) {
+  joinRoom(code)
 }
 
 export function setUpFriends(onJoinRoom: (code: string) => void) {
